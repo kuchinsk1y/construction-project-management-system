@@ -1,0 +1,311 @@
+@import "@fontsource-variable/geist";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  font-family: 'Geist Variable', sans-serif;
+}
+
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.148 0.004 228.8);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.148 0.004 228.8);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.148 0.004 228.8);
+  --primary: oklch(0.841 0.238 128.85);
+  --primary-foreground: oklch(0.405 0.101 131.063);
+  --secondary: oklch(0.967 0.001 286.375);
+  --secondary-foreground: oklch(0.21 0.006 285.885);
+  --muted: oklch(0.963 0.002 197.1);
+  --muted-foreground: oklch(0.56 0.021 213.5);
+  --accent: oklch(0.963 0.002 197.1);
+  --accent-foreground: oklch(0.218 0.008 223.9);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.925 0.005 214.3);
+  --input: oklch(0.925 0.005 214.3);
+  --ring: oklch(0.723 0.014 214.4);
+  --chart-1: oklch(0.872 0.007 219.6);
+  --chart-2: oklch(0.56 0.021 213.5);
+  --chart-3: oklch(0.45 0.017 213.2);
+  --chart-4: oklch(0.378 0.015 216);
+  --chart-5: oklch(0.275 0.011 216.9);
+  --radius: 0.45rem;
+  --radius-md: var(--radius);
+  --sidebar: oklch(0.987 0.002 197.1);
+  --sidebar-foreground: oklch(0.148 0.004 228.8);
+  --sidebar-primary: oklch(0.648 0.2 131.684);
+  --sidebar-primary-foreground: oklch(0.986 0.031 120.757);
+  --sidebar-accent: oklch(0.963 0.002 197.1);
+  --sidebar-accent-foreground: oklch(0.218 0.008 223.9);
+  --sidebar-border: oklch(0.925 0.005 214.3);
+  --sidebar-ring: oklch(0.723 0.014 214.4);
+}
+
+.dark {
+  --background: oklch(0.148 0.004 228.8);
+  --foreground: oklch(0.987 0.002 197.1);
+  --card: oklch(0.218 0.008 223.9);
+  --card-foreground: oklch(0.987 0.002 197.1);
+  --popover: oklch(0.218 0.008 223.9);
+  --popover-foreground: oklch(0.987 0.002 197.1);
+  --primary: oklch(0.768 0.233 130.85);
+  --primary-foreground: oklch(0.405 0.101 131.063);
+  --secondary: oklch(0.274 0.006 286.033);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.275 0.011 216.9);
+  --muted-foreground: oklch(0.723 0.014 214.4);
+  --accent: oklch(0.275 0.011 216.9);
+  --accent-foreground: oklch(0.987 0.002 197.1);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.56 0.021 213.5);
+  --chart-1: oklch(0.872 0.007 219.6);
+  --chart-2: oklch(0.56 0.021 213.5);
+  --chart-3: oklch(0.45 0.017 213.2);
+  --chart-4: oklch(0.378 0.015 216);
+  --chart-5: oklch(0.275 0.011 216.9);
+  --sidebar: oklch(0.218 0.008 223.9);
+  --sidebar-foreground: oklch(0.987 0.002 197.1);
+  --sidebar-primary: oklch(0.768 0.233 130.85);
+  --sidebar-primary-foreground: oklch(0.274 0.072 132.109);
+  --sidebar-accent: oklch(0.275 0.011 216.9);
+  --sidebar-accent-foreground: oklch(0.987 0.002 197.1);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.56 0.021 213.5);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.auth-shell {
+  position: relative;
+  overflow: hidden;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background:
+    radial-gradient(circle at 20% 15%, color-mix(in oklch, var(--primary) 18%, transparent), transparent 28%),
+    radial-gradient(circle at 85% 25%, color-mix(in oklch, var(--accent) 30%, transparent), transparent 32%),
+    linear-gradient(165deg, color-mix(in oklch, var(--background) 90%, black), var(--background));
+}
+
+.auth-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, color-mix(in oklch, var(--border) 45%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklch, var(--border) 45%, transparent) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: radial-gradient(circle at center, black 35%, transparent 80%);
+  pointer-events: none;
+}
+
+.auth-orb {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(4px);
+  opacity: 0.55;
+  animation: auth-float 12s ease-in-out infinite;
+}
+
+.auth-orb-a {
+  width: 360px;
+  height: 360px;
+  top: -120px;
+  left: -80px;
+  background: color-mix(in oklch, var(--primary) 55%, transparent);
+}
+
+.auth-orb-b {
+  width: 260px;
+  height: 260px;
+  bottom: -70px;
+  right: -40px;
+  background: color-mix(in oklch, var(--accent) 50%, transparent);
+  animation-delay: -4s;
+}
+
+.auth-orb-c {
+  width: 200px;
+  height: 200px;
+  top: 58%;
+  left: 12%;
+  background: color-mix(in oklch, var(--chart-2) 50%, transparent);
+  animation-delay: -8s;
+}
+
+.auth-card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 30rem;
+  border-radius: 1.25rem;
+  border: 1px solid color-mix(in oklch, var(--border) 70%, transparent);
+  background: color-mix(in oklch, var(--card) 84%, transparent);
+  backdrop-filter: blur(14px);
+  box-shadow:
+    0 24px 60px color-mix(in oklch, var(--foreground) 10%, transparent),
+    inset 0 1px 0 color-mix(in oklch, white 70%, transparent);
+  padding: 1.5rem;
+  animation: auth-rise 520ms ease-out;
+}
+
+.auth-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  margin-inline: auto;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: color-mix(in oklch, var(--primary) 75%, var(--foreground));
+  border: 1px solid color-mix(in oklch, var(--primary) 35%, transparent);
+  background: color-mix(in oklch, var(--primary) 12%, transparent);
+  border-radius: 999px;
+  padding: 0.34rem 0.68rem;
+}
+
+.auth-step {
+  border: 1px solid color-mix(in oklch, var(--border) 75%, transparent);
+  color: var(--muted-foreground);
+  border-radius: 999px;
+  padding: 0.24rem 0.68rem;
+  transition: all 220ms ease;
+}
+
+.auth-step-active {
+  color: var(--primary-foreground);
+  background: var(--primary);
+  border-color: var(--primary);
+  box-shadow: 0 8px 20px color-mix(in oklch, var(--primary) 35%, transparent);
+}
+
+.auth-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  border: 1px solid var(--input);
+  border-radius: calc(var(--radius) + 0.15rem);
+  padding: 0 0.75rem;
+  background: color-mix(in oklch, var(--card) 90%, transparent);
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.auth-input-wrap:focus-within {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring) 25%, transparent);
+  transform: translateY(-1px);
+}
+
+.auth-input-icon {
+  color: var(--muted-foreground);
+  flex: 0 0 auto;
+}
+
+.auth-input {
+  width: 100%;
+  height: 2.65rem;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--foreground);
+  font-size: 0.92rem;
+}
+
+.auth-code-input {
+  text-transform: uppercase;
+  letter-spacing: 0.28em;
+}
+
+.auth-submit {
+  width: 100%;
+  gap: 0.45rem;
+}
+
+.auth-submit svg {
+  transition: transform 180ms ease;
+}
+
+.auth-submit:hover svg {
+  transform: translateX(2px);
+}
+
+.auth-alert {
+  margin-top: 1rem;
+  border-radius: calc(var(--radius) + 0.1rem);
+  border: 1px solid transparent;
+  padding: 0.6rem 0.72rem;
+  font-size: 0.86rem;
+}
+
+.auth-alert-success {
+  background: color-mix(in oklch, var(--primary) 18%, transparent);
+  border-color: color-mix(in oklch, var(--primary) 35%, transparent);
+  color: color-mix(in oklch, var(--primary) 70%, var(--foreground));
+}
+
+.auth-alert-error {
+  background: color-mix(in oklch, var(--destructive) 12%, transparent);
+  border-color: color-mix(in oklch, var(--destructive) 26%, transparent);
+  color: color-mix(in oklch, var(--destructive) 80%, var(--foreground));
+}
+
+.auth-loader {
+  position: relative;
+  z-index: 1;
+  border: 1px solid color-mix(in oklch, var(--border) 70%, transparent);
+  background: color-mix(in oklch, var(--card) 88%, transparent);
+  border-radius: 999px;
+  padding: 0.7rem 1.1rem;
+  color: var(--muted-foreground);
+  animation: auth-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes auth-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes auth-float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-18px);
+  }
+}
+
+@keyframes auth-pulse {
+  0%,
+  100% {
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-orb,
+  .auth-card,
+  .auth-loader {
+    animation: none;
+  }
+}

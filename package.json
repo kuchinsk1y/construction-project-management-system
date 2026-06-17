@@ -1,0 +1,13 @@
+{
+  "name": "erp",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev:api": "npm --prefix api run start:dev",
+    "dev:web": "npm --prefix web run dev",
+    "build:api": "npm --prefix api run build",
+    "build:web": "npm --prefix web run build",
+    "docker:up": "docker compose up --build -d",
+    "docker:down": "docker compose down"
+  }
+}
