@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -12,20 +7,28 @@ datasource db {
 }
 
 model User {
-  id            Int            @id @default(autoincrement())
-  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
-  firstName     String         @map("first_name") @db.VarChar(255)
-  lastName      String         @map("last_name") @db.VarChar(255)
-  middleNames   String?        @map("middle_names") @db.VarChar(255)
-  position      String         @db.VarChar(255)
-  email         String         @unique @db.VarChar(255)
-  phoneNumber   String         @unique @map("phone_number") @db.VarChar(16)
-  telegramId    BigInt?        @map("telegram_id")
-  isActive      Boolean        @default(true) @map("is_active")
-  roles         String[]
-  authCodes     AuthCode[]
-  refreshTokens RefreshToken[]
+  id                                  Int                          @id @default(autoincrement())
+  createdAt                           DateTime                     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                           DateTime                     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  firstName                           String                       @map("first_name") @db.VarChar(255)
+  lastName                            String                       @map("last_name") @db.VarChar(255)
+  middleNames                         String?                      @map("middle_names") @db.VarChar(255)
+  position                            String                       @db.VarChar(255)
+  email                               String                       @unique @db.VarChar(255)
+  phoneNumber                         String                       @unique @map("phone_number") @db.VarChar(16)
+  telegramId                          BigInt?                      @map("telegram_id")
+  isActive                            Boolean                      @default(true) @map("is_active")
+  roles                               String[]
+  contractor_id                       String?                      @db.Uuid
+  authCodes                           AuthCode[]
+  project_department_foremen          project_department_foremen[]
+  project_status_history              project_status_history[]
+  projects_projects_created_byTousers projects[]                   @relation("projects_created_byTousers")
+  projects_projects_manager_idTousers projects[]                   @relation("projects_manager_idTousers")
+  projects_projects_updated_byTousers projects[]                   @relation("projects_updated_byTousers")
+  refreshTokens                       RefreshToken[]
+  user_roles                          user_roles[]
+  contractors                         contractors?                 @relation(fields: [contractor_id], references: [id])
 
   @@map("users")
 }
@@ -45,16 +48,248 @@ model AuthCode {
 }
 
 model RefreshToken {
-  id        Int      @id @default(autoincrement())
+  id        Int       @id @default(autoincrement())
   userId    Int
-  token     String   @unique
+  token     String    @unique
   expiresAt DateTime
-  isRevoked Boolean  @default(false)
+  isRevoked Boolean   @default(false)
   userAgent String?
   revokedAt DateTime?
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, isRevoked])
   @@map("refresh_tokens")
+}
+
+model contractors {
+  id         String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name       String     @db.VarChar(255)
+  tax_number String?    @db.VarChar(100)
+  created_at DateTime?  @default(now()) @db.Timestamptz(0)
+  updated_at DateTime?  @default(now()) @db.Timestamptz(0)
+  projects   projects[]
+  users      User[]
+}
+
+model cost_categories {
+  id                   BigInt                 @id @default(autoincrement())
+  name                 String                 @db.VarChar(100)
+  is_salary            Boolean?
+  planned_expenses     planned_expenses[]
+  project_budget_items project_budget_items[]
+}
+
+model currencies {
+  code     String     @id @db.Char(3)
+  name     String?    @db.VarChar(50)
+  symbol   String?    @db.VarChar(10)
+  projects projects[]
+}
+
+model daily_reports {
+  id                 String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  report_date        DateTime           @db.Date
+  project_id         String             @db.Uuid
+  work_type_id       String             @db.Uuid
+  actual_workers     Int?
+  actual_hours       Decimal?           @db.Decimal(10, 2)
+  actual_quantity    Decimal?           @db.Decimal(18, 2)
+  deleted_at         DateTime?          @db.Timestamptz(0)
+  projects           projects           @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  project_work_types project_work_types @relation(fields: [work_type_id], references: [id], onDelete: Cascade)
+}
+
+model departments {
+  id                         BigInt                       @id @default(autoincrement())
+  name                       String                       @unique @db.VarChar(100)
+  project_department_foremen project_department_foremen[]
+  project_work_types         project_work_types[]
+}
+
+model milestones {
+  id                   String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  project_id           String                @db.Uuid
+  milestone_no         String                @db.VarChar(50)
+  description          String
+  percentage           Decimal?              @db.Decimal(5, 2)
+  net_amount           Decimal?              @db.Decimal(15, 2)
+  invoicing_percentage Decimal?              @db.Decimal(5, 2)
+  deleted_at           DateTime?             @db.Timestamptz(0)
+  created_at           DateTime?             @default(now()) @db.Timestamptz(0)
+  updated_at           DateTime?             @default(now()) @db.Timestamptz(0)
+  projects             projects              @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  milestones_invoices  milestones_invoices[]
+  project_work_types   project_work_types[]
+}
+
+model milestones_invoices {
+  id             String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  milestone_id   String     @db.Uuid
+  invoice_number String     @db.VarChar(100)
+  net_value      Decimal    @db.Decimal(8, 2)
+  note           String
+  issued_date    DateTime   @db.Date
+  paid_at        DateTime   @db.Date
+  milestones     milestones @relation(fields: [milestone_id], references: [id], onDelete: Cascade)
+}
+
+model planned_expenses {
+  id               String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  project_id       String          @db.Uuid
+  cost_category_id BigInt
+  planned_percent  Decimal?        @db.Decimal(5, 2)
+  planned_date     DateTime?       @db.Date
+  cost_categories  cost_categories @relation(fields: [cost_category_id], references: [id])
+  projects         projects        @relation(fields: [project_id], references: [id], onDelete: Cascade)
+}
+
+model project_budget_items {
+  id               String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  project_id       String          @db.Uuid
+  cost_category_id BigInt
+  planned_amount   Decimal?        @db.Decimal(15, 2)
+  cost_categories  cost_categories @relation(fields: [cost_category_id], references: [id])
+  projects         projects        @relation(fields: [project_id], references: [id], onDelete: Cascade)
+}
+
+model project_department_foremen {
+  id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  project_id    String      @db.Uuid
+  department_id BigInt
+  foreman_id    Int
+  assigned_at   DateTime?   @default(now()) @db.Timestamptz(0)
+  departments   departments @relation(fields: [department_id], references: [id])
+  users         User        @relation(fields: [foreman_id], references: [id])
+  projects      projects    @relation(fields: [project_id], references: [id], onDelete: Cascade)
+}
+
+model project_hours_plan {
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  project_id          String   @unique @db.Uuid
+  average_hourly_rate Decimal? @db.Decimal(15, 2)
+  planned_hours_total Decimal? @db.Decimal(15, 2)
+  projects            projects @relation(fields: [project_id], references: [id], onDelete: Cascade)
+}
+
+model project_status_history {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  project_id String   @db.Uuid
+  old_status String   @db.VarChar(100)
+  new_status String   @db.VarChar(100)
+  reason     String?
+  changed_by Int
+  changed_at DateTime @default(now()) @db.Timestamptz(0)
+  users      User     @relation(fields: [changed_by], references: [id])
+  projects   projects @relation(fields: [project_id], references: [id], onDelete: Cascade)
+}
+
+model project_types {
+  id          BigInt     @id @default(autoincrement())
+  code        String     @unique @db.VarChar(50)
+  name        String     @db.VarChar(255)
+  description String?
+  projects    projects[]
+}
+
+model project_work_types {
+  id                           String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  project_id                   String                         @db.Uuid
+  milestone_id                 String                         @db.Uuid
+  department_id                BigInt
+  name                         String                         @db.VarChar(255)
+  unit                         String?                        @db.VarChar(20)
+  total_quantity               Decimal?                       @db.Decimal(15, 2)
+  planned_start                DateTime?                      @db.Date
+  planned_end                  DateTime?                      @db.Date
+  deleted_at                   DateTime?                      @db.Timestamptz(0)
+  created_at                   DateTime?                      @default(now()) @db.Timestamptz(0)
+  updated_at                   DateTime?                      @default(now()) @db.Timestamptz(0)
+  daily_reports                daily_reports[]
+  departments                  departments                    @relation(fields: [department_id], references: [id])
+  milestones                   milestones                     @relation(fields: [milestone_id], references: [id], onDelete: Cascade)
+  projects                     projects                       @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  resource_plans               resource_plans[]
+  work_type_hours_distribution work_type_hours_distribution[]
+}
+
+model projects {
+  id                               String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  contractor_id                    String                         @db.Uuid
+  project_type_id                  BigInt
+  manager_id                       Int?
+  name                             String                         @db.VarChar(255)
+  country                          String                         @db.VarChar(100)
+  city                             String                         @db.VarChar(100)
+  latitude                         Decimal?                       @db.Decimal(10, 7)
+  longitude                        Decimal?                       @db.Decimal(10, 7)
+  start_date_contract              DateTime?                      @db.Date
+  end_date_contract                DateTime?                      @db.Date
+  start_date_fact                  DateTime?                      @db.Date
+  end_date_fact                    DateTime?                      @db.Date
+  contract_net_value               Decimal?                       @db.Decimal(18, 2)
+  currency                         String?                        @db.Char(3)
+  vat_rate                         Decimal?                       @db.Decimal(5, 2)
+  payment_term_days                Int?
+  warranty_percent                 Decimal?                       @db.Decimal(5, 2)
+  warranty_months                  Int?
+  status                           String                         @default("DRAFT") @db.VarChar(100)
+  hold_reason                      String?
+  hold_started_at                  DateTime?                      @db.Timestamptz(0)
+  expected_resume_date             DateTime?                      @db.Date
+  google_drive_folder_id           String?                        @db.VarChar(100)
+  deleted_at                       DateTime?                      @db.Timestamptz(0)
+  created_by                       Int?
+  updated_by                       Int?
+  created_at                       DateTime?                      @default(now()) @db.Timestamptz(0)
+  updated_at                       DateTime?                      @default(now()) @db.Timestamptz(0)
+  daily_reports                    daily_reports[]
+  milestones                       milestones[]
+  planned_expenses                 planned_expenses[]
+  project_budget_items             project_budget_items[]
+  project_department_foremen       project_department_foremen[]
+  project_hours_plan               project_hours_plan?
+  project_status_history           project_status_history[]
+  project_work_types               project_work_types[]
+  contractors                      contractors                    @relation(fields: [contractor_id], references: [id])
+  users_projects_created_byTousers User?                          @relation("projects_created_byTousers", fields: [created_by], references: [id])
+  currencies                       currencies?                    @relation(fields: [currency], references: [code])
+  users_projects_manager_idTousers User?                          @relation("projects_manager_idTousers", fields: [manager_id], references: [id])
+  project_types                    project_types                  @relation(fields: [project_type_id], references: [id])
+  users_projects_updated_byTousers User?                          @relation("projects_updated_byTousers", fields: [updated_by], references: [id])
+  work_type_hours_distribution     work_type_hours_distribution[]
+}
+
+model resource_plans {
+  id                 String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  work_type_id       String             @db.Uuid
+  planned_workers    Int?
+  date_from          DateTime?          @db.Date
+  date_to            DateTime?          @db.Date
+  project_work_types project_work_types @relation(fields: [work_type_id], references: [id], onDelete: Cascade)
+}
+
+model roles {
+  id         BigInt       @id @default(autoincrement())
+  code       String       @unique @db.VarChar(50)
+  name       String       @db.VarChar(100)
+  user_roles user_roles[]
+}
+
+model user_roles {
+  user_id Int
+  role_id BigInt
+  roles   roles  @relation(fields: [role_id], references: [id], onDelete: Cascade)
+  users   User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@id([user_id, role_id])
+}
+
+model work_type_hours_distribution {
+  id                 String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  project_id         String             @db.Uuid
+  work_type_id       String             @db.Uuid
+  percentage         Decimal?           @db.Decimal(5, 2)
+  projects           projects           @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  project_work_types project_work_types @relation(fields: [work_type_id], references: [id], onDelete: Cascade)
 }

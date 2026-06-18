@@ -1,5 +1,6 @@
 import type { FormEvent } from 'react'
 import { ArrowRight, Mail, ShieldCheck } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import type { ScreenState } from '@/types/auth'
@@ -33,6 +34,8 @@ export function AuthScreen({
   onVerifyCode,
   onBackToEmail,
 }: AuthScreenProps) {
+  const { t } = useTranslation()
+
   return (
     <div className="auth-shell">
       <div className="auth-grid" />
@@ -43,28 +46,26 @@ export function AuthScreen({
       <div className="auth-card">
         <div className="auth-badge mx-auto">
           <ShieldCheck size={14} />
-          Bezpieczny dostęp
+          {t('auth.secureAccess')}
         </div>
 
-        <h1 className="mt-4 text-center text-3xl font-semibold tracking-tight text-white">Logowanie</h1>
+        <h1 className="mt-3 text-center text-2xl font-semibold tracking-tight text-white">{t('auth.signIn')}</h1>
         <p className="mt-2 text-center text-sm text-[var(--muted-foreground)]">
-          {screen === 'email' ? 'Podaj swój adres e-mail.' : `Kod został wysłany na ${normalizedEmail}. Wprowadź go poniżej.`}
+          {screen === 'email' ? t('auth.emailPrompt') : t('auth.codePrompt', { email: normalizedEmail })}
         </p>
 
-        <div className="mt-5 flex items-center justify-center gap-2 text-xs">
-          <span className={screen === 'email' ? 'auth-step auth-step-active' : 'auth-step'}>1. Email</span>
-          <span className={screen === 'code' ? 'auth-step auth-step-active' : 'auth-step'}>2. Kod</span>
+        <div className="mt-4 flex items-center justify-center gap-2 text-xs">
+          <span className={screen === 'email' ? 'auth-step auth-step-active' : 'auth-step'}>{t('auth.steps.email')}</span>
+          <span className={screen === 'code' ? 'auth-step auth-step-active' : 'auth-step'}>{t('auth.steps.code')}</span>
         </div>
 
         {message ? <p className="auth-alert auth-alert-success">{message}</p> : null}
         {error ? <p className="auth-alert auth-alert-error">{error}</p> : null}
 
         {screen === 'email' ? (
-          <form className="mt-6 space-y-4" onSubmit={onSendCode}>
+          <form className="mt-5 space-y-3" onSubmit={onSendCode}>
             <div className="space-y-1">
-              <label className="text-sm font-medium text-[var(--foreground)]" htmlFor="email">
-                Email
-              </label>
+              <label className="text-sm font-medium text-[var(--foreground)]" htmlFor="email">{t('auth.labels.email')}</label>
               <div className="auth-input-wrap">
                 <Mail size={16} className="auth-input-icon" />
                 <input
@@ -75,22 +76,20 @@ export function AuthScreen({
                   autoComplete="email"
                   required
                   className="auth-input"
-                  placeholder="you@example.com"
+                  placeholder={t('auth.placeholders.email')}
                 />
               </div>
             </div>
 
-            <Button type="submit" className="auth-submit pb-6 pt-6 text-white" disabled={isLoading}>
-              {isLoading ? 'Wysyłanie...' : 'Uzyskaj kod'}
+            <Button type="submit" className="auth-submit text-white" disabled={isLoading}>
+              {isLoading ? t('auth.actions.sending') : t('auth.actions.getCode')}
               <ArrowRight size={16} />
             </Button>
           </form>
         ) : (
-          <form className="mt-6 space-y-4" onSubmit={onVerifyCode}>
+          <form className="mt-5 space-y-3" onSubmit={onVerifyCode}>
             <div className="space-y-1">
-              <label className="text-sm font-medium text-[var(--foreground)]" htmlFor="code">
-                Kod z email
-              </label>
+              <label className="text-sm font-medium text-[var(--foreground)]" htmlFor="code">{t('auth.labels.code')}</label>
               <div className="auth-input-wrap">
                 <ShieldCheck size={16} className="auth-input-icon" />
                 <input
@@ -101,19 +100,17 @@ export function AuthScreen({
                   maxLength={6}
                   required
                   className="auth-input auth-code-input"
-                  placeholder="ABC123"
+                  placeholder={t('auth.placeholders.code')}
                 />
               </div>
             </div>
 
             <Button type="submit" className="auth-submit text-white" disabled={isLoading}>
-              {isLoading ? 'Sprawdzanie...' : 'Zaloguj się do pulpitu'}
+              {isLoading ? t('auth.actions.checking') : t('auth.actions.login')}
               <ArrowRight size={16} />
             </Button>
 
-            <Button type="button" variant="outline" className="w-full text-white" onClick={onBackToEmail}>
-              Zmień email
-            </Button>
+            <Button type="button" variant="outline" className="w-full text-white" onClick={onBackToEmail}>{t('auth.actions.changeEmail')}</Button>
           </form>
         )}
       </div>

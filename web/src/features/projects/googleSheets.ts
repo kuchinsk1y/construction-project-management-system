@@ -26,24 +26,22 @@ export async function fetchProjectsFromGoogleSheets(): Promise<ProjectItem[]> {
   const url = `${baseUrl}/sheets/projects`
 
   const response = await fetch(url)
-  if (!response.ok) {
-    throw new Error('Не удалось загрузить проекты с API')
-  }
+  if (!response.ok) throw new Error('Nie udalo sie pobrac danych z Google Sheets')
 
   const rows = (await response.json()) as ApiProjectRow[]
 
   return rows
     .map((row, index): ProjectItem => {
-      const name = row.project?.trim() || `Project ${index + 1}`
+      const name = row.project?.trim() || `Projekt ${index + 1}`
       const statusRaw = row.status ?? 'active'
-      const owner = row.manager?.trim() || 'Unassigned'
+      const owner = row.manager?.trim() || 'Nieprzypisany'
       const budget = parseNumber(row.power ?? '')
       const progress = parseProgress(row.pin ?? '')
       const startDate = row.dateFromFact?.trim() || row.dateFrom?.trim() || ''
       const endDate = row.dateToFact?.trim() || row.dateTo?.trim() || ''
-      const dueDate = row.dateToFact?.trim() || row.dateTo?.trim() || 'No deadline'
-      const priority = row.projectType?.trim() || 'General'
-      const health = row.status?.trim() || (progress >= 70 ? 'On track' : 'Attention')
+      const dueDate = row.dateToFact?.trim() || row.dateTo?.trim() || 'Brak terminu'
+      const priority = row.projectType?.trim() || 'Ogolny'
+      const health = row.status?.trim() || (progress >= 70 ? 'Zgodnie z planem' : 'Wymaga uwagi')
 
       return {
         id: row.id?.trim() || `${name}-${index}`,
@@ -57,7 +55,7 @@ export async function fetchProjectsFromGoogleSheets(): Promise<ProjectItem[]> {
         dueDate,
         priority,
         health,
-        location: row.location?.trim() || 'Unknown',
+        location: row.location?.trim() || 'Nieznana lokalizacja',
         country: row.country?.trim() || '-',
         contractor: row.contractor?.trim() || '-',
         projectType: row.projectType?.trim() || '-',

@@ -1,7 +1,8 @@
-import type { JwtPayload, ThemeMode, UserProfile } from '@/types/auth'
+import type { JwtPayload, ThemeMode, ThemePreset, UserProfile } from '@/types/auth'
 
-export function applyTheme(mode: ThemeMode): void {
+export function applyTheme(mode: ThemeMode, preset: ThemePreset = 'lime'): void {
   document.documentElement.classList.toggle('dark', mode === 'dark')
+  document.documentElement.dataset.theme = preset
 }
 
 export function parseJwtExp(token: string): number | null {
@@ -34,14 +35,21 @@ export function profileFromToken(token: string | null): UserProfile | null {
   const payload = parseJwtPayload(token)
   if (!payload) return null
 
-  const firstName = (payload.firstName ?? '').trim() || 'User'
+  const firstName = (payload.firstName ?? '').trim() || 'Uzytkownik'
   const lastName = (payload.lastName ?? '').trim()
   const email = (payload.email ?? '').trim().toLowerCase()
+  const role = (payload.role ?? '').trim().toLowerCase()
+  const rolesFromToken = Array.isArray(payload.roles)
+    ? payload.roles.filter((entry): entry is string => typeof entry === 'string').map((entry) => entry.trim().toLowerCase())
+    : []
+  const roles = role ? Array.from(new Set([role, ...rolesFromToken])) : rolesFromToken
 
   return {
     firstName,
     lastName,
     email,
+    role: role || undefined,
+    roles,
   }
 }
 

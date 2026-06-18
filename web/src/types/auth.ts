@@ -10,12 +10,18 @@ export type JwtPayload = {
   email?: string
   firstName?: string | null
   lastName?: string | null
+  role?: string | null
+  roles?: string[] | null
 }
 
 export type UserProfile = {
   firstName: string
   lastName: string
   email: string
+  role?: string
+  roles: string[]
 }
 
 export type ThemeMode = 'light' | 'dark'
+
+export type ThemePreset = 'lime' | 'mono' | 'ocean'

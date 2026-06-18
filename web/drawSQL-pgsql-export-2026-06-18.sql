@@ -205,7 +205,7 @@ CREATE TABLE "work_type_hours_distribution"(
 );
 ALTER TABLE
     "work_type_hours_distribution" ADD PRIMARY KEY("id");
-CREATE TABLE "resource_plans"(
+CREATE TABLE "resource_plans (draft)"(
     "id" UUID NOT NULL,
     "work_type_id" UUID NOT NULL,
     "planned_workers" INTEGER NULL,
@@ -213,7 +213,7 @@ CREATE TABLE "resource_plans"(
     "date_to" DATE NULL
 );
 ALTER TABLE
-    "resource_plans" ADD PRIMARY KEY("id");
+    "resource_plans (draft)" ADD PRIMARY KEY("id");
 CREATE TABLE "daily_reports"(
     "id" UUID NOT NULL,
     "report_date" DATE NOT NULL,
@@ -279,8 +279,6 @@ ALTER TABLE
     "project_work_types" ADD CONSTRAINT "project_work_types_milestone_id_foreign" FOREIGN KEY("milestone_id") REFERENCES "milestones"("id");
 ALTER TABLE
     "planned_expenses" ADD CONSTRAINT "planned_expenses_cost_category_id_foreign" FOREIGN KEY("cost_category_id") REFERENCES "cost_categories"("id");
-ALTER TABLE
-    "resource_plans" ADD CONSTRAINT "resource_plans_work_type_id_foreign" FOREIGN KEY("work_type_id") REFERENCES "project_work_types"("id");
 ALTER TABLE
     "projects" ADD CONSTRAINT "projects_project_type_id_foreign" FOREIGN KEY("project_type_id") REFERENCES "project_types"("id");
 ALTER TABLE
