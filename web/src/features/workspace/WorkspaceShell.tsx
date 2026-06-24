@@ -177,6 +177,7 @@ export function WorkspaceShell({ onLogout, theme, themePreset, onThemePresetChan
           <WorkspaceContent
             section={activeSection}
             isAdmin={isAdmin}
+            profile={profile}
             theme={theme}
             themePreset={themePreset}
             onThemePresetChange={onThemePresetChange}

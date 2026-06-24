@@ -1,12 +1,10 @@
-import { PageBlueprintPanel } from '@/features/workspace/components/PageBlueprintPanel'
-import { pageBlueprints } from '@/features/workspace/config/pageBlueprints'
 import { ProjectsShowcase } from '@/features/projects/ProjectsShowcase'
+import type { UserProfile } from '@/types/auth'
 
-export function ProjectsPage() {
-  return (
-    <>
-      <ProjectsShowcase />
-      <PageBlueprintPanel blueprint={pageBlueprints.projects} />
-    </>
-  )
+type ProjectsPageProps = {
+  profile: UserProfile | null
+}
+
+export function ProjectsPage({ profile }: ProjectsPageProps) {
+  return <ProjectsShowcase profile={profile} />
 }

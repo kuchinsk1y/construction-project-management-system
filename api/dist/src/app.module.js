@@ -14,6 +14,7 @@ const app_service_1 = require("./app.service");
 const auth_module_1 = require("./auth/auth.module");
 const google_sheets_module_1 = require("./google-sheets/google-sheets.module");
 const prisma_module_1 = require("./prisma/prisma.module");
+const projects_module_1 = require("./projects/projects.module");
 const users_module_1 = require("./users/users.module");
 let AppModule = class AppModule {
 };
@@ -25,6 +26,7 @@ exports.AppModule = AppModule = __decorate([
             prisma_module_1.PrismaModule,
             auth_module_1.AuthModule,
             users_module_1.UsersModule,
+            projects_module_1.ProjectsModule,
             google_sheets_module_1.GoogleSheetsModule,
         ],
         controllers: [app_controller_1.AppController],
