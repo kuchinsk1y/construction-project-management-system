@@ -179,6 +179,319 @@ let ProjectsService = class ProjectsService {
             data: { deleted_at: new Date() },
         });
     }
+    async listMilestones(projectId) {
+        const rows = await this.prisma.milestones.findMany({
+            where: { project_id: projectId, deleted_at: null },
+            orderBy: { milestone_no: 'asc' },
+        });
+        return rows.map((m) => ({
+            id: m.id,
+            projectId: m.project_id,
+            milestoneNo: m.milestone_no,
+            description: m.description,
+            percentage: m.percentage ? Number(m.percentage) : 0,
+            netAmount: m.net_amount ? Number(m.net_amount) : 0,
+            invoicingPercentage: m.invoicing_percentage
+                ? Number(m.invoicing_percentage)
+                : null,
+            createdAt: m.created_at,
+            updatedAt: m.updated_at,
+        }));
+    }
+    async createMilestone(projectId, dto) {
+        const project = await this.prisma.projects.findUnique({
+            where: { id: projectId, deleted_at: null },
+        });
+        if (!project) {
+            throw new common_1.NotFoundException('Project not found');
+        }
+        const existing = await this.prisma.milestones.findMany({
+            where: { project_id: projectId, deleted_at: null },
+        });
+        const currentSum = existing.reduce((sum, m) => sum + Number(m.percentage ?? 0), 0);
+        if (currentSum + dto.percentage > 100) {
+            throw new common_1.BadRequestException('Suma procentów kamieni milowych nie może przekraczać 100%');
+        }
+        const projectBudget = project.contract_net_value
+            ? Number(project.contract_net_value)
+            : 0;
+        const netAmount = (projectBudget * dto.percentage) / 100;
+        const row = await this.prisma.milestones.create({
+            data: {
+                project_id: projectId,
+                milestone_no: dto.milestoneNo,
+                description: dto.description,
+                percentage: dto.percentage,
+                net_amount: netAmount,
+                invoicing_percentage: dto.invoicingPercentage ?? null,
+            },
+        });
+        return {
+            id: row.id,
+            projectId: row.project_id,
+            milestoneNo: row.milestone_no,
+            description: row.description,
+            percentage: Number(row.percentage),
+            netAmount: Number(row.net_amount),
+            invoicingPercentage: row.invoicing_percentage
+                ? Number(row.invoicing_percentage)
+                : null,
+        };
+    }
+    async updateMilestone(id, dto) {
+        const milestone = await this.prisma.milestones.findUnique({
+            where: { id, deleted_at: null },
+        });
+        if (!milestone) {
+            throw new common_1.NotFoundException('Milestone not found');
+        }
+        let netAmount = undefined;
+        if (dto.percentage !== undefined) {
+            const existing = await this.prisma.milestones.findMany({
+                where: {
+                    project_id: milestone.project_id,
+                    deleted_at: null,
+                    NOT: { id },
+                },
+            });
+            const currentSum = existing.reduce((sum, m) => sum + Number(m.percentage ?? 0), 0);
+            if (currentSum + dto.percentage > 100) {
+                throw new common_1.BadRequestException('Suma procentów kamieni milowych nie może przekraczać 100%');
+            }
+            const project = await this.prisma.projects.findUnique({
+                where: { id: milestone.project_id },
+            });
+            const projectBudget = project?.contract_net_value
+                ? Number(project.contract_net_value)
+                : 0;
+            netAmount = (projectBudget * dto.percentage) / 100;
+        }
+        const row = await this.prisma.milestones.update({
+            where: { id },
+            data: {
+                milestone_no: dto.milestoneNo,
+                description: dto.description,
+                percentage: dto.percentage,
+                net_amount: netAmount,
+                invoicing_percentage: dto.invoicingPercentage,
+            },
+        });
+        return {
+            id: row.id,
+            projectId: row.project_id,
+            milestoneNo: row.milestone_no,
+            description: row.description,
+            percentage: Number(row.percentage),
+            netAmount: Number(row.net_amount),
+            invoicingPercentage: row.invoicing_percentage
+                ? Number(row.invoicing_percentage)
+                : null,
+        };
+    }
+    async deleteMilestone(id) {
+        const milestone = await this.prisma.milestones.findUnique({
+            where: { id, deleted_at: null },
+        });
+        if (!milestone) {
+            throw new common_1.NotFoundException('Milestone not found');
+        }
+        await this.prisma.milestones.update({
+            where: { id },
+            data: { deleted_at: new Date() },
+        });
+        return { success: true };
+    }
+    async listDepartments() {
+        let list = await this.prisma.departments.findMany({
+            orderBy: { id: 'asc' },
+        });
+        if (list.length === 0) {
+            const defaultDeps = [
+                'Kafar',
+                'Montaż',
+                'Elektryka',
+                'Maszyny budowlane',
+                'Kable AC',
+            ];
+            await this.prisma.departments.createMany({
+                data: defaultDeps.map((name) => ({ name })),
+            });
+            list = await this.prisma.departments.findMany({
+                orderBy: { id: 'asc' },
+            });
+        }
+        return list.map((d) => ({ id: Number(d.id), name: d.name }));
+    }
+    async listForemen() {
+        const users = await this.prisma.user.findMany({
+            where: { isActive: true },
+            select: { id: true, firstName: true, lastName: true, roles: true },
+        });
+        return users
+            .filter((u) => u.roles.some((r) => r.toLowerCase() === 'foreman'))
+            .map((u) => ({
+            id: u.id,
+            firstName: u.firstName,
+            lastName: u.lastName,
+        }));
+    }
+    async listWorkTypes(projectId) {
+        const rows = await this.prisma.project_work_types.findMany({
+            where: { project_id: projectId, deleted_at: null },
+            include: {
+                milestones: { select: { id: true, milestone_no: true } },
+                departments: { select: { id: true, name: true } },
+            },
+            orderBy: { created_at: 'desc' },
+        });
+        return rows.map((w) => ({
+            id: w.id,
+            projectId: w.project_id,
+            milestoneId: w.milestone_id,
+            milestoneNo: w.milestones?.milestone_no ?? '',
+            departmentId: Number(w.department_id),
+            departmentName: w.departments?.name ?? '',
+            name: w.name,
+            unit: w.unit,
+            totalQuantity: w.total_quantity ? Number(w.total_quantity) : 0,
+            plannedStart: w.planned_start
+                ? w.planned_start.toISOString().split('T')[0]
+                : null,
+            plannedEnd: w.planned_end
+                ? w.planned_end.toISOString().split('T')[0]
+                : null,
+        }));
+    }
+    async createWorkType(projectId, dto) {
+        const row = await this.prisma.project_work_types.create({
+            data: {
+                project_id: projectId,
+                milestone_id: dto.milestoneId,
+                department_id: BigInt(dto.departmentId),
+                name: dto.name,
+                unit: dto.unit ?? null,
+                total_quantity: dto.totalQuantity ?? null,
+                planned_start: dto.plannedStart ? new Date(dto.plannedStart) : null,
+                planned_end: dto.plannedEnd ? new Date(dto.plannedEnd) : null,
+            },
+        });
+        return {
+            id: row.id,
+            projectId: row.project_id,
+            milestoneId: row.milestone_id,
+            departmentId: Number(row.department_id),
+            name: row.name,
+            unit: row.unit,
+            totalQuantity: row.total_quantity ? Number(row.total_quantity) : 0,
+        };
+    }
+    async updateWorkType(id, dto) {
+        const row = await this.prisma.project_work_types.update({
+            where: { id },
+            data: {
+                milestone_id: dto.milestoneId,
+                department_id: dto.departmentId
+                    ? BigInt(dto.departmentId)
+                    : undefined,
+                name: dto.name,
+                unit: dto.unit,
+                total_quantity: dto.totalQuantity,
+                planned_start: dto.plannedStart ? new Date(dto.plannedStart) : undefined,
+                planned_end: dto.plannedEnd ? new Date(dto.plannedEnd) : undefined,
+            },
+        });
+        return {
+            id: row.id,
+            name: row.name,
+            unit: row.unit,
+            totalQuantity: row.total_quantity ? Number(row.total_quantity) : 0,
+        };
+    }
+    async deleteWorkType(id) {
+        await this.prisma.project_work_types.update({
+            where: { id },
+            data: { deleted_at: new Date() },
+        });
+        return { success: true };
+    }
+    async listForemenAssignments(projectId) {
+        const rows = await this.prisma.project_department_foremen.findMany({
+            where: { project_id: projectId },
+            include: {
+                departments: { select: { id: true, name: true } },
+                users: { select: { id: true, firstName: true, lastName: true } },
+            },
+            orderBy: { assigned_at: 'asc' },
+        });
+        return rows.map((f) => ({
+            id: f.id,
+            projectId: f.project_id,
+            departmentId: Number(f.department_id),
+            departmentName: f.departments?.name ?? '',
+            foremanId: f.foreman_id,
+            foremanName: f.users
+                ? `${f.users.firstName} ${f.users.lastName}`.trim()
+                : '',
+        }));
+    }
+    async assignForeman(projectId, departmentId, foremanId) {
+        const existing = await this.prisma.project_department_foremen.findFirst({
+            where: { project_id: projectId, department_id: BigInt(departmentId) },
+        });
+        if (existing) {
+            const row = await this.prisma.project_department_foremen.update({
+                where: { id: existing.id },
+                data: { foreman_id: foremanId },
+            });
+            return { id: row.id, updated: true };
+        }
+        else {
+            const row = await this.prisma.project_department_foremen.create({
+                data: {
+                    project_id: projectId,
+                    department_id: BigInt(departmentId),
+                    foreman_id: foremanId,
+                },
+            });
+            return { id: row.id, created: true };
+        }
+    }
+    async listResourcePlans(workTypeId) {
+        const rows = await this.prisma.resource_plans.findMany({
+            where: { work_type_id: workTypeId },
+            orderBy: { date_from: 'asc' },
+        });
+        return rows.map((r) => ({
+            id: r.id,
+            workTypeId: r.work_type_id,
+            plannedWorkers: r.planned_workers ?? 0,
+            dateFrom: r.date_from ? r.date_from.toISOString().split('T')[0] : null,
+            dateTo: r.date_to ? r.date_to.toISOString().split('T')[0] : null,
+        }));
+    }
+    async createResourcePlan(workTypeId, dto) {
+        const row = await this.prisma.resource_plans.create({
+            data: {
+                work_type_id: workTypeId,
+                planned_workers: dto.plannedWorkers,
+                date_from: dto.dateFrom ? new Date(dto.dateFrom) : null,
+                date_to: dto.dateTo ? new Date(dto.dateTo) : null,
+            },
+        });
+        return {
+            id: row.id,
+            workTypeId: row.work_type_id,
+            plannedWorkers: row.planned_workers ?? 0,
+            dateFrom: row.date_from ? row.date_from.toISOString().split('T')[0] : null,
+            dateTo: row.date_to ? row.date_to.toISOString().split('T')[0] : null,
+        };
+    }
+    async deleteResourcePlan(id) {
+        await this.prisma.resource_plans.delete({
+            where: { id },
+        });
+        return { success: true };
+    }
 };
 exports.ProjectsService = ProjectsService;
 exports.ProjectsService = ProjectsService = __decorate([

@@ -1,10 +1,12 @@
+import { useMemo } from 'react'
+
 import type { WorkspaceSection } from '@/features/workspace/types'
-import { FinancePage } from '@/features/workspace/pages/FinancePage'
+import { ContractorsPage } from './ContractorsPage'
 import { ProjectsPage } from '@/features/workspace/pages/ProjectsPage'
-import { ReportsPage } from '@/features/workspace/pages/ReportsPage'
-import { ResourcesPage } from '@/features/workspace/pages/ResourcesPage'
 import { SettingsPage } from '@/features/workspace/pages/SettingsPage'
 import { UsersPage } from '@/features/workspace/pages/UsersPage'
+import { WorksPage } from './WorksPage'
+import { ResourcesPage } from './ResourcesPage'
 import type { ThemeMode, ThemePreset, UserProfile } from '@/types/auth'
 
 type WorkspaceContentProps = {
@@ -17,10 +19,32 @@ type WorkspaceContentProps = {
 }
 
 export function WorkspaceContent({ section, isAdmin, profile, theme, themePreset, onThemePresetChange }: WorkspaceContentProps) {
-  if (section === 'resources') return <ResourcesPage />
-  if (section === 'reports') return <ReportsPage />
-  if (section === 'finance') return <FinancePage />
+  const isAdminOrDirector = useMemo(() => {
+    const role = (profile?.role ?? '').toLowerCase()
+    const roles = (profile?.roles ?? []).map((entry) => entry.toLowerCase())
+    return (
+      role === 'admin' ||
+      role === 'administrator' ||
+      roles.includes('admin') ||
+      roles.includes('administrator') ||
+      role === 'operational_director' ||
+      roles.includes('operational_director')
+    )
+  }, [profile?.role, profile?.roles])
+
+  const isProjectManager = useMemo(() => {
+    const role = (profile?.role ?? '').toLowerCase()
+    const roles = (profile?.roles ?? []).map((entry) => entry.toLowerCase())
+    return role === 'project_manager' || roles.includes('project_manager')
+  }, [profile?.role, profile?.roles])
+
+  const canEditWorks = isAdminOrDirector || isProjectManager
+
   if (section === 'users') return <UsersPage canManage={isAdmin} />
+  if (section === 'contractors') return <ContractorsPage canManage={isAdminOrDirector} />
+  if (section === 'works') return <WorksPage canManage={canEditWorks} />
+  if (section === 'resources') return <ResourcesPage canManage={canEditWorks} />
   if (section === 'settings') return <SettingsPage theme={theme} themePreset={themePreset} onThemePresetChange={onThemePresetChange} />
   return <ProjectsPage profile={profile} />
 }
+

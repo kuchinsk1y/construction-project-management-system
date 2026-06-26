@@ -52,6 +52,7 @@ export const pl = {
     },
     sections: {
       projects: 'Projekty',
+      contractors: 'Kontrahenci',
       resources: 'Zasoby',
       reports: 'Raporty',
       finance: 'Finanse',
@@ -310,6 +311,72 @@ export const pl = {
       foreman: 'Brygadzista',
       user: 'Uzytkownik',
       viewer: 'Podglad',
+    },
+  },
+  contractors: {
+    accessDenied: 'Ta sekcja jest dostępna tylko dla administratorów i dyrektorów operacyjnych.',
+    hero: {
+      eyebrow: 'Zarządzanie partnerami',
+      title: 'Baza Kontrahentów',
+      subtitle: 'Lista zarejestrowanych zleceniodawców i firm partnerskich.',
+      addButton: 'Dodaj kontrahenta',
+    },
+    stats: {
+      all: 'Wszystkich firm',
+    },
+    filters: {
+      searchPlaceholder: 'Szukaj po nazwie firmy lub NIP...',
+    },
+    table: {
+      headers: {
+        name: 'Nazwa firmy',
+        taxNumber: 'NIP / Tax ID',
+        createdAt: 'Data utworzenia',
+        actions: 'Akcje',
+      },
+      idLabel: 'ID',
+      noTaxNumber: 'Brak NIP',
+    },
+    actions: {
+      edit: 'Edytuj',
+      delete: 'Usuń',
+      cancel: 'Anuluj',
+      save: 'Zapisz zmiany',
+      closeAlert: 'Zamknij alert',
+      closeModal: 'Zamknij modal',
+      addContractor: 'Dodaj kontrahenta',
+    },
+    states: {
+      loading: 'Ładowanie kontrahentów z bazy...',
+      loadError: 'Nie udało się załadować listy kontrahentów',
+      noResults: 'Brak kontrahentów dla aktualnego filtra.',
+    },
+    modal: {
+      editTitle: 'Edytuj kontrahenta',
+      createTitle: 'Nowy kontrahent',
+      editSubtitle: 'Zmień dane i zapisz aktualizację.',
+      createSubtitle: 'Utwórz nową firmę w bazie danych.',
+      labels: {
+        name: 'Nazwa firmy (pełna)',
+        taxNumber: 'NIP / Numer podatkowy',
+      },
+    },
+    validation: {
+      required: 'Wypełnij wymagane pola: nazwa firmy',
+    },
+    notices: {
+      addedTitle: 'Kontrahent dodany',
+      addedMessage: 'Nowa firma została pomyślnie utworzona.',
+      addErrorTitle: 'Błąd dodawania',
+      updateErrorTitle: 'Błąd aktualizacji',
+      updateErrorMessage: 'Nie udało się zaktualizować danych kontrahenta',
+      addErrorMessage: 'Nie udało się dodać kontrahenta',
+      savedTitle: 'Zmiany zapisane',
+      savedMessage: 'Dane kontrahenta zostały zaktualizowane.',
+      deletedTitle: 'Kontrahent usunięty',
+      deletedMessage: 'Kontrahent {{name}} został usunięty.',
+      deleteErrorTitle: 'Błąd usuwania',
+      deleteErrorMessage: 'Nie można usunąć kontrahenta, ponieważ posiada on przypisane projekty lub użytkowników.',
     },
   },
 } as const

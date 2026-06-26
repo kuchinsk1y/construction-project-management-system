@@ -270,7 +270,7 @@ export function UsersPage({ canManage }: UsersPageProps) {
 
   if (!canManage) {
     return (
-      <section className="p-3 md:p-4">
+      <section className="p-3">
         <article className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
           <p className="text-sm font-medium text-amber-600">{t('users.accessDenied')}</p>
         </article>
@@ -279,7 +279,7 @@ export function UsersPage({ canManage }: UsersPageProps) {
   }
 
   return (
-    <section className="p-3 md:p-4">
+    <section className="p-3">
       {notice ? (
         <div className="users-toast-wrap" role="status" aria-live="polite">
           <div className={[
@@ -442,22 +442,51 @@ export function UsersPage({ canManage }: UsersPageProps) {
         </div>
       </article>
 
-      {showModal ? (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/45 p-3 backdrop-blur-sm">
-          <div className="w-full max-w-xl rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-2xl motion-safe:animate-[auth-rise_320ms_ease-out]">
-            <div className="mb-3 flex items-center justify-between">
-              <div>
-                <h4 className="text-base font-semibold">{isEditMode ? t('users.modal.editTitle') : t('users.modal.createTitle')}</h4>
-                <p className="text-sm text-[var(--muted-foreground)]">{isEditMode ? t('users.modal.editSubtitle') : t('users.modal.createSubtitle')}</p>
-              </div>
-              <Button type="button" variant="outline" size="icon-sm" onClick={() => setShowModal(false)} aria-label={t('users.actions.closeModal')}>
-                <X size={14} />
-              </Button>
-            </div>
+      {/* Drawer backdrop */}
+      <div
+        className={[
+          'fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity duration-300',
+          showModal ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
+        ].join(' ')}
+        onClick={() => setShowModal(false)}
+      />
 
-            <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
-              <label className="space-y-1">
-                <span className="text-xs text-[var(--muted-foreground)]">{t('users.modal.labels.firstName')}</span>
+      {/* Drawer panel */}
+      <aside
+        className={[
+          'fixed inset-y-0 right-0 z-50 flex w-full max-w-[500px] flex-col overflow-hidden border-l border-[var(--border)] bg-[var(--card)] shadow-2xl transition-transform duration-300 ease-out',
+          showModal ? 'translate-x-0' : 'translate-x-full',
+        ].join(' ')}
+        aria-label={isEditMode ? t('users.modal.editTitle') : t('users.modal.createTitle')}
+      >
+        {/* Drawer header */}
+        <div className="flex shrink-0 items-center justify-between border-b border-[var(--border)] px-5 py-4">
+          <div>
+            <h3 className="text-base font-semibold">
+              {isEditMode ? t('users.modal.editTitle') : t('users.modal.createTitle')}
+            </h3>
+            <p className="mt-0.5 text-sm text-[var(--muted-foreground)]">
+              {isEditMode ? t('users.modal.editSubtitle') : t('users.modal.createSubtitle')}
+            </p>
+          </div>
+          <Button size="icon-sm" variant="outline" onClick={() => setShowModal(false)} aria-label={t('users.actions.closeModal')}>
+            <X size={16} />
+          </Button>
+        </div>
+
+        {/* Drawer body */}
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+
+          {/* Section: Personal */}
+          <div>
+            <p className="mb-3 border-b border-[var(--border)] pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+              {t('users.modal.labels.firstName')} / {t('users.modal.labels.lastName')}
+            </p>
+            <div className="space-y-3">
+              <label className="block space-y-1">
+                <span className="text-xs text-[var(--muted-foreground)]">
+                  {t('users.modal.labels.firstName')} <span className="text-rose-500">*</span>
+                </span>
                 <input
                   value={formState.firstName}
                   onChange={(event) => setFormState((prev) => ({ ...prev, firstName: event.target.value }))}
@@ -465,8 +494,10 @@ export function UsersPage({ canManage }: UsersPageProps) {
                 />
               </label>
 
-              <label className="space-y-1">
-                <span className="text-xs text-[var(--muted-foreground)]">{t('users.modal.labels.lastName')}</span>
+              <label className="block space-y-1">
+                <span className="text-xs text-[var(--muted-foreground)]">
+                  {t('users.modal.labels.lastName')} <span className="text-rose-500">*</span>
+                </span>
                 <input
                   value={formState.lastName}
                   onChange={(event) => setFormState((prev) => ({ ...prev, lastName: event.target.value }))}
@@ -474,7 +505,7 @@ export function UsersPage({ canManage }: UsersPageProps) {
                 />
               </label>
 
-              <label className="space-y-1 md:col-span-2">
+              <label className="block space-y-1">
                 <span className="text-xs text-[var(--muted-foreground)]">{t('users.modal.labels.middleNames')}</span>
                 <input
                   value={formState.middleNames}
@@ -482,9 +513,19 @@ export function UsersPage({ canManage }: UsersPageProps) {
                   className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20"
                 />
               </label>
+            </div>
+          </div>
 
-              <label className="space-y-1 md:col-span-2">
-                <span className="text-xs text-[var(--muted-foreground)]">{t('users.modal.labels.email')}</span>
+          {/* Section: Contact */}
+          <div>
+            <p className="mb-3 border-b border-[var(--border)] pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+              {t('users.modal.labels.email')} / {t('users.modal.labels.phone')}
+            </p>
+            <div className="space-y-3">
+              <label className="block space-y-1">
+                <span className="text-xs text-[var(--muted-foreground)]">
+                  {t('users.modal.labels.email')} <span className="text-rose-500">*</span>
+                </span>
                 <input
                   type="email"
                   value={formState.email}
@@ -493,17 +534,10 @@ export function UsersPage({ canManage }: UsersPageProps) {
                 />
               </label>
 
-              <label className="space-y-1 md:col-span-2">
-                <span className="text-xs text-[var(--muted-foreground)]">{t('users.modal.labels.position')}</span>
-                <input
-                  value={formState.position}
-                  onChange={(event) => setFormState((prev) => ({ ...prev, position: event.target.value }))}
-                  className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20"
-                />
-              </label>
-
-              <label className="space-y-1">
-                <span className="text-xs text-[var(--muted-foreground)]">{t('users.modal.labels.phone')}</span>
+              <label className="block space-y-1">
+                <span className="text-xs text-[var(--muted-foreground)]">
+                  {t('users.modal.labels.phone')} <span className="text-rose-500">*</span>
+                </span>
                 <input
                   value={formState.phoneNumber}
                   onChange={(event) => setFormState((prev) => ({ ...prev, phoneNumber: event.target.value }))}
@@ -512,7 +546,7 @@ export function UsersPage({ canManage }: UsersPageProps) {
               </label>
 
               {isEditMode ? (
-                <label className="space-y-1">
+                <label className="block space-y-1">
                   <span className="text-xs text-[var(--muted-foreground)]">{t('users.modal.labels.telegramId')}</span>
                   <input
                     value={formState.telegramId}
@@ -521,8 +555,27 @@ export function UsersPage({ canManage }: UsersPageProps) {
                   />
                 </label>
               ) : null}
+            </div>
+          </div>
 
-              <label className="space-y-1">
+          {/* Section: Role & Status */}
+          <div>
+            <p className="mb-3 border-b border-[var(--border)] pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+              {t('users.modal.labels.role')} / {t('users.modal.labels.position')}
+            </p>
+            <div className="space-y-3">
+              <label className="block space-y-1">
+                <span className="text-xs text-[var(--muted-foreground)]">
+                  {t('users.modal.labels.position')} <span className="text-rose-500">*</span>
+                </span>
+                <input
+                  value={formState.position}
+                  onChange={(event) => setFormState((prev) => ({ ...prev, position: event.target.value }))}
+                  className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20"
+                />
+              </label>
+
+              <label className="block space-y-1">
                 <span className="text-xs text-[var(--muted-foreground)]">{t('users.modal.labels.role')}</span>
                 <select
                   value={formState.role}
@@ -545,21 +598,23 @@ export function UsersPage({ canManage }: UsersPageProps) {
                 <span className="text-sm">{t('users.modal.labels.activeAccount')}</span>
               </label>
             </div>
-
-            {formError ? (
-              <p className="mt-4 rounded-xl border border-rose-500/35 bg-rose-500/10 px-3 py-2 text-sm text-rose-500">{formError}</p>
-            ) : null}
-
-            <div className="mt-4 flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setShowModal(false)}>{t('users.actions.cancel')}</Button>
-              <Button type="button" onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending}>
-                {(createMutation.isPending || updateMutation.isPending) ? <Loader2 size={14} className="animate-spin" /> : null}
-                {isEditMode ? t('users.actions.save') : t('users.actions.addUser')}
-              </Button>
-            </div>
           </div>
+
+          {/* Validation error */}
+          {formError ? (
+            <p className="rounded-xl border border-rose-500/35 bg-rose-500/10 px-3 py-2 text-sm text-rose-500">{formError}</p>
+          ) : null}
         </div>
-      ) : null}
+
+        {/* Drawer footer */}
+        <div className="flex shrink-0 justify-end gap-2 border-t border-[var(--border)] px-5 py-3">
+          <Button type="button" variant="outline" onClick={() => setShowModal(false)}>{t('users.actions.cancel')}</Button>
+          <Button type="button" onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending}>
+            {(createMutation.isPending || updateMutation.isPending) ? <Loader2 size={14} className="animate-spin" /> : null}
+            {isEditMode ? t('users.actions.save') : t('users.actions.addUser')}
+          </Button>
+        </div>
+      </aside>
     </section>
   )
 }

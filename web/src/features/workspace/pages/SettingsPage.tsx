@@ -26,7 +26,7 @@ export function SettingsPage({ theme, themePreset, onThemePresetChange }: Settin
 
   return (
     <>
-      <section className="p-3 md:p-4">
+      <section className="p-3">
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm md:p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -96,7 +96,7 @@ export function SettingsPage({ theme, themePreset, onThemePresetChange }: Settin
         </div>
       </section>
 
-      <PageBlueprintPanel blueprint={pageBlueprints.settings} />
+      <PageBlueprintPanel blueprint={pageBlueprints.settings!} />
     </>
   )
 }

@@ -1,5 +1,5 @@
 import { Bell, CircleUserRound, LogOut, Menu, Moon, Sun, X } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
@@ -33,14 +33,33 @@ export function WorkspaceShell({ onLogout, theme, themePreset, onThemePresetChan
     return role === 'admin' || role === 'administrator' || roles.includes('admin') || roles.includes('administrator')
   }, [profile?.role, profile?.roles])
 
+  const isAdminOrDirector = useMemo(() => {
+    const role = (profile?.role ?? '').toLowerCase()
+    const roles = (profile?.roles ?? []).map((entry) => entry.toLowerCase())
+    const isDirector = role === 'operational_director' || roles.includes('operational_director')
+    return isAdmin || isDirector
+  }, [profile?.role, profile?.roles, isAdmin])
+
   const navigationItems = useMemo(
-    () => workspaceNavigation.filter((item) => (item.key === 'users' ? isAdmin : true)),
-    [isAdmin],
+    () =>
+      workspaceNavigation.filter((item) => {
+        if (item.key === 'users') return isAdmin
+        if (item.key === 'contractors') return isAdminOrDirector
+        return true
+      }),
+    [isAdmin, isAdminOrDirector],
   )
 
-  useEffect(() => {
-    if (!isAdmin && activeSection === 'users') setActiveSection('projects')
-  }, [activeSection, isAdmin])
+  // Adjust active section state during render if user permissions have changed and they can no longer access the current section
+  let currentSection = activeSection
+  if (!isAdmin && activeSection === 'users') {
+    currentSection = 'projects'
+  } else if (!isAdminOrDirector && activeSection === 'contractors') {
+    currentSection = 'projects'
+  }
+  if (currentSection !== activeSection) {
+    setActiveSection(currentSection)
+  }
 
   const profileName = useMemo(
     () => [profile?.firstName, profile?.lastName].filter(Boolean).join(' ') || t('workspace.userFallback'),

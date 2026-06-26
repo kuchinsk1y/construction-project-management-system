@@ -1,1 +1,2 @@
-export type WorkspaceSection = 'projects' | 'resources' | 'reports' | 'finance' | 'settings' | 'users'
+export type WorkspaceSection = 'projects' | 'works' | 'resources' | 'settings' | 'users' | 'contractors'
+

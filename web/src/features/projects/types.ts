@@ -1,5 +1,82 @@
 export type ProjectStatus = 'planning' | 'active' | 'blocked' | 'done'
 
+export type ApiMilestone = {
+  id: string
+  projectId: string
+  milestoneNo: string
+  description: string
+  percentage: number
+  netAmount: number
+  invoicingPercentage: number | null
+  createdAt?: string
+  updatedAt?: string
+}
+
+export type CreateMilestonePayload = {
+  milestoneNo: string
+  description: string
+  percentage: number
+  invoicingPercentage?: number
+}
+
+export type ApiDepartment = {
+  id: number
+  name: string
+}
+
+export type ApiForemanUser = {
+  id: number
+  firstName: string
+  lastName: string
+}
+
+export type ApiWorkType = {
+  id: string
+  projectId: string
+  milestoneId: string
+  milestoneNo: string
+  departmentId: number
+  departmentName: string
+  name: string
+  unit: string | null
+  totalQuantity: number
+  plannedStart: string | null
+  plannedEnd: string | null
+}
+
+export type CreateWorkTypePayload = {
+  milestoneId: string
+  departmentId: number
+  name: string
+  unit?: string
+  totalQuantity?: number
+  plannedStart?: string
+  plannedEnd?: string
+}
+
+export type ApiForemanAssignment = {
+  id: string
+  projectId: string
+  departmentId: number
+  departmentName: string
+  foremanId: number
+  foremanName: string
+}
+
+export type ApiResourcePlan = {
+  id: string
+  workTypeId: string
+  plannedWorkers: number
+  dateFrom: string | null
+  dateTo: string | null
+}
+
+export type CreateResourcePlanPayload = {
+  plannedWorkers: number
+  dateFrom?: string
+  dateTo?: string
+}
+
 // ---- DB (API) types ----
 
 export type ApiContractor = {
