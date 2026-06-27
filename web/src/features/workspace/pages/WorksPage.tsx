@@ -247,14 +247,14 @@ export function WorksPage({ canManage }: WorksPageProps) {
         {/* Title block */}
         <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-[var(--foreground)] to-[var(--muted-foreground)] bg-clip-text text-transparent">
+            <h2 className="text-xl font-extrabold tracking-tight bg-gradient-to-r from-[var(--foreground)] to-[var(--muted-foreground)] bg-clip-text text-transparent">
               Zakres prac i Brygadziści
             </h2>
           </div>
         </div>
 
         {/* Modern selector card */}
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-md transition-all hover:shadow-lg">
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-md transition-all hover:shadow-lg">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="w-full lg:max-w-sm space-y-1.5">
               <label className="text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)]">

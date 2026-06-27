@@ -307,7 +307,7 @@ export function UsersPage({ canManage }: UsersPageProps) {
         </div>
       ) : null}
 
-      <article className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm motion-safe:animate-[auth-rise_420ms_ease-out] md:p-4">
+      <article className="relative overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm motion-safe:animate-[auth-rise_420ms_ease-out] md:p-4">
         <div className="pointer-events-none absolute right-0 top-0 h-36 w-36 rounded-full bg-[var(--sidebar-primary)]/20 blur-2xl" />
 
         <div className="relative flex flex-wrap items-start justify-between gap-3">

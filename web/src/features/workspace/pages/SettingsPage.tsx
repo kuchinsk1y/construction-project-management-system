@@ -27,7 +27,7 @@ export function SettingsPage({ theme, themePreset, onThemePresetChange }: Settin
   return (
     <>
       <section className="p-3">
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm md:p-4">
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm md:p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">

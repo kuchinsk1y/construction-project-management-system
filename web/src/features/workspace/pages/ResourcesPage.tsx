@@ -211,7 +211,7 @@ export function ResourcesPage({ canManage }: ResourcesPageProps) {
         {/* Title block */}
         <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-[var(--foreground)] to-[var(--muted-foreground)] bg-clip-text text-transparent">
+            <h2 className="text-xl font-extrabold tracking-tight bg-gradient-to-r from-[var(--foreground)] to-[var(--muted-foreground)] bg-clip-text text-transparent">
               Zasoby i Obsada
             </h2>
           </div>

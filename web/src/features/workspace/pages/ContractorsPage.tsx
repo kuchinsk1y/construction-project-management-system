@@ -40,6 +40,7 @@ export function ContractorsPage({ canManage }: ContractorsPageProps) {
   const [formError, setFormError] = useState('')
   const [formState, setFormState] = useState<ContractorFormState>(emptyForm)
   const [notice, setNotice] = useState<NoticeState>(null)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
 
   const showNotice = (tone: NoticeTone, title: string, message: string) => {
     setNotice({ id: Date.now(), tone, title, message })
@@ -168,9 +169,7 @@ export function ContractorsPage({ canManage }: ContractorsPageProps) {
   }
 
   const handleDelete = (id: string) => {
-    if (window.confirm('Czy na pewno chcesz usunąć tego kontrahenta?')) {
-      deleteMutation.mutate(id)
-    }
+    setDeleteConfirmId(id)
   }
 
   if (!canManage) {
@@ -212,7 +211,7 @@ export function ContractorsPage({ canManage }: ContractorsPageProps) {
         </div>
       ) : null}
 
-      <article className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm motion-safe:animate-[auth-rise_420ms_ease-out] md:p-4">
+      <article className="relative overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm motion-safe:animate-[auth-rise_420ms_ease-out] md:p-4">
         <div className="pointer-events-none absolute right-0 top-0 h-36 w-36 rounded-full bg-[var(--sidebar-primary)]/20 blur-2xl" />
 
         <div className="relative flex flex-wrap items-start justify-between gap-3">
@@ -360,6 +359,50 @@ export function ContractorsPage({ canManage }: ContractorsPageProps) {
               <Button type="button" onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending}>
                 {(createMutation.isPending || updateMutation.isPending) ? <Loader2 size={14} className="animate-spin" /> : null}
                 {isEditMode ? t('contractors.actions.save') : t('contractors.actions.addContractor')}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {deleteConfirmId !== null ? (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/45 p-3 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-2xl motion-safe:animate-[auth-rise_320ms_ease-out]">
+            <div className="flex items-start gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-rose-500/10 text-rose-500">
+                <AlertTriangle size={20} />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-sm font-bold text-[var(--foreground)]">Usuń kontrahenta</h4>
+                <p className="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                  Czy na pewno chcesz usunąć tego kontrahenta? Tej operacji nie można cofnąć.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setDeleteConfirmId(null)}
+                disabled={deleteMutation.isPending}
+              >
+                Anuluj
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={deleteMutation.isPending}
+                onClick={() => {
+                  deleteMutation.mutate(deleteConfirmId, {
+                    onSettled: () => {
+                      setDeleteConfirmId(null)
+                    }
+                  })
+                }}
+              >
+                {deleteMutation.isPending ? <Loader2 size={14} className="animate-spin mr-1.5" /> : null}
+                Usuń
               </Button>
             </div>
           </div>
