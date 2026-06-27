@@ -16,6 +16,8 @@ export declare class ProjectsService {
         city: string;
         start_date_contract: string | null;
         end_date_contract: string | null;
+        start_date_fact: string | null;
+        end_date_fact: string | null;
         contract_net_value: string | null;
         currency: string | null;
         created_at: Date | null;
@@ -37,8 +39,8 @@ export declare class ProjectsService {
     }[]>;
     create(dto: CreateProjectDto): Promise<Record<string, unknown>>;
     listContractors(): Promise<{
-        id: string;
         name: string;
+        id: string;
     }[]>;
     listProjectTypes(): Promise<{
         id: number;
@@ -47,9 +49,9 @@ export declare class ProjectsService {
     }[]>;
     update(id: string, dto: UpdateProjectDto): Promise<Record<string, unknown>>;
     delete(id: string): Promise<{
+        name: string;
         id: string;
         contractor_id: string;
-        name: string;
         created_at: Date | null;
         updated_at: Date | null;
         project_type_id: bigint;

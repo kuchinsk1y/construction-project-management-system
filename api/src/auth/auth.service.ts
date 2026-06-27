@@ -34,7 +34,9 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new NotFoundException('User with this email does not exist or is inactive');
+      throw new NotFoundException(
+        'User with this email does not exist or is inactive',
+      );
     }
 
     const code = this.generateCode();

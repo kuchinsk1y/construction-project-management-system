@@ -1,4 +1,12 @@
-import { Body, Controller, Delete, Get, Param, Post, Put } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Put,
+} from '@nestjs/common';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { CreateMilestoneDto } from './dto/create-milestone.dto';
@@ -67,10 +75,7 @@ export class ProjectsController {
   }
 
   @Put('milestones/:id')
-  updateMilestone(
-    @Param('id') id: string,
-    @Body() dto: UpdateMilestoneDto,
-  ) {
+  updateMilestone(@Param('id') id: string, @Body() dto: UpdateMilestoneDto) {
     return this.projectsService.updateMilestone(id, dto);
   }
 

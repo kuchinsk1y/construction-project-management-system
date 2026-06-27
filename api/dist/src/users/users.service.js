@@ -60,7 +60,9 @@ let UsersService = class UsersService {
         if (exists) {
             throw new common_1.BadRequestException('User with this email already exists');
         }
-        const phoneExists = await this.prisma.user.findUnique({ where: { phoneNumber } });
+        const phoneExists = await this.prisma.user.findUnique({
+            where: { phoneNumber },
+        });
         if (phoneExists) {
             throw new common_1.BadRequestException('User with this phone number already exists');
         }
@@ -92,7 +94,9 @@ let UsersService = class UsersService {
         const data = {};
         if (typeof dto.email === 'string') {
             const email = dto.email.trim().toLowerCase();
-            const emailOwner = await this.prisma.user.findUnique({ where: { email } });
+            const emailOwner = await this.prisma.user.findUnique({
+                where: { email },
+            });
             if (emailOwner && emailOwner.id !== id) {
                 throw new common_1.BadRequestException('User with this email already exists');
             }
@@ -100,7 +104,9 @@ let UsersService = class UsersService {
         }
         if (typeof dto.phoneNumber === 'string') {
             const phoneNumber = dto.phoneNumber.trim();
-            const phoneOwner = await this.prisma.user.findUnique({ where: { phoneNumber } });
+            const phoneOwner = await this.prisma.user.findUnique({
+                where: { phoneNumber },
+            });
             if (phoneOwner && phoneOwner.id !== id) {
                 throw new common_1.BadRequestException('User with this phone number already exists');
             }

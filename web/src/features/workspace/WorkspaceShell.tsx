@@ -73,7 +73,7 @@ export function WorkspaceShell({ onLogout, theme, themePreset, onThemePresetChan
         <h1 className="text-lg font-semibold leading-tight">{t('workspace.brand')}</h1>
       </div>
 
-      <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2.5">
+      <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto custom-scrollbar p-2.5">
         {navigationItems.map(({ key, label, icon: Icon }) => {
           const active = key === activeSection
           return (

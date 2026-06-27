@@ -60,6 +60,12 @@ export class UpdateProjectDto {
   endDateContract?: string;
 
   @IsOptional()
+  startDateFact?: string;
+
+  @IsOptional()
+  endDateFact?: string;
+
+  @IsOptional()
   @Type(() => Number)
   managerId?: number;
 }

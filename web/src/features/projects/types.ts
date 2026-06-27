@@ -98,6 +98,8 @@ export type ApiProject = {
   city: string
   start_date_contract: string | null
   end_date_contract: string | null
+  start_date_fact: string | null
+  end_date_fact: string | null
   contract_net_value: string | null
   currency: string | null
   contractors: ApiContractor | null
@@ -116,6 +118,8 @@ export type CreateProjectPayload = {
   contractNetValue?: number
   startDateContract?: string
   endDateContract?: string
+  startDateFact?: string
+  endDateFact?: string
   managerId?: number
 }
 
@@ -130,6 +134,8 @@ export type ProjectItem = {
   progress: number
   startDate: string
   endDate: string
+  startDateFact: string
+  endDateFact: string
   dueDate: string
   priority: string
   health: string
@@ -164,6 +170,8 @@ export function mapApiProjectToItem(p: ApiProject): ProjectItem {
     progress: 0,
     startDate: p.start_date_contract ?? '',
     endDate: p.end_date_contract ?? '',
+    startDateFact: p.start_date_fact ?? '',
+    endDateFact: p.end_date_fact ?? '',
     dueDate: p.end_date_contract ?? 'Brak terminu',
     priority: p.project_types?.code ?? 'Ogolny',
     health: 'Zgodnie z planem',

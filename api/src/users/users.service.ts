@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -78,9 +82,13 @@ export class UsersService {
       throw new BadRequestException('User with this email already exists');
     }
 
-    const phoneExists = await this.prisma.user.findUnique({ where: { phoneNumber } });
+    const phoneExists = await this.prisma.user.findUnique({
+      where: { phoneNumber },
+    });
     if (phoneExists) {
-      throw new BadRequestException('User with this phone number already exists');
+      throw new BadRequestException(
+        'User with this phone number already exists',
+      );
     }
 
     const roles = this.normalizeRoles(dto.roles);
@@ -127,7 +135,9 @@ export class UsersService {
 
     if (typeof dto.email === 'string') {
       const email = dto.email.trim().toLowerCase();
-      const emailOwner = await this.prisma.user.findUnique({ where: { email } });
+      const emailOwner = await this.prisma.user.findUnique({
+        where: { email },
+      });
       if (emailOwner && emailOwner.id !== id) {
         throw new BadRequestException('User with this email already exists');
       }
@@ -136,14 +146,19 @@ export class UsersService {
 
     if (typeof dto.phoneNumber === 'string') {
       const phoneNumber = dto.phoneNumber.trim();
-      const phoneOwner = await this.prisma.user.findUnique({ where: { phoneNumber } });
+      const phoneOwner = await this.prisma.user.findUnique({
+        where: { phoneNumber },
+      });
       if (phoneOwner && phoneOwner.id !== id) {
-        throw new BadRequestException('User with this phone number already exists');
+        throw new BadRequestException(
+          'User with this phone number already exists',
+        );
       }
       data.phoneNumber = phoneNumber;
     }
 
-    if (typeof dto.firstName === 'string') data.firstName = dto.firstName.trim();
+    if (typeof dto.firstName === 'string')
+      data.firstName = dto.firstName.trim();
     if (typeof dto.lastName === 'string') data.lastName = dto.lastName.trim();
     if (typeof dto.position === 'string') data.position = dto.position.trim();
 

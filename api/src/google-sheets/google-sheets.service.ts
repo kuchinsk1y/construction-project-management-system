@@ -1,5 +1,9 @@
 import { HttpService } from '@nestjs/axios';
-import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { google } from 'googleapis';
 import { join } from 'path';
@@ -15,7 +19,10 @@ export class GoogleSheetsService {
     private readonly httpService: HttpService,
     private readonly config: ConfigService,
   ) {
-    const keyFile = this.config.get<string>('GOOGLE_CREDENTIALS_FILE', 'google-credentials.json');
+    const keyFile = this.config.get<string>(
+      'GOOGLE_CREDENTIALS_FILE',
+      'google-credentials.json',
+    );
 
     this.auth = new google.auth.GoogleAuth({
       keyFile: join(process.cwd(), keyFile),
@@ -51,7 +58,9 @@ export class GoogleSheetsService {
       return this.parseGvizResponse<T>(data);
     } catch (error) {
       this.logger.error('Google Sheets query failed', error as Error);
-      throw new InternalServerErrorException('Failed to load data from Google Sheets');
+      throw new InternalServerErrorException(
+        'Failed to load data from Google Sheets',
+      );
     }
   }
 

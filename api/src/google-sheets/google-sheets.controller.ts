@@ -1,7 +1,11 @@
 import { Controller, Get } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GoogleSheetsService } from './google-sheets.service';
-import { SheetConfig, SheetsProjectRow, ZakresProjectEntry } from './interfaces';
+import {
+  SheetConfig,
+  SheetsProjectRow,
+  ZakresProjectEntry,
+} from './interfaces';
 
 @Controller('sheets')
 export class GoogleSheetsController {

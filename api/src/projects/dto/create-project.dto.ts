@@ -59,6 +59,14 @@ export class CreateProjectDto {
   endDateContract?: string;
 
   @IsOptional()
+  @IsString()
+  startDateFact?: string;
+
+  @IsOptional()
+  @IsString()
+  endDateFact?: string;
+
+  @IsOptional()
   @IsNumber()
   @Type(() => Number)
   managerId?: number;

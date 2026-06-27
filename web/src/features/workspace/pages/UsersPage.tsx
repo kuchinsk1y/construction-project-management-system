@@ -475,7 +475,7 @@ export function UsersPage({ canManage }: UsersPageProps) {
         </div>
 
         {/* Drawer body */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+        <div className="flex-1 overflow-y-auto custom-scrollbar px-5 py-4 space-y-5">
 
           {/* Section: Personal */}
           <div>

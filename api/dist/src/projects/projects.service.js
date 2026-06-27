@@ -44,6 +44,8 @@ let ProjectsService = class ProjectsService {
             city: p.city,
             start_date_contract: p.start_date_contract?.toISOString().split('T')[0] ?? null,
             end_date_contract: p.end_date_contract?.toISOString().split('T')[0] ?? null,
+            start_date_fact: p.start_date_fact?.toISOString().split('T')[0] ?? null,
+            end_date_fact: p.end_date_fact?.toISOString().split('T')[0] ?? null,
             contract_net_value: p.contract_net_value?.toString() ?? null,
             currency: p.currency,
             created_at: p.created_at,
@@ -84,6 +86,12 @@ let ProjectsService = class ProjectsService {
                 end_date_contract: dto.endDateContract
                     ? new Date(dto.endDateContract)
                     : null,
+                start_date_fact: dto.startDateFact
+                    ? new Date(dto.startDateFact)
+                    : null,
+                end_date_fact: dto.endDateFact
+                    ? new Date(dto.endDateFact)
+                    : null,
                 manager_id: dto.managerId ?? null,
             },
             include: {
@@ -99,6 +107,8 @@ let ProjectsService = class ProjectsService {
             city: project.city,
             start_date_contract: project.start_date_contract?.toISOString().split('T')[0] ?? null,
             end_date_contract: project.end_date_contract?.toISOString().split('T')[0] ?? null,
+            start_date_fact: project.start_date_fact?.toISOString().split('T')[0] ?? null,
+            end_date_fact: project.end_date_fact?.toISOString().split('T')[0] ?? null,
             contract_net_value: project.contract_net_value?.toString() ?? null,
             currency: project.currency,
             contractors: project.contractors,
@@ -145,6 +155,12 @@ let ProjectsService = class ProjectsService {
                 end_date_contract: dto.endDateContract
                     ? new Date(dto.endDateContract)
                     : null,
+                start_date_fact: dto.startDateFact
+                    ? new Date(dto.startDateFact)
+                    : null,
+                end_date_fact: dto.endDateFact
+                    ? new Date(dto.endDateFact)
+                    : null,
                 manager_id: dto.managerId ?? null,
             },
             include: {
@@ -160,6 +176,8 @@ let ProjectsService = class ProjectsService {
             city: project.city,
             start_date_contract: project.start_date_contract?.toISOString().split('T')[0] ?? null,
             end_date_contract: project.end_date_contract?.toISOString().split('T')[0] ?? null,
+            start_date_fact: project.start_date_fact?.toISOString().split('T')[0] ?? null,
+            end_date_fact: project.end_date_fact?.toISOString().split('T')[0] ?? null,
             contract_net_value: project.contract_net_value?.toString() ?? null,
             currency: project.currency,
             contractors: project.contractors,
@@ -328,7 +346,8 @@ let ProjectsService = class ProjectsService {
             select: { id: true, firstName: true, lastName: true, roles: true },
         });
         return users
-            .filter((u) => u.roles.some((r) => r.toLowerCase() === 'foreman'))
+            .filter((u) => u.roles.some((r) => r.toLowerCase() === 'foreman' ||
+            r.toLowerCase() === 'brygadzista'))
             .map((u) => ({
             id: u.id,
             firstName: u.firstName,
@@ -390,13 +409,13 @@ let ProjectsService = class ProjectsService {
             where: { id },
             data: {
                 milestone_id: dto.milestoneId,
-                department_id: dto.departmentId
-                    ? BigInt(dto.departmentId)
-                    : undefined,
+                department_id: dto.departmentId ? BigInt(dto.departmentId) : undefined,
                 name: dto.name,
                 unit: dto.unit,
                 total_quantity: dto.totalQuantity,
-                planned_start: dto.plannedStart ? new Date(dto.plannedStart) : undefined,
+                planned_start: dto.plannedStart
+                    ? new Date(dto.plannedStart)
+                    : undefined,
                 planned_end: dto.plannedEnd ? new Date(dto.plannedEnd) : undefined,
             },
         });
@@ -482,7 +501,9 @@ let ProjectsService = class ProjectsService {
             id: row.id,
             workTypeId: row.work_type_id,
             plannedWorkers: row.planned_workers ?? 0,
-            dateFrom: row.date_from ? row.date_from.toISOString().split('T')[0] : null,
+            dateFrom: row.date_from
+                ? row.date_from.toISOString().split('T')[0]
+                : null,
             dateTo: row.date_to ? row.date_to.toISOString().split('T')[0] : null,
         };
     }

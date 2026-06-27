@@ -23,6 +23,8 @@ class CreateProjectDto {
     contractNetValue;
     startDateContract;
     endDateContract;
+    startDateFact;
+    endDateFact;
     managerId;
 }
 exports.CreateProjectDto = CreateProjectDto;
@@ -83,6 +85,16 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateProjectDto.prototype, "endDateContract", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateProjectDto.prototype, "startDateFact", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateProjectDto.prototype, "endDateFact", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsNumber)(),

@@ -99,6 +99,8 @@ const emptyForm: CreateProjectPayload = {
   contractNetValue: undefined,
   startDateContract: '',
   endDateContract: '',
+  startDateFact: '',
+  endDateFact: '',
 }
 
 type ProjectsShowcaseProps = {
@@ -317,6 +319,8 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
       contractNetValue: project.contract_net_value ? Number(project.contract_net_value) : undefined,
       startDateContract: project.start_date_contract || '',
       endDateContract: project.end_date_contract || '',
+      startDateFact: project.start_date_fact || '',
+      endDateFact: project.end_date_fact || '',
     })
     setFormError('')
     setContractorSearch('')
@@ -359,6 +363,8 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
       contractNetValue: formState.contractNetValue || undefined,
       startDateContract: formState.startDateContract || undefined,
       endDateContract: formState.endDateContract || undefined,
+      startDateFact: formState.startDateFact || undefined,
+      endDateFact: formState.endDateFact || undefined,
     }
 
     if (editingProject) {
@@ -594,23 +600,23 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
                   />
                 </div>
 
-                {/* Reset — gradient pill with icon */}
-                {(searchQuery || statusFilter !== 'all' || managerFilter !== 'all' || dateFromFilter || dateToFilter) ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearchQuery('')
-                      setStatusFilter('all')
-                      setManagerFilter('all')
-                      setDateFromFilter('')
-                      setDateToFilter('')
-                    }}
-                    className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-gradient-to-r from-rose-500 to-orange-400 px-3 py-1.5 text-xs font-semibold text-white shadow-sm shadow-rose-500/25 transition-all hover:brightness-110 hover:shadow-md hover:shadow-rose-500/40 active:scale-95"
-                  >
-                    <X size={13} />
-                    {t('projects.filters.reset')}
-                  </button>
-                ) : null}
+                {/* Reset — themed button, always visible, disabled if no filters are active */}
+                <Button
+                  type="button"
+                  disabled={!(searchQuery || statusFilter !== 'all' || managerFilter !== 'all' || dateFromFilter || dateToFilter)}
+                  onClick={() => {
+                    setSearchQuery('')
+                    setStatusFilter('all')
+                    setManagerFilter('all')
+                    setDateFromFilter('')
+                    setDateToFilter('')
+                  }}
+                  variant="outline"
+                  className="ml-auto shrink-0 gap-1.5 rounded-xl border-[var(--sidebar-primary)]/20 text-[var(--sidebar-primary)] hover:bg-[var(--sidebar-primary)]/10 hover:text-[var(--sidebar-primary)] disabled:border-[var(--border)] disabled:bg-transparent disabled:text-[var(--muted-foreground)]/50 disabled:opacity-50 transition-all duration-200"
+                >
+                  <X size={13} />
+                  {t('projects.filters.reset')}
+                </Button>
               </div>
             </div>
 
@@ -730,8 +736,18 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
                         </td>
 
                         <td className="border-b border-[var(--border)] px-3 py-2 align-top">
-                          <p className="text-xs text-[var(--muted-foreground)]">{t('projects.table.row.start')}: {formatDate(project.startDate, t('projects.date.noDeadline'))}</p>
-                          <p className="font-medium">{t('projects.table.row.end')}: {formatDate(project.endDate || project.dueDate, t('projects.date.noDeadline'))}</p>
+                          <div className="space-y-1">
+                            <p className="text-[11px] text-[var(--muted-foreground)] leading-tight">
+                              <span className="font-semibold text-[var(--foreground)]">Plan:</span> <br />
+                              {formatDate(project.startDate, '–')} – {formatDate(project.endDate, '–')}
+                            </p>
+                            {(project.startDateFact || project.endDateFact) && (
+                              <p className="text-[11px] text-emerald-500 font-medium leading-tight">
+                                <span className="font-semibold">Fakt:</span> <br />
+                                {project.startDateFact ? formatDate(project.startDateFact, '–') : '–'} – {project.endDateFact ? formatDate(project.endDateFact, '–') : '–'}
+                              </p>
+                            )}
+                          </div>
                         </td>
 
                         <td className="border-b border-[var(--border)] px-3 py-2 align-top">
@@ -833,7 +849,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
         </div>
 
         {/* Drawer form body */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+        <div className="flex-1 overflow-y-auto custom-scrollbar px-5 py-4 space-y-5">
           {editingProject && (
             <div className="flex border-b border-[var(--border)] mb-4">
               <button
@@ -960,7 +976,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
                         className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20 disabled:opacity-50"
                       />
                       {showContractorList && !contractorsLoading && filteredContractors.length > 0 ? (
-                        <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-48 overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-lg">
+                        <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-48 overflow-y-auto custom-scrollbar rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-lg">
                           {filteredContractors.map((c) => (
                             <button
                               key={c.id}
@@ -1030,26 +1046,62 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
               {/* Section: Dates */}
               <div>
                 <p className="mb-3 border-b border-[var(--border)] pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
-                  {t('projects.form.sections.dates')}
+                  Okresy i terminy realizacji (Plan vs Fakt)
                 </p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <span className="text-xs text-[var(--muted-foreground)]">{t('projects.form.labels.startDate')}</span>
-                    <DatePicker
-                      value={formState.startDateContract ?? ''}
-                      onChange={(v) => setField('startDateContract', v)}
-                      placeholder="дд.мм.гггг"
-                    />
+                <div className="space-y-4">
+                  {/* Row 1: Plan */}
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]/80">
+                      Terminy planowane (Harmonogram)
+                    </span>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <span className="text-xs text-[var(--muted-foreground)]">{t('projects.form.labels.startDate')}</span>
+                        <DatePicker
+                          value={formState.startDateContract ?? ''}
+                          onChange={(v) => setField('startDateContract', v)}
+                          placeholder="dd.mm.rrrr"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-xs text-[var(--muted-foreground)]">{t('projects.form.labels.endDate')}</span>
+                        <DatePicker
+                          value={formState.endDateContract ?? ''}
+                          onChange={(v) => setField('endDateContract', v)}
+                          min={formState.startDateContract || undefined}
+                          placeholder="dd.mm.rrrr"
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <span className="text-xs text-[var(--muted-foreground)]">{t('projects.form.labels.endDate')}</span>
-                    <DatePicker
-                      value={formState.endDateContract ?? ''}
-                      onChange={(v) => setField('endDateContract', v)}
-                      min={formState.startDateContract || undefined}
-                      placeholder="дд.мм.гггг"
-                    />
-                  </div>
+
+                  {/* Row 2: Fact */}
+                  {editingProject && (
+                    <div className="space-y-1.5 animate-fade-in">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]/80">
+                        Terminy rzeczywiste (Faktyczne)
+                      </span>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <span className="text-xs text-[var(--muted-foreground)]">Rzeczywisty start</span>
+                          <DatePicker
+                            value={formState.startDateFact ?? ''}
+                            onChange={(v) => setField('startDateFact', v)}
+                            placeholder="dd.mm.rrrr"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <span className="text-xs text-[var(--muted-foreground)]">Rzeczywisty koniec</span>
+                          <DatePicker
+                            value={formState.endDateFact ?? ''}
+                            onChange={(v) => setField('endDateFact', v)}
+                            min={formState.startDateFact || undefined}
+                            placeholder="dd.mm.rrrr"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

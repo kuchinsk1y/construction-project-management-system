@@ -9,5 +9,7 @@ export declare class UpdateProjectDto {
     contractNetValue?: number;
     startDateContract?: string;
     endDateContract?: string;
+    startDateFact?: string;
+    endDateFact?: string;
     managerId?: number;
 }
