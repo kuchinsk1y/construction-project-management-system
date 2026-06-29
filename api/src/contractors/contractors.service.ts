@@ -33,6 +33,11 @@ export class ContractorsService {
       data: {
         name,
         tax_number,
+        street: dto.street?.trim() || null,
+        postal_code: dto.postal_code?.trim() || null,
+        city: dto.city?.trim() || null,
+        country: dto.country?.trim() || null,
+        notes: dto.notes?.trim() || null,
       },
     });
   }
@@ -45,7 +50,15 @@ export class ContractorsService {
       throw new NotFoundException('Kontrahent nie został znaleziony');
     }
 
-    const data: { name?: string; tax_number?: string | null } = {};
+    const data: {
+      name?: string;
+      tax_number?: string | null;
+      street?: string | null;
+      postal_code?: string | null;
+      city?: string | null;
+      country?: string | null;
+      notes?: string | null;
+    } = {};
 
     if (typeof dto.name === 'string') {
       const name = dto.name.trim();
@@ -65,6 +78,26 @@ export class ContractorsService {
 
     if (dto.tax_number !== undefined) {
       data.tax_number = dto.tax_number?.trim() || null;
+    }
+
+    if (dto.street !== undefined) {
+      data.street = dto.street?.trim() || null;
+    }
+
+    if (dto.postal_code !== undefined) {
+      data.postal_code = dto.postal_code?.trim() || null;
+    }
+
+    if (dto.city !== undefined) {
+      data.city = dto.city?.trim() || null;
+    }
+
+    if (dto.country !== undefined) {
+      data.country = dto.country?.trim() || null;
+    }
+
+    if (dto.notes !== undefined) {
+      data.notes = dto.notes?.trim() || null;
     }
 
     return this.prisma.contractors.update({

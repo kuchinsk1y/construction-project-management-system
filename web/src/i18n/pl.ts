@@ -359,6 +359,11 @@ export const pl = {
       labels: {
         name: 'Nazwa firmy (pełna)',
         taxNumber: 'NIP / Numer podatkowy',
+        street: 'Ulica',
+        postalCode: 'Kod pocztowy',
+        city: 'Miejscowość / Miasto',
+        country: 'Kraj',
+        notes: 'Uwagi / Notatki',
       },
     },
     validation: {

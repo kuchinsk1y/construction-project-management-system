@@ -1,8 +1,6 @@
 import { Check, Palette } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-import { PageBlueprintPanel } from '@/features/workspace/components/PageBlueprintPanel'
-import { pageBlueprints } from '@/features/workspace/config/pageBlueprints'
 import type { ThemeMode, ThemePreset } from '@/types/auth'
 
 type SettingsPageProps = {
@@ -95,8 +93,6 @@ export function SettingsPage({ theme, themePreset, onThemePresetChange }: Settin
           </div>
         </div>
       </section>
-
-      <PageBlueprintPanel blueprint={pageBlueprints.settings!} />
     </>
   )
 }

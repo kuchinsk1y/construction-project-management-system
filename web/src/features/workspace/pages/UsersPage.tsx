@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, CheckCircle2, Loader2, PencilLine, Plus, Search, ShieldCheck, UserCheck, UserX, X } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Loader2, PencilLine, Plus, Search, UserCheck, UserX, X } from 'lucide-react' /* ShieldCheck */
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -208,7 +208,7 @@ export function UsersPage({ canManage }: UsersPageProps) {
     })
   }, [query, roleFilter, users])
 
-  const activeCount = filteredUsers.filter((item) => item.isActive).length
+  // const activeCount = filteredUsers.filter((item) => item.isActive).length
 
   const openCreateModal = () => {
     setFormError('')
@@ -307,126 +307,122 @@ export function UsersPage({ canManage }: UsersPageProps) {
         </div>
       ) : null}
 
-      <article className="relative overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm motion-safe:animate-[auth-rise_420ms_ease-out] md:p-4">
-        <div className="pointer-events-none absolute right-0 top-0 h-36 w-36 rounded-full bg-[var(--sidebar-primary)]/20 blur-2xl" />
+      <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between animate-fade-in mb-3">
+        <div>
+          <h2 className="mt-1 text-xl font-extrabold tracking-tight bg-gradient-to-r from-[var(--foreground)] to-[var(--muted-foreground)] bg-clip-text text-transparent">
+            {t('users.hero.title')}
+          </h2>
+        </div>
 
-        <div className="relative flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
-              <ShieldCheck size={14} />
-              {t('users.hero.eyebrow')}
-            </p>
-            <h3 className="mt-1.5 text-xl font-semibold tracking-tight">{t('users.hero.title')}</h3>
-          </div>
+        <Button
+          type="button"
+          onClick={openCreateModal}
+          className="h-9 rounded-xl bg-[var(--sidebar-primary)] px-3 text-[var(--sidebar-primary-foreground)] shadow-[0_4px_14px_color-mix(in_oklch,var(--sidebar-primary),transparent_65%)] hover:bg-[var(--sidebar-primary)]/90"
+        >
+          <Plus size={16} />
+          {t('users.hero.addButton')}
+        </Button>
+      </div>
 
-          <Button
-            type="button"
-            onClick={openCreateModal}
-            className="h-9 rounded-xl bg-[var(--sidebar-primary)] px-3 text-[var(--sidebar-primary-foreground)] shadow-[0_8px_24px_color-mix(in_oklch,var(--sidebar-primary),transparent_70%)] hover:bg-[var(--sidebar-primary)]/90"
+      <div className="grid grid-cols-1 gap-2 md:grid-cols-6 rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 shadow-sm animate-fade-in mb-3">
+        <label className="relative md:col-span-4">
+          <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)]" />
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={t('users.filters.searchPlaceholder')}
+            className="h-8 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] pl-8 pr-3 text-sm outline-none transition focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20"
+          />
+        </label>
+
+        <label className="md:col-span-2">
+          <select
+            value={roleFilter}
+            onChange={(event) => setRoleFilter(event.target.value as 'all' | UserRole)}
+            aria-label={t('users.filters.roleAria')}
+            title={t('users.filters.roleTitle')}
+            className="h-8 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20"
           >
-            <Plus size={16} />
-            {t('users.hero.addButton')}
-          </Button>
-        </div>
+            <option value="all">{t('users.filters.allRoles')}</option>
+            {roleOptions.map((role) => (
+              <option key={role} value={role}>{roleLabel(role, t)}</option>
+            ))}
+          </select>
+        </label>
+      </div>
 
-        <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/65 p-2.5">
-            <p className="text-xs text-[var(--muted-foreground)]">{t('users.stats.all')}</p>
-            <p className="mt-0.5 text-lg font-semibold">{filteredUsers.length}</p>
-          </div>
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/65 p-2.5">
-            <p className="text-xs text-[var(--muted-foreground)]">{t('users.stats.active')}</p>
-            <p className="mt-0.5 text-lg font-semibold text-emerald-500">{activeCount}</p>
-          </div>
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/65 p-2.5">
-            <p className="text-xs text-[var(--muted-foreground)]">{t('users.stats.inactive')}</p>
-            <p className="mt-0.5 text-lg font-semibold text-zinc-500">{filteredUsers.length - activeCount}</p>
+      <article className="w-full overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-sm animate-fade-in mb-3">
+        <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
+          <div>
+            <p className="text-sm font-semibold">Lista użytkowników systemu</p>
+            <p className="text-xs text-[var(--muted-foreground)]">
+              Pokazano {filteredUsers.length} z {users.length} użytkowników
+            </p>
           </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-6">
-          <label className="relative md:col-span-4">
-            <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)]" />
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder={t('users.filters.searchPlaceholder')}
-              className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] pl-9 pr-3 text-sm outline-none transition focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20"
-            />
-          </label>
-
-          <label className="md:col-span-2">
-            <select
-              value={roleFilter}
-              onChange={(event) => setRoleFilter(event.target.value as 'all' | UserRole)}
-              aria-label={t('users.filters.roleAria')}
-              title={t('users.filters.roleTitle')}
-              className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20"
-            >
-              <option value="all">{t('users.filters.allRoles')}</option>
-              {roleOptions.map((role) => (
-                <option key={role} value={role}>{roleLabel(role, t)}</option>
-              ))}
-            </select>
-          </label>
-        </div>
-
-        <div className="mt-4 overflow-hidden rounded-2xl border border-[var(--border)]">
+        <div className="overflow-x-auto hide-scrollbar">
           {isLoading ? (
-            <div className="flex items-center gap-2 px-3 py-6 text-sm text-[var(--muted-foreground)]">
+            <div className="flex items-center gap-2 px-4 py-6 text-sm text-[var(--muted-foreground)]">
               <Loader2 size={16} className="animate-spin" />
               {t('users.states.loading')}
             </div>
           ) : null}
 
           {isError ? (
-            <div className="px-3 py-6 text-sm text-rose-500">
+            <div className="px-4 py-6 text-sm text-rose-500">
               {error instanceof Error ? error.message : t('users.states.loadError')}
             </div>
           ) : null}
 
           {!isLoading && !isError ? (
-            <div className="max-h-[62vh] overflow-auto">
-              <table className="min-w-[900px] w-full table-fixed border-separate border-spacing-0 text-[13px]">
+            <>
+              <table className="w-full whitespace-nowrap border-separate border-spacing-0 text-[13px]">
                 <thead className="sticky top-0 z-10">
-                  <tr className="bg-[var(--background)]/90 backdrop-blur">
-                    <th className="w-[22%] border-b border-[var(--border)] px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">{t('users.table.headers.user')}</th>
-                    <th className="w-[16%] border-b border-[var(--border)] px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">{t('users.table.headers.role')}</th>
-                    <th className="w-[22%] border-b border-[var(--border)] px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">{t('users.table.headers.position')}</th>
-                    <th className="w-[16%] border-b border-[var(--border)] px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">{t('users.table.headers.contact')}</th>
-                    <th className="w-[12%] border-b border-[var(--border)] px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">{t('users.table.headers.status')}</th>
-                    <th className="w-[12%] border-b border-[var(--border)] px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">{t('users.table.headers.actions')}</th>
+                  <tr className="bg-[var(--background)]/95 backdrop-blur supports-[backdrop-filter]:bg-[var(--background)]/80">
+                    <th className="border-b border-[var(--border)] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">{t('users.table.headers.user')}</th>
+                    <th className="border-b border-[var(--border)] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">{t('users.table.headers.role')}</th>
+                    <th className="border-b border-[var(--border)] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">{t('users.table.headers.position')}</th>
+                    <th className="border-b border-[var(--border)] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">{t('users.table.headers.contact')}</th>
+                    <th className="border-b border-[var(--border)] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">{t('users.table.headers.status')}</th>
+                    <th className="border-b border-[var(--border)] px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">Akcje</th>
                   </tr>
                 </thead>
 
                 <tbody>
-                  {filteredUsers.map((user) => (
-                    <tr key={user.id} className="group h-12 odd:bg-[var(--background)]/35 transition-colors hover:bg-[var(--sidebar-accent)]/35">
-                      <td className="border-b border-[var(--border)] px-3 py-2 align-middle">
-                        <p className="truncate font-semibold" title={fullName(user)}>{fullName(user)}</p>
-                        <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">{t('users.table.idLabel')}: {user.id}</p>
+                  {filteredUsers.map((user, index) => (
+                    <tr
+                      key={user.id}
+                      className="group transition-colors odd:bg-[var(--background)]/25 hover:bg-[var(--sidebar-accent)]/35 animate-row-fade-in"
+                      style={{ animationDelay: `${index * 35}ms` }}
+                    >
+                      <td className="border-b border-[var(--border)] px-4 py-3 align-top whitespace-normal">
+                        <p className="font-semibold text-sm leading-snug text-[var(--foreground)]">{fullName(user)}</p>
                       </td>
-                      <td className="border-b border-[var(--border)] px-3 py-2 align-middle">
-                        <span className="inline-flex rounded-full border border-[var(--border)] bg-[var(--background)] px-2.5 py-1 text-xs font-semibold">
+                      <td className="border-b border-[var(--border)] px-4 py-3 align-top">
+                        <span className="inline-flex rounded-full border border-[var(--border)] bg-[var(--background)] px-2.5 py-0.5 text-xs font-semibold text-[var(--foreground)]">
                           {roleLabel(primaryRole(user), t)}
                         </span>
                       </td>
-                      <td className="border-b border-[var(--border)] px-3 py-2 align-middle" title={user.position}>{user.position}</td>
-                      <td className="border-b border-[var(--border)] px-3 py-2 align-middle">{user.phoneNumber || '-'}</td>
-                      <td className="border-b border-[var(--border)] px-3 py-2 align-middle">
+                      <td className="border-b border-[var(--border)] px-4 py-3 align-top" title={user.position}>{user.position}</td>
+                      <td className="border-b border-[var(--border)] px-4 py-3 align-top whitespace-normal">
+                        <p className="font-medium text-[var(--foreground)]">{user.phoneNumber || '-'}</p>
+                        <p className="mt-0.5 text-[11px] text-[var(--muted-foreground)]">{user.email}</p>
+                      </td>
+                      <td className="border-b border-[var(--border)] px-4 py-3 align-top">
                         <button
                           type="button"
                           onClick={() => handleToggleActive(user)}
-                          className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition hover:brightness-110 ${statusClassName(user.isActive)}`}
+                          className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium transition hover:brightness-110 ${statusClassName(user.isActive)}`}
                         >
                           {user.isActive ? <UserCheck size={12} /> : <UserX size={12} />}
                           {user.isActive ? t('users.statuses.active') : t('users.statuses.inactive')}
                         </button>
                       </td>
-                      <td className="border-b border-[var(--border)] px-3 py-2 align-middle text-right">
+                      <td className="border-b border-[var(--border)] px-4 py-3 align-top text-right">
                         <Button type="button" variant="outline" size="sm" onClick={() => openEditModal(user)}>
                           <PencilLine size={13} />
-                          {t('users.actions.edit')}
+                          {/* {t('users.actions.edit')} */}
                         </Button>
                       </td>
                     </tr>
@@ -434,10 +430,12 @@ export function UsersPage({ canManage }: UsersPageProps) {
                 </tbody>
               </table>
 
-              {filteredUsers.length === 0 ? (
-                <div className="px-3 py-8 text-center text-sm text-[var(--muted-foreground)]">{t('users.states.noResults')}</div>
-              ) : null}
-            </div>
+              {filteredUsers.length === 0 && (
+                <div className="px-4 py-8 text-center text-sm text-[var(--muted-foreground)]">
+                  {t('users.states.noResults')}
+                </div>
+              )}
+            </>
           ) : null}
         </div>
       </article>

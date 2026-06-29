@@ -14,6 +14,11 @@ const class_validator_1 = require("class-validator");
 class CreateContractorDto {
     name;
     tax_number;
+    street;
+    postal_code;
+    city;
+    country;
+    notes;
 }
 exports.CreateContractorDto = CreateContractorDto;
 __decorate([
@@ -30,4 +35,33 @@ __decorate([
     }),
     __metadata("design:type", String)
 ], CreateContractorDto.prototype, "tax_number", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(255, { message: 'Nazwa ulicy może mieć maksymalnie 255 znaków' }),
+    __metadata("design:type", String)
+], CreateContractorDto.prototype, "street", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(20, { message: 'Kod pocztowy może mieć maksymalnie 20 znaków' }),
+    __metadata("design:type", String)
+], CreateContractorDto.prototype, "postal_code", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(100, { message: 'Nazwa miejscowości może mieć maksymalnie 100 znaków' }),
+    __metadata("design:type", String)
+], CreateContractorDto.prototype, "city", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(100, { message: 'Nazwa kraju może mieć maksymalnie 100 znaków' }),
+    __metadata("design:type", String)
+], CreateContractorDto.prototype, "country", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateContractorDto.prototype, "notes", void 0);
 //# sourceMappingURL=create-contractor.dto.js.map

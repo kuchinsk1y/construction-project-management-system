@@ -63,13 +63,18 @@ model RefreshToken {
 }
 
 model contractors {
-  id         String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name       String     @db.VarChar(255)
-  tax_number String?    @db.VarChar(100)
-  created_at DateTime?  @default(now()) @db.Timestamptz(0)
-  updated_at DateTime?  @default(now()) @db.Timestamptz(0)
-  projects   projects[]
-  users      User[]
+  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String     @db.VarChar(255)
+  tax_number  String?    @db.VarChar(100)
+  street      String?    @db.VarChar(255)
+  postal_code String?    @db.VarChar(20)
+  city        String?    @db.VarChar(100)
+  country     String?    @db.VarChar(100)
+  notes       String?    @db.Text
+  created_at  DateTime?  @default(now()) @db.Timestamptz(0)
+  updated_at  DateTime?  @default(now()) @db.Timestamptz(0)
+  projects    projects[]
+  users       User[]
 }
 
 model cost_categories {
