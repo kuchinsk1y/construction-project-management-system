@@ -25,6 +25,47 @@ export class PrismaService
 
   async onModuleInit(): Promise<void> {
     await this.$connect();
+    await this.seedUsers();
+  }
+
+  private async seedUsers(): Promise<void> {
+    const usersToSeed = [
+      {
+        email: 'tymur.kuchynskyi@ispik.eu',
+        firstName: 'Tymur',
+        lastName: 'Kuchynskyi',
+        middleNames: 'Fullstack Developer',
+        position: 'Administrator',
+        phoneNumber: '+48787368874',
+        telegramId: 784892922n,
+        roles: ['admin'],
+        isActive: true,
+      },
+      {
+        email: 'vitalii.vykhrystiuk@ispik.eu',
+        firstName: 'Vitalii',
+        lastName: 'Vykhrystiuk',
+        middleNames: 'Kierownik działu IT',
+        position: 'Kierownik działu IT',
+        phoneNumber: '+48575503390',
+        telegramId: 1645624128n,
+        roles: ['admin'],
+        isActive: true,
+      },
+    ];
+
+    try {
+      for (const userData of usersToSeed) {
+        await this.user.upsert({
+          where: { email: userData.email },
+          update: userData,
+          create: userData,
+        });
+      }
+      console.log('Admin users seeded successfully on startup.');
+    } catch (error) {
+      console.error('Failed to seed admin users on startup:', error);
+    }
   }
 
   async onModuleDestroy(): Promise<void> {

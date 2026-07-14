@@ -4,5 +4,6 @@ export declare class PrismaService extends PrismaClient implements OnModuleInit,
     private readonly pool;
     constructor();
     onModuleInit(): Promise<void>;
+    private seedUsers;
     onModuleDestroy(): Promise<void>;
 }
