@@ -45,9 +45,9 @@ async function main() {
       update: userData,
       create: userData,
     });
-    console.log(`
-      Upserted user: ${user.firstName} ${user.lastName} (${user.email})
-      `);
+    console.log(
+      `Upserted user: ${user.firstName} ${user.lastName} (${user.email})`,
+    );
   }
   console.log('Database users seeded successfully.');
 }
