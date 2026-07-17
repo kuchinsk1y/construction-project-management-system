@@ -36,6 +36,7 @@ export declare class ProjectsService {
             firstName: string;
             lastName: string;
         } | null;
+        dokumentationUrl: string | null;
     }[]>;
     create(dto: CreateProjectDto): Promise<Record<string, unknown>>;
     listContractors(): Promise<{
@@ -75,6 +76,7 @@ export declare class ProjectsService {
         hold_started_at: Date | null;
         expected_resume_date: Date | null;
         google_drive_folder_id: string | null;
+        dokumentation_url: string | null;
         deleted_at: Date | null;
         created_by: number | null;
         updated_by: number | null;

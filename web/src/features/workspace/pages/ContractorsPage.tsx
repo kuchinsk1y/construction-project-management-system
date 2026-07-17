@@ -22,6 +22,7 @@ type NoticeState = {
 
 type ContractorFormState = {
   name: string
+  shortName: string
   tax_number: string
   street: string
   postal_code: string
@@ -32,6 +33,7 @@ type ContractorFormState = {
 
 const emptyForm: ContractorFormState = {
   name: '',
+  shortName: '',
   tax_number: '',
   street: '',
   postal_code: '',
@@ -149,6 +151,7 @@ export function ContractorsPage({ canManage }: ContractorsPageProps) {
     setEditingId(c.id)
     setFormState({
       name: c.name,
+      shortName: c.short_name ?? '',
       tax_number: c.tax_number ?? '',
       street: c.street ?? '',
       postal_code: c.postal_code ?? '',
@@ -175,6 +178,7 @@ export function ContractorsPage({ canManage }: ContractorsPageProps) {
       city: formState.city.trim() || undefined,
       country: formState.country.trim() || undefined,
       notes: formState.notes.trim() || undefined,
+      shortName: formState.shortName.trim() || undefined,
     }
 
     if (isEditMode && editingId !== null) {
@@ -334,7 +338,16 @@ export function ContractorsPage({ canManage }: ContractorsPageProps) {
                       style={{ animationDelay: `${index * 35}ms` }}
                     >
                       <td className="border-b border-[var(--border)] px-4 py-3 align-top whitespace-normal">
-                        <p className="font-semibold text-sm leading-snug text-[var(--foreground)]">{c.name}</p>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="font-semibold text-sm leading-snug text-[var(--foreground)]">
+                            {c.name}
+                          </p>
+                          {c.short_name && (
+                            <span className="inline-flex items-center rounded-md bg-[var(--sidebar-primary)]/10 px-1.5 py-0.5 text-[10px] font-bold text-[var(--sidebar-primary)]">
+                              {c.short_name}
+                            </span>
+                          )}
+                        </div>
                         {c.street || c.city ? (
                           <p className="mt-1 text-xs text-[var(--muted-foreground)]">
                             {c.street ? `${c.street}, ` : ''}{c.postal_code ? `${c.postal_code} ` : ''}{c.city ? `${c.city}` : ''}{c.country ? `, ${c.country}` : ''}
@@ -428,6 +441,18 @@ export function ContractorsPage({ canManage }: ContractorsPageProps) {
                     value={formState.name}
                     onChange={(event) => setFormState((prev) => ({ ...prev, name: event.target.value }))}
                     placeholder="np. Nazwa Firmy Sp. z o.o."
+                    className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20"
+                  />
+                </label>
+
+                <label className="block space-y-1">
+                  <span className="text-xs text-[var(--muted-foreground)]">
+                    {t('contractors.modal.labels.shortName')}
+                  </span>
+                  <input
+                    value={formState.shortName}
+                    onChange={(event) => setFormState((prev) => ({ ...prev, shortName: event.target.value }))}
+                    placeholder="np. PV Poznań"
                     className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20"
                   />
                 </label>

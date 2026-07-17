@@ -12,4 +12,5 @@ export declare class UpdateProjectDto {
     startDateFact?: string;
     endDateFact?: string;
     managerId?: number;
+    dokumentationUrl?: string;
 }

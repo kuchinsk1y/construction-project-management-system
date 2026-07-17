@@ -70,4 +70,8 @@ export class CreateProjectDto {
   @IsNumber()
   @Type(() => Number)
   managerId?: number;
+
+  @IsOptional()
+  @IsString()
+  dokumentationUrl?: string;
 }

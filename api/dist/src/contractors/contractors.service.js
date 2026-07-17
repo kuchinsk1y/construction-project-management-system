@@ -40,6 +40,7 @@ let ContractorsService = class ContractorsService {
                 city: dto.city?.trim() || null,
                 country: dto.country?.trim() || null,
                 notes: dto.notes?.trim() || null,
+                short_name: dto.shortName?.trim() || null,
             },
         });
     }
@@ -81,6 +82,9 @@ let ContractorsService = class ContractorsService {
         }
         if (dto.notes !== undefined) {
             data.notes = dto.notes?.trim() || null;
+        }
+        if (dto.shortName !== undefined) {
+            data.short_name = dto.shortName?.trim() || null;
         }
         return this.prisma.contractors.update({
             where: { id },

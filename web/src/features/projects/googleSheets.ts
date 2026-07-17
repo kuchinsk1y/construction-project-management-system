@@ -55,6 +55,8 @@ export async function fetchProjectsFromGoogleSheets(): Promise<ProjectItem[]> {
         dueDate,
         priority,
         health,
+        startDateFact: '',
+        endDateFact: '',
         location: row.location?.trim() || 'Nieznana lokalizacja',
         country: row.country?.trim() || '-',
         contractor: row.contractor?.trim() || '-',

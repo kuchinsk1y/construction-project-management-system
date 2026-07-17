@@ -37,4 +37,9 @@ export class UpdateContractorDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100, { message: 'Skrócona nazwa może mieć maksymalnie 100 znaków' })
+  shortName?: string;
 }

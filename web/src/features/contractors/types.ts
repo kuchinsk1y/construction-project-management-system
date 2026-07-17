@@ -1,6 +1,7 @@
 export type ApiContractor = {
   id: string
   name: string
+  short_name?: string | null
   tax_number: string | null
   street: string | null
   postal_code: string | null
@@ -19,6 +20,7 @@ export type CreateContractorPayload = {
   city?: string
   country?: string
   notes?: string
+  shortName?: string
 }
 
 export type UpdateContractorPayload = Partial<CreateContractorPayload>

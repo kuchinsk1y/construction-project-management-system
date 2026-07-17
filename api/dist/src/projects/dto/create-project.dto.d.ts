@@ -12,4 +12,5 @@ export declare class CreateProjectDto {
     startDateFact?: string;
     endDateFact?: string;
     managerId?: number;
+    dokumentationUrl?: string;
 }

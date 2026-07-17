@@ -6,4 +6,5 @@ export declare class UpdateContractorDto {
     city?: string;
     country?: string;
     notes?: string;
+    shortName?: string;
 }

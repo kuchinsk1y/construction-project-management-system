@@ -74,6 +74,7 @@ export class ProjectsService {
             lastName: p.users_projects_manager_idTousers.lastName,
           }
         : null,
+      dokumentationUrl: p.dokumentation_url,
     }));
   }
 
@@ -101,6 +102,7 @@ export class ProjectsService {
           ? new Date(dto.endDateFact)
           : null,
         manager_id: dto.managerId ?? null,
+        dokumentation_url: dto.dokumentationUrl ?? null,
       },
       include: {
         contractors: { select: { id: true, name: true } },
@@ -133,6 +135,7 @@ export class ProjectsService {
           }
         : null,
       manager: null,
+      dokumentationUrl: project.dokumentation_url,
     });
   }
 
@@ -178,6 +181,7 @@ export class ProjectsService {
           ? new Date(dto.endDateFact)
           : null,
         manager_id: dto.managerId ?? null,
+        dokumentation_url: dto.dokumentationUrl,
       },
       include: {
         contractors: { select: { id: true, name: true } },
@@ -210,6 +214,7 @@ export class ProjectsService {
           }
         : null,
       manager: null,
+      dokumentationUrl: project.dokumentation_url,
     });
   }
 

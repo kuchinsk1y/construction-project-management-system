@@ -1,4 +1,4 @@
-import { AlertCircle, ArrowUpDown, CircleDollarSign, Edit, ExternalLink, Folder, ListFilter, Loader2, Plus, Search, Trash2, UserRound, X } from 'lucide-react'
+import { AlertCircle, ArrowLeft, ArrowUpDown, Edit, ExternalLink, Folder, ListFilter, Loader2, Plus, Search, Trash2, UserRound, X } from 'lucide-react'
 import { useMemo, useState, useEffect, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -25,6 +25,7 @@ import type {
   CreateMilestonePayload,
 } from '@/features/projects/types'
 import type { UserProfile } from '@/types/auth'
+import { fetchUsers } from '@/features/users/api'
 
 function statusTone(status: string): string {
   switch (status) {
@@ -75,8 +76,6 @@ type SortColumn =
   | 'location'
   | 'schedule'
   | 'progress'
-  | 'budget'
-  | 'docs'
 
 type SortDirection = 'asc' | 'desc'
 
@@ -101,6 +100,8 @@ const emptyForm: CreateProjectPayload = {
   endDateContract: '',
   startDateFact: '',
   endDateFact: '',
+  managerId: undefined,
+  dokumentationUrl: '',
 }
 
 type ProjectsShowcaseProps = {
@@ -123,8 +124,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | ProjectStatus>('all')
   const [managerFilter, setManagerFilter] = useState('all')
-  const [dateFromFilter, setDateFromFilter] = useState('')
-  const [dateToFilter, setDateToFilter] = useState('')
+  const [dateFilter, setDateFilter] = useState('')
   const [sortColumn, setSortColumn] = useState<SortColumn>('schedule')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
 
@@ -134,6 +134,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
   const [contractorSearch, setContractorSearch] = useState('')
   const [showContractorList, setShowContractorList] = useState(false)
   const [editingProject, setEditingProject] = useState<ApiProject | null>(null)
+  const [isEditing, setIsEditing] = useState(false)
   const contractorRef = useRef<HTMLDivElement>(null)
 
   // Milestones State & Mutations
@@ -157,6 +158,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
     setEditingMilestoneId(null)
     setMilestoneForm({ milestoneNo: '', description: '', percentage: 0, invoicingPercentage: undefined })
     setMilestoneError('')
+    setIsEditing(false)
   }
 
   // Queries
@@ -258,6 +260,19 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
     staleTime: 1000 * 60 * 5,
   })
 
+  const { data: users = [] } = useQuery({
+    queryKey: ['users'],
+    queryFn: fetchUsers,
+    enabled: drawerOpen,
+    staleTime: 1000 * 60 * 5,
+  })
+
+  const managerList = useMemo(() => {
+    return users
+      .filter((u) => u.isActive && (u.roles.includes('project_manager') || u.id === formState.managerId))
+      .sort((a, b) => `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`))
+  }, [users, formState.managerId])
+
   const createMutation = useMutation({
     mutationFn: createProject,
     onSuccess: async () => {
@@ -299,6 +314,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
     setContractorSearch('')
     setShowContractorList(false)
     setDrawerOpen(true)
+    setIsEditing(true)
   }
 
   const handleEditProject = (id: string) => {
@@ -321,11 +337,14 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
       endDateContract: project.end_date_contract || '',
       startDateFact: project.start_date_fact || '',
       endDateFact: project.end_date_fact || '',
+      managerId: project.manager?.id ?? undefined,
+      dokumentationUrl: project.dokumentationUrl ?? '',
     })
     setFormError('')
     setContractorSearch('')
     setShowContractorList(false)
     setDrawerOpen(true)
+    setIsEditing(false)
   }
 
   const handleDeleteProject = () => {
@@ -365,6 +384,8 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
       endDateContract: formState.endDateContract || undefined,
       startDateFact: formState.startDateFact || undefined,
       endDateFact: formState.endDateFact || undefined,
+      managerId: formState.managerId || undefined,
+      dokumentationUrl: formState.dokumentationUrl || undefined,
     }
 
     if (editingProject) {
@@ -382,6 +403,22 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
     () => contractors.find((c) => c.id === formState.contractorId),
     [contractors, formState.contractorId],
   )
+
+  const selectedProjectType = useMemo(
+    () => projectTypes.find((pt) => pt.id === formState.projectTypeId),
+    [projectTypes, formState.projectTypeId],
+  )
+
+  const managerName = useMemo(() => {
+    if (formState.managerId) {
+      const found = users.find((u) => u.id === formState.managerId)
+      if (found) return `${found.firstName} ${found.lastName}`.trim()
+    }
+    if (editingProject?.manager) {
+      return `${editingProject.manager.firstName} ${editingProject.manager.lastName}`.trim()
+    }
+    return 'Nieprzypisany'
+  }, [users, formState.managerId, editingProject])
 
   const filteredContractors = useMemo(
     () => contractors.filter((c) => c.name.toLowerCase().includes(contractorSearch.toLowerCase())),
@@ -423,8 +460,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
 
   const filteredProjects = useMemo(() => {
     const query = searchQuery.trim().toLowerCase()
-    const fromDate = dateFromFilter ? new Date(`${dateFromFilter}T00:00:00`) : null
-    const toDate = dateToFilter ? new Date(`${dateToFilter}T23:59:59`) : null
+    const targetDate = dateFilter ? new Date(`${dateFilter}T00:00:00`) : null
 
     const matches = projects.filter((project) => {
       const matchesQuery = !query
@@ -437,11 +473,12 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
       if (statusFilter !== 'all' && project.status !== statusFilter) return false
       if (managerFilter !== 'all' && project.owner !== managerFilter) return false
 
-      if (fromDate || toDate) {
-        const projectDate = parseDateValue(project.endDate) ?? parseDateValue(project.dueDate)
-        if (!projectDate) return false
-        if (fromDate && projectDate < fromDate) return false
-        if (toDate && projectDate > toDate) return false
+      if (targetDate) {
+        const start = parseDateValue(project.startDate)
+        const end = parseDateValue(project.endDate) ?? parseDateValue(project.dueDate)
+        if (start && targetDate < start) return false
+        if (end && targetDate > end) return false
+        if (!start && !end) return false
       }
 
       return true
@@ -457,13 +494,6 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
       if (sortColumn === 'contractor') return a.contractor.localeCompare(b.contractor) * direction
       if (sortColumn === 'location') return a.location.localeCompare(b.location) * direction
       if (sortColumn === 'progress') return (a.progress - b.progress) * direction
-      if (sortColumn === 'budget') return (a.budget - b.budget) * direction
-
-      if (sortColumn === 'docs') {
-        const aDocs = a.dokumentationUrl ?? ''
-        const bDocs = b.dokumentationUrl ?? ''
-        return aDocs.localeCompare(bDocs) * direction
-      }
 
       const aDue = parseDateValue(a.endDate) ?? parseDateValue(a.dueDate)
       const bDue = parseDateValue(b.endDate) ?? parseDateValue(b.dueDate)
@@ -473,7 +503,796 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
     })
 
     return sorted
-  }, [projects, searchQuery, statusFilter, managerFilter, dateFromFilter, dateToFilter, sortColumn, sortDirection])
+  }, [projects, searchQuery, statusFilter, managerFilter, dateFilter, sortColumn, sortDirection])
+
+  if (drawerOpen) {
+    return (
+      <section className="flex flex-col gap-4 p-4 md:p-6 select-none max-w-7xl mx-auto w-full animate-fade-in">
+        {/* Header */}
+        <header className="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--border)] pb-5">
+          <div className="flex items-center gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              onClick={handleCloseDrawer}
+              className="rounded-xl border-[var(--sidebar-primary)]/20 text-[var(--sidebar-primary)] hover:bg-[var(--sidebar-primary)]/10"
+              aria-label="Wróć do listy"
+            >
+              <ArrowLeft size={16} />
+            </Button>
+            <div>
+              <h1 className="text-xl font-bold tracking-tight md:text-2xl">
+                {editingProject ? `Projekt: ${editingProject.name}` : t('projects.form.title')}
+              </h1>
+              <p className="text-xs text-[var(--muted-foreground)] md:text-sm">
+                {editingProject ? 'Szczegóły i edycja projektu' : t('projects.form.subtitle')}
+              </p>
+            </div>
+          </div>
+        </header>
+
+        {/* Tab navigation */}
+        {editingProject && (
+          <div className="flex border-b border-[var(--border)] mb-4">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('details')
+                setMilestoneError('')
+              }}
+              className={`pb-2.5 px-4 text-sm font-semibold border-b-2 transition-all ${
+                activeTab === 'details'
+                  ? 'border-[var(--sidebar-primary)] text-[var(--sidebar-primary)]'
+                  : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+              }`}
+            >
+              Ogólne
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('milestones')
+                setMilestoneError('')
+              }}
+              className={`pb-2.5 px-4 text-sm font-semibold border-b-2 transition-all ${
+                activeTab === 'milestones'
+                  ? 'border-[var(--sidebar-primary)] text-[var(--sidebar-primary)]'
+                  : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+              }`}
+            >
+              Kamienie milowe
+            </button>
+          </div>
+        )}
+
+        {/* Main Details and Milestones Form View */}
+        <div className="w-full">
+          {activeTab === 'details' ? (
+            !isEditing ? (
+              <div className="w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm space-y-6 animate-fade-in">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Column 1: Basic Info, Location, Contract */}
+                  <div className="space-y-6">
+                    {/* Basic */}
+                    <div>
+                      <p className="mb-3 border-b border-[var(--border)] pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+                        {t('projects.form.sections.basic')}
+                      </p>
+                      <div className="space-y-3">
+                        <div>
+                          <span className="text-xs text-[var(--muted-foreground)]">{t('projects.form.labels.name')}</span>
+                          <p className="text-base font-bold text-[var(--foreground)] mt-0.5">{formState.name}</p>
+                        </div>
+                        <div>
+                          <span className="text-xs text-[var(--muted-foreground)]">{t('projects.form.labels.status')}</span>
+                          <div className="mt-1">
+                            <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${statusTone(formState.status || '')}`}>
+                              {t(`projects.form.statuses.${formState.status}`)}
+                            </span>
+                          </div>
+                        </div>
+                        <div>
+                          <span className="text-xs text-[var(--muted-foreground)]">{t('projects.form.labels.manager')}</span>
+                          <p className="text-sm font-semibold text-[var(--foreground)] mt-0.5">{managerName}</p>
+                        </div>
+                        <div>
+                          <span className="text-xs text-[var(--muted-foreground)]">{t('projects.form.labels.dokumentationUrl')}</span>
+                          <div className="mt-0.5">
+                            {formState.dokumentationUrl ? (
+                              <a
+                                href={formState.dokumentationUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--sidebar-primary)] hover:underline"
+                              >
+                                <span>Otwórz dokumentację</span>
+                                <ExternalLink size={13} className="stroke-[2.5]" />
+                              </a>
+                            ) : (
+                              <p className="text-sm font-semibold text-[var(--muted-foreground)]">-</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Location */}
+                    <div>
+                      <p className="mb-3 border-b border-[var(--border)] pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+                        {t('projects.form.sections.location')}
+                      </p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <span className="text-xs text-[var(--muted-foreground)]">{t('projects.form.labels.country')}</span>
+                          <p className="text-sm font-semibold text-[var(--foreground)] mt-0.5">{formState.country || '-'}</p>
+                        </div>
+                        <div>
+                          <span className="text-xs text-[var(--muted-foreground)]">{t('projects.form.labels.city')}</span>
+                          <p className="text-sm font-semibold text-[var(--foreground)] mt-0.5">{formState.city || '-'}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Contract */}
+                    <div>
+                      <p className="mb-3 border-b border-[var(--border)] pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+                        {t('projects.form.sections.contract')}
+                      </p>
+                      <div className="space-y-3">
+                        <div>
+                          <span className="text-xs text-[var(--muted-foreground)]">{t('projects.form.labels.contractor')}</span>
+                          <p className="text-sm font-semibold text-[var(--foreground)] mt-0.5">{selectedContractor?.name || '-'}</p>
+                        </div>
+                        <div>
+                          <span className="text-xs text-[var(--muted-foreground)]">{t('projects.form.labels.projectType')}</span>
+                          <p className="text-sm font-semibold text-[var(--foreground)] mt-0.5">{selectedProjectType?.name || '-'}</p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <span className="text-xs text-[var(--muted-foreground)]">{t('projects.form.labels.currency')}</span>
+                            <p className="text-sm font-semibold text-[var(--foreground)] mt-0.5">{formState.currency || '-'}</p>
+                          </div>
+                          <div>
+                            <span className="text-xs text-[var(--muted-foreground)]">{t('projects.form.labels.contractNetValue')}</span>
+                            <p className="text-sm font-bold text-[var(--foreground)] mt-0.5">
+                              {formState.contractNetValue ? formatBudget(formState.contractNetValue, formState.currency) : '-'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Column 2: Dates (Plan vs Fakt) */}
+                  <div className="space-y-6">
+                    <div>
+                      <p className="mb-3 border-b border-[var(--border)] pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+                        Okresy i terminy realizacji (Plan vs Fakt)
+                      </p>
+                      <div className="space-y-4">
+                        {/* Plan */}
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]/80">
+                            Terminy planowane (Harmonogram)
+                          </span>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <span className="text-xs text-[var(--muted-foreground)]">{t('projects.form.labels.startDate')}</span>
+                              <p className="text-sm font-semibold text-[var(--foreground)] mt-0.5">{formState.startDateContract || '-'}</p>
+                            </div>
+                            <div>
+                              <span className="text-xs text-[var(--muted-foreground)]">{t('projects.form.labels.endDate')}</span>
+                              <p className="text-sm font-semibold text-[var(--foreground)] mt-0.5">{formState.endDateContract || '-'}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Fact */}
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]/80">
+                            Terminy rzeczywiste (Faktyczne)
+                          </span>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <span className="text-xs text-[var(--muted-foreground)]">Rzeczywisty start</span>
+                              <p className="text-sm font-semibold text-[var(--foreground)] mt-0.5">{formState.startDateFact || '-'}</p>
+                            </div>
+                            <div>
+                              <span className="text-xs text-[var(--muted-foreground)]">Rzeczywisty koniec</span>
+                              <p className="text-sm font-semibold text-[var(--foreground)] mt-0.5">{formState.endDateFact || '-'}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons Footer (Read-only) */}
+                <div className="border-t border-[var(--border)] pt-5 flex items-center justify-between gap-4">
+                  <div />
+                  <div className="flex items-center gap-3">
+                    <Button type="button" variant="outline" onClick={handleCloseDrawer} className="rounded-xl">
+                      Zamknij
+                    </Button>
+                    {canEditProject && (
+                      <Button
+                        type="button"
+                        onClick={() => setIsEditing(true)}
+                        className="rounded-xl bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] hover:bg-[var(--sidebar-primary)]/90 shadow-[0_4px_14px_color-mix(in_oklch,var(--sidebar-primary),transparent_65%)]"
+                      >
+                        <Edit size={14} className="mr-1.5" />
+                        Edytuj
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm space-y-6 animate-fade-in">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Column 1: Basic Info, Location, Contract */}
+                  <div className="space-y-6">
+                    {/* Basic */}
+                    <div>
+                      <p className="mb-3 border-b border-[var(--border)] pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+                        {t('projects.form.sections.basic')}
+                      </p>
+                      <div className="space-y-3">
+                        <label className="block space-y-1">
+                          <span className="text-xs text-[var(--muted-foreground)]">
+                            {t('projects.form.labels.name')} <span className="text-rose-500">*</span>
+                          </span>
+                          <input
+                            value={formState.name}
+                            onChange={(e) => setField('name', e.target.value)}
+                            placeholder={t('projects.form.placeholders.name')}
+                            className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20"
+                          />
+                        </label>
+
+                        <label className="block space-y-1">
+                          <span className="text-xs text-[var(--muted-foreground)]">{t('projects.form.labels.status')}</span>
+                          <select
+                            value={formState.status}
+                            onChange={(e) => setField('status', e.target.value)}
+                            className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20"
+                          >
+                            <option value="DRAFT">{t('projects.form.statuses.DRAFT')}</option>
+                            <option value="ACTIVE">{t('projects.form.statuses.ACTIVE')}</option>
+                            <option value="ON_HOLD">{t('projects.form.statuses.ON_HOLD')}</option>
+                            <option value="COMPLETED">{t('projects.form.statuses.COMPLETED')}</option>
+                            <option value="CANCELLED">{t('projects.form.statuses.CANCELLED')}</option>
+                          </select>
+                        </label>
+
+                        <label className="block space-y-1">
+                          <span className="text-xs text-[var(--muted-foreground)]">{t('projects.form.labels.manager')}</span>
+                          <select
+                            value={formState.managerId || ''}
+                            onChange={(e) => setField('managerId', e.target.value ? Number(e.target.value) : undefined)}
+                            className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20"
+                          >
+                            <option value="">{t('projects.form.placeholders.selectManager')}</option>
+                            {managerList.map((m) => (
+                              <option key={m.id} value={m.id}>
+                                {m.lastName} {m.firstName}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+
+                        <label className="block space-y-1">
+                          <span className="text-xs text-[var(--muted-foreground)]">{t('projects.form.labels.dokumentationUrl')}</span>
+                          <input
+                            value={formState.dokumentationUrl || ''}
+                            onChange={(e) => setField('dokumentationUrl', e.target.value)}
+                            placeholder={t('projects.form.placeholders.dokumentationUrl')}
+                            className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20"
+                          />
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Location */}
+                    <div>
+                      <p className="mb-3 border-b border-[var(--border)] pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+                        {t('projects.form.sections.location')}
+                      </p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <label className="block space-y-1">
+                          <span className="text-xs text-[var(--muted-foreground)]">
+                            {t('projects.form.labels.country')} <span className="text-rose-500">*</span>
+                          </span>
+                          <input
+                            value={formState.country}
+                            onChange={(e) => setField('country', e.target.value)}
+                            placeholder={t('projects.form.placeholders.country')}
+                            className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20"
+                          />
+                        </label>
+                        <label className="block space-y-1">
+                          <span className="text-xs text-[var(--muted-foreground)]">
+                            {t('projects.form.labels.city')} <span className="text-rose-500">*</span>
+                          </span>
+                          <input
+                            value={formState.city}
+                            onChange={(e) => setField('city', e.target.value)}
+                            placeholder={t('projects.form.placeholders.city')}
+                            className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20"
+                          />
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Contract */}
+                    <div>
+                      <p className="mb-3 border-b border-[var(--border)] pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+                        {t('projects.form.sections.contract')}
+                      </p>
+                      <div className="space-y-3">
+                        <label className="block space-y-1">
+                          <span className="text-xs text-[var(--muted-foreground)]">
+                            {t('projects.form.labels.contractor')} <span className="text-rose-500">*</span>
+                          </span>
+                          <div className="relative" ref={contractorRef}>
+                            <input
+                              value={showContractorList ? contractorSearch : selectedContractor?.name ?? ''}
+                              onChange={(e) => {
+                                setContractorSearch(e.target.value)
+                                setShowContractorList(true)
+                                if (e.target.value === '') {
+                                  setField('contractorId', '')
+                                }
+                              }}
+                              onFocus={() => setShowContractorList(true)}
+                              placeholder={contractorsLoading ? t('projects.form.placeholders.loading') : t('projects.form.placeholders.selectContractor')}
+                              disabled={contractorsLoading}
+                              className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20 disabled:opacity-50"
+                            />
+                            {showContractorList && !contractorsLoading && filteredContractors.length > 0 ? (
+                              <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-48 overflow-y-auto custom-scrollbar rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-lg">
+                                {filteredContractors.map((c) => (
+                                  <button
+                                    key={c.id}
+                                    type="button"
+                                    onClick={() => handleSelectContractor(c.id)}
+                                    className="w-full px-3 py-2 text-left text-sm transition hover:bg-[var(--sidebar-primary)]/15"
+                                  >
+                                    {c.name}
+                                  </button>
+                                ))}
+                              </div>
+                            ) : null}
+                            {showContractorList && !contractorsLoading && filteredContractors.length === 0 && contractorSearch.length > 0 ? (
+                              <div className="absolute top-full left-0 right-0 z-50 mt-1 rounded-xl border border-[var(--border)] bg-[var(--card)] p-3 text-center text-xs text-[var(--muted-foreground)]">
+                                Brak wyników
+                              </div>
+                            ) : null}
+                          </div>
+                        </label>
+
+                        <label className="block space-y-1">
+                          <span className="text-xs text-[var(--muted-foreground)]">
+                            {t('projects.form.labels.projectType')} <span className="text-rose-500">*</span>
+                          </span>
+                          <select
+                            value={formState.projectTypeId || ''}
+                            onChange={(e) => setField('projectTypeId', Number(e.target.value))}
+                            disabled={typesLoading}
+                            className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20 disabled:opacity-50"
+                          >
+                            <option value="">{typesLoading ? t('projects.form.placeholders.loading') : t('projects.form.placeholders.selectProjectType')}</option>
+                            {projectTypes.map((pt) => (
+                              <option key={pt.id} value={pt.id}>{pt.name}</option>
+                            ))}
+                          </select>
+                        </label>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <label className="block space-y-1">
+                            <span className="text-xs text-[var(--muted-foreground)]">{t('projects.form.labels.currency')}</span>
+                            <select
+                              value={formState.currency ?? 'PLN'}
+                              onChange={(e) => setField('currency', e.target.value)}
+                              className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20"
+                            >
+                              <option value="PLN">PLN</option>
+                              <option value="EUR">EUR</option>
+                              <option value="USD">USD</option>
+                            </select>
+                          </label>
+                          <label className="block space-y-1">
+                            <span className="text-xs text-[var(--muted-foreground)]">{t('projects.form.labels.contractNetValue')}</span>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={formState.contractNetValue ?? ''}
+                              onChange={(e) => setField('contractNetValue', e.target.value ? Number(e.target.value) : undefined)}
+                              placeholder={t('projects.form.placeholders.contractNetValue')}
+                              className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20"
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Column 2: Dates (Plan vs Fakt) */}
+                  <div className="space-y-6">
+                    <div>
+                      <p className="mb-3 border-b border-[var(--border)] pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+                        Okresy i terminy realizacji (Plan vs Fakt)
+                      </p>
+                      <div className="space-y-4">
+                        {/* Plan */}
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]/80">
+                            Terminy planowane (Harmonogram)
+                          </span>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <span className="text-xs text-[var(--muted-foreground)]">{t('projects.form.labels.startDate')}</span>
+                              <DatePicker
+                                value={formState.startDateContract ?? ''}
+                                onChange={(v) => setField('startDateContract', v)}
+                                placeholder="dd.mm.rrrr"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <span className="text-xs text-[var(--muted-foreground)]">{t('projects.form.labels.endDate')}</span>
+                              <DatePicker
+                                value={formState.endDateContract ?? ''}
+                                onChange={(v) => setField('endDateContract', v)}
+                                min={formState.startDateContract || undefined}
+                                placeholder="dd.mm.rrrr"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Fact */}
+                        {editingProject && (
+                          <div className="space-y-1.5 animate-fade-in">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]/80">
+                              Terminy rzeczywiste (Faktyczne)
+                            </span>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="space-y-1">
+                                <span className="text-xs text-[var(--muted-foreground)]">Rzeczywisty start</span>
+                                <DatePicker
+                                  value={formState.startDateFact ?? ''}
+                                  onChange={(v) => setField('startDateFact', v)}
+                                  placeholder="dd.mm.rrrr"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <span className="text-xs text-[var(--muted-foreground)]">Rzeczywisty koniec</span>
+                                <DatePicker
+                                  value={formState.endDateFact ?? ''}
+                                  onChange={(v) => setField('endDateFact', v)}
+                                  min={formState.startDateFact || undefined}
+                                  placeholder="dd.mm.rrrr"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {formError && (
+                  <p className="rounded-xl border border-rose-500/35 bg-rose-500/10 px-3 py-2 text-sm text-rose-500">
+                    {formError}
+                  </p>
+                )}
+
+                {/* Action Buttons Footer (Edit Mode) */}
+                <div className="border-t border-[var(--border)] pt-5 flex items-center justify-between gap-4">
+                  {editingProject && canDeleteProject ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleDeleteProject}
+                      disabled={deleteMutation.isPending}
+                      className="border-rose-500/50 text-rose-500 hover:bg-rose-500/10 rounded-xl"
+                    >
+                      {deleteMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : null}
+                      <Trash2 size={14} />
+                      {deleteMutation.isPending ? 'Usuwanie...' : 'Usuń projekt'}
+                    </Button>
+                  ) : (
+                    <div />
+                  )}
+                  <div className="flex items-center gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        if (editingProject) {
+                          setFormState({
+                            name: editingProject.name,
+                            contractorId: editingProject.contractors?.id ?? '',
+                            projectTypeId: editingProject.project_types?.id ?? 0,
+                            country: editingProject.country,
+                            city: editingProject.city,
+                            status: editingProject.status as ProjectStatus,
+                            currency: editingProject.currency || 'PLN',
+                            contractNetValue: editingProject.contract_net_value ? Number(editingProject.contract_net_value) : undefined,
+                            startDateContract: editingProject.start_date_contract || '',
+                            endDateContract: editingProject.end_date_contract || '',
+                            startDateFact: editingProject.start_date_fact || '',
+                            endDateFact: editingProject.end_date_fact || '',
+                            managerId: editingProject.manager?.id ?? undefined,
+                            dokumentationUrl: editingProject.dokumentationUrl ?? '',
+                          })
+                          setFormError('')
+                          setIsEditing(false)
+                        } else {
+                          handleCloseDrawer()
+                        }
+                      }}
+                      className="rounded-xl"
+                    >
+                      {t('projects.form.actions.cancel')}
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={handleCreate}
+                      disabled={createMutation.isPending || updateMutation.isPending}
+                      className="rounded-xl bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] hover:bg-[var(--sidebar-primary)]/90 shadow-[0_4px_14px_color-mix(in_oklch,var(--sidebar-primary),transparent_65%)]"
+                    >
+                      {createMutation.isPending || updateMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : null}
+                      {createMutation.isPending || updateMutation.isPending ? t('projects.form.actions.saving') : t('projects.form.actions.save')}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )) : (
+            <div className="w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm space-y-6">
+              {milestoneError && (
+                <div className="rounded-xl border border-rose-500/35 bg-rose-500/10 px-3 py-2 text-xs text-rose-500">
+                  {milestoneError}
+                </div>
+              )}
+
+              {milestonesLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="animate-spin text-[var(--sidebar-primary)]" size={24} />
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+                  {/* Left Column (7/12): Milestones List + Indicators */}
+                  <div className="md:col-span-7 space-y-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+                      Lista kamieni milowych
+                    </p>
+
+                    <div className="space-y-2">
+                      {milestones.map((m) => (
+                        <div key={m.id} className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-3 relative group">
+                          <div className="flex items-start justify-between">
+                            <div className="pr-12">
+                              <span className="inline-flex items-center rounded-md bg-[var(--sidebar-primary)]/10 px-1.5 py-0.5 text-xs font-semibold text-[var(--sidebar-primary)]">
+                                {m.milestoneNo}
+                              </span>
+                              <h4 className="mt-1 text-sm font-semibold">{m.description}</h4>
+                              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--muted-foreground)]">
+                                <span>
+                                  Wartość: <strong className="text-[var(--foreground)]">{m.percentage}%</strong> ({formatBudget(m.netAmount, editingProject?.currency || 'PLN')})
+                                </span>
+                                {m.invoicingPercentage && (
+                                  <span>
+                                    Fakturowanie: <strong className="text-[var(--foreground)]">co {m.invoicingPercentage}%</strong>
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="absolute right-3 top-3 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingMilestoneId(m.id)
+                                  setMilestoneForm({
+                                    milestoneNo: m.milestoneNo,
+                                    description: m.description,
+                                    percentage: m.percentage,
+                                    invoicingPercentage: m.invoicingPercentage ?? undefined,
+                                  })
+                                }}
+                                className="rounded-lg p-1 text-[var(--sidebar-primary)] hover:bg-[var(--sidebar-primary)]/10 transition"
+                                title="Edytuj"
+                              >
+                                <Edit size={14} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => deleteMilestoneMutation.mutate(m.id)}
+                                disabled={deleteMilestoneMutation.isPending}
+                                className="rounded-lg p-1 text-rose-500 hover:bg-rose-500/10 transition"
+                                title="Usuń"
+                              >
+                                {deleteMilestoneMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+
+                      {milestones.length === 0 && (
+                        <div className="text-center py-6 text-xs text-[var(--muted-foreground)] border border-dashed border-[var(--border)] rounded-xl">
+                          Brak zdefiniowanych kamieni milowych dla tego projektu.
+                        </div>
+                      )}
+                    </div>
+
+                    {milestones.length > 0 && (
+                      <div className="rounded-xl bg-[var(--muted)]/20 p-3 text-xs space-y-2 border border-[var(--border)]">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-[var(--muted-foreground)]">Suma udziałów:</span>
+                          <span
+                            className={`font-bold ${
+                              milestones.reduce((s, m) => s + m.percentage, 0) === 100
+                                ? 'text-emerald-500'
+                                : milestones.reduce((s, m) => s + m.percentage, 0) > 100
+                                ? 'text-rose-500'
+                                : 'text-amber-500'
+                            }`}
+                          >
+                            {milestones.reduce((s, m) => s + m.percentage, 0).toFixed(1)}% / 100%
+                          </span>
+                        </div>
+                        <div className="relative h-1.5 w-full bg-[var(--muted)] rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-300 ${
+                              milestones.reduce((s, m) => s + m.percentage, 0) === 100
+                                ? 'bg-emerald-500'
+                                : milestones.reduce((s, m) => s + m.percentage, 0) > 100
+                                ? 'bg-rose-500'
+                                : 'bg-amber-500'
+                            }`}
+                            style={{ width: `${Math.min(milestones.reduce((s, m) => s + m.percentage, 0), 100)}%` }}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between text-[10px] text-[var(--muted-foreground)]">
+                          <span>Suma wartości netto:</span>
+                          <span className="font-semibold">
+                            {formatBudget(
+                              milestones.reduce((s, m) => s + m.netAmount, 0),
+                              editingProject?.currency || 'PLN'
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right Column (5/12): Add/Edit Form */}
+                  <div className="md:col-span-5 border-l border-[var(--border)] pl-0 md:pl-6 space-y-4">
+                    <form onSubmit={handleMilestoneSubmit} className="space-y-3">
+                      <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+                        {editingMilestoneId ? 'Edytuj kamień milowy' : 'Dodaj kamień milowy'}
+                      </h4>
+
+                      <div className="grid grid-cols-3 gap-2">
+                        <label className="block col-span-1 space-y-1">
+                          <span className="text-[10px] text-[var(--muted-foreground)]">
+                            Numer (KM1) <span className="text-rose-500">*</span>
+                          </span>
+                          <input
+                            value={milestoneForm.milestoneNo}
+                            onChange={(e) => setMilestoneForm((f) => ({ ...f, milestoneNo: e.target.value }))}
+                            placeholder="KM1"
+                            className="h-8 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-2.5 text-xs outline-none focus:border-[var(--sidebar-primary)]"
+                          />
+                        </label>
+                        <label className="block col-span-2 space-y-1">
+                          <span className="text-[10px] text-[var(--muted-foreground)]">
+                            Nazwa etapu <span className="text-rose-500">*</span>
+                          </span>
+                          <input
+                            value={milestoneForm.description}
+                            onChange={(e) => setMilestoneForm((f) => ({ ...f, description: e.target.value }))}
+                            placeholder="np. Montaż konstrukcji"
+                            className="h-8 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-2.5 text-xs outline-none focus:border-[var(--sidebar-primary)]"
+                          />
+                        </label>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <label className="block space-y-1">
+                          <span className="text-[10px] text-[var(--muted-foreground)]">
+                            Wartość (%) <span className="text-rose-500">*</span>
+                          </span>
+                          <input
+                            type="number"
+                            min="0.01"
+                            max="100"
+                            step="0.01"
+                            value={milestoneForm.percentage || ''}
+                            onChange={(e) =>
+                              setMilestoneForm((f) => ({ ...f, percentage: e.target.value ? Number(e.target.value) : 0 }))
+                            }
+                            placeholder="np. 20"
+                            className="h-8 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-2.5 text-xs outline-none focus:border-[var(--sidebar-primary)]"
+                          />
+                        </label>
+
+                        <label className="block space-y-1">
+                          <span className="text-[10px] text-[var(--muted-foreground)]">Procent fakturowania (opcj.)</span>
+                          <input
+                            type="number"
+                            min="0.01"
+                            max="100"
+                            step="0.01"
+                            value={milestoneForm.invoicingPercentage || ''}
+                            onChange={(e) =>
+                              setMilestoneForm((f) =>
+                                ({
+                                  ...f,
+                                  invoicingPercentage: e.target.value ? Number(e.target.value) : undefined,
+                                })
+                              )
+                            }
+                            placeholder="Domyślnie jak wyżej"
+                            className="h-8 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-2.5 text-xs outline-none"
+                          />
+                        </label>
+                      </div>
+
+                      <div className="flex items-center justify-end gap-1.5 pt-1">
+                        {editingMilestoneId && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setEditingMilestoneId(null)
+                              setMilestoneForm({
+                                milestoneNo: '',
+                                description: '',
+                                percentage: 0,
+                                invoicingPercentage: undefined,
+                              })
+                              setMilestoneError('')
+                            }}
+                          >
+                            Anuluj
+                          </Button>
+                        )}
+                        <Button
+                          type="submit"
+                          size="sm"
+                          disabled={createMilestoneMutation.isPending || updateMilestoneMutation.isPending}
+                          className="bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] text-xs h-8 px-3"
+                        >
+                          {createMilestoneMutation.isPending || updateMilestoneMutation.isPending ? (
+                            <Loader2 size={12} className="animate-spin" />
+                          ) : null}
+                          {editingMilestoneId ? 'Zapisz zmiany' : 'Dodaj'}
+                        </Button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+
+              {/* Back Footer */}
+              <div className="border-t border-[var(--border)] pt-5 flex items-center justify-end">
+                <Button type="button" variant="outline" onClick={handleCloseDrawer} className="rounded-xl">
+                  Zamknij
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+    )
+  }
 
   return (
     <>
@@ -575,41 +1394,28 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
                   </select>
                 </label>
 
-                {/* Date range — two pickers side by side */}
+                {/* Single Date filter */}
                 <div className="flex shrink-0 items-center gap-1.5">
                   <DatePicker
-                    value={dateFromFilter}
-                    onChange={setDateFromFilter}
-                    max={dateToFilter || undefined}
-                    title={t('projects.filters.fromTitle')}
-                    ariaLabel={t('projects.filters.fromAria')}
-                    placeholder={t('projects.filters.fromPlaceholder')}
+                    value={dateFilter}
+                    onChange={setDateFilter}
+                    title={t('projects.filters.dateTitle')}
+                    ariaLabel={t('projects.filters.dateAria')}
+                    placeholder={t('projects.filters.datePlaceholder')}
                     size="sm"
-                    className="w-[150px]"
-                  />
-                  <span className="select-none text-xs text-[var(--muted-foreground)]">—</span>
-                  <DatePicker
-                    value={dateToFilter}
-                    onChange={setDateToFilter}
-                    min={dateFromFilter || undefined}
-                    title={t('projects.filters.toTitle')}
-                    ariaLabel={t('projects.filters.toAria')}
-                    placeholder={t('projects.filters.toPlaceholder')}
-                    size="sm"
-                    className="w-[150px]"
+                    className="w-[200px]"
                   />
                 </div>
 
                 {/* Reset — themed button, always visible, disabled if no filters are active */}
                 <Button
                   type="button"
-                  disabled={!(searchQuery || statusFilter !== 'all' || managerFilter !== 'all' || dateFromFilter || dateToFilter)}
+                  disabled={!(searchQuery || statusFilter !== 'all' || managerFilter !== 'all' || dateFilter)}
                   onClick={() => {
                     setSearchQuery('')
                     setStatusFilter('all')
                     setManagerFilter('all')
-                    setDateFromFilter('')
-                    setDateToFilter('')
+                    setDateFilter('')
                   }}
                   variant="outline"
                   className="ml-auto shrink-0 gap-1.5 rounded-xl border-[var(--sidebar-primary)]/20 text-[var(--sidebar-primary)] hover:bg-[var(--sidebar-primary)]/10 hover:text-[var(--sidebar-primary)] disabled:border-[var(--border)] disabled:bg-transparent disabled:text-[var(--muted-foreground)]/50 disabled:opacity-50 transition-all duration-200"
@@ -688,21 +1494,6 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
                           <ArrowUpDown size={12} className={sortColumn === 'progress' ? 'text-[var(--foreground)]' : ''} />
                         </button>
                       </th>
-                      <th className="border-b border-[var(--border)] px-3 py-2 text-right text-[11px] font-medium uppercase tracking-wide text-[var(--muted-foreground)]">
-                        <button type="button" onClick={() => handleSort('budget')} className="inline-flex items-center gap-1 hover:text-[var(--foreground)]">
-                          {t('projects.table.columns.powerBudget')}
-                          <ArrowUpDown size={12} className={sortColumn === 'budget' ? 'text-[var(--foreground)]' : ''} />
-                        </button>
-                      </th>
-                      <th className="border-b border-[var(--border)] px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide text-[var(--muted-foreground)]">
-                        <button type="button" onClick={() => handleSort('docs')} className="inline-flex items-center gap-1 hover:text-[var(--foreground)]">
-                          {t('projects.table.columns.docs')}
-                          <ArrowUpDown size={12} className={sortColumn === 'docs' ? 'text-[var(--foreground)]' : ''} />
-                        </button>
-                      </th>
-                      {canEditProject ? (
-                        <th className="border-b border-[var(--border)] px-3 py-2 text-center text-[11px] font-medium uppercase tracking-wide text-[var(--muted-foreground)]">Akcje</th>
-                      ) : null}
                     </tr>
                   </thead>
 
@@ -710,7 +1501,8 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
                     {filteredProjects.map((project) => (
                       <tr
                         key={project.id}
-                        className="group transition-colors odd:bg-[var(--background)]/25 hover:bg-[var(--sidebar-accent)]/35"
+                        onClick={() => canEditProject && handleEditProject(project.id)}
+                        className={`group transition-colors odd:bg-[var(--background)]/25 hover:bg-[var(--sidebar-accent)]/35 ${canEditProject ? 'cursor-pointer' : ''}`}
                       >
                         <td className="border-b border-[var(--border)] px-3 py-2 align-top">
                           <p className="font-semibold leading-snug">{project.name}</p>
@@ -764,42 +1556,6 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
                             />
                           </div>
                         </td>
-
-                        <td className="border-b border-[var(--border)] px-3 py-2 text-right align-top">
-                          <p className="inline-flex items-center gap-1.5 font-semibold">
-                            <CircleDollarSign size={14} />
-                            {formatBudget(project.budget)}
-                          </p>
-                        </td>
-
-                        <td className="border-b border-[var(--border)] px-3 py-2 align-top">
-                          {project.dokumentationUrl ? (
-                            <a
-                              href={project.dokumentationUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center gap-1 text-xs font-medium text-[var(--sidebar-primary)] hover:underline"
-                            >
-                              {t('projects.table.row.open')}
-                              <ExternalLink size={12} />
-                            </a>
-                          ) : (
-                            <span className="text-xs text-[var(--muted-foreground)]">{t('projects.table.row.noLink')}</span>
-                          )}
-                        </td>
-
-                        {canEditProject ? (
-                          <td className="border-b border-[var(--border)] px-3 py-2 align-top text-center">
-                            <button
-                              type="button"
-                              onClick={() => handleEditProject(project.id)}
-                              className="inline-flex items-center justify-center rounded-lg p-1.5 transition hover:bg-[var(--sidebar-primary)]/20"
-                              title="Edytuj projekt"
-                            >
-                              <Edit size={16} className="text-[var(--sidebar-primary)]" />
-                            </button>
-                          </td>
-                        ) : null}
                       </tr>
                     ))}
                   </tbody>
@@ -816,603 +1572,6 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
         ) : null}
       </section>
 
-      {/* Drawer backdrop */}
-      <div
-        className={[
-          'fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity duration-300',
-          drawerOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
-        ].join(' ')}
-        onClick={handleCloseDrawer}
-      />
-
-      {/* Drawer panel */}
-      <aside
-        className={[
-          'fixed inset-y-0 right-0 z-50 flex w-full max-w-[500px] flex-col overflow-hidden border-l border-[var(--border)] bg-[var(--card)] shadow-2xl transition-transform duration-300 ease-out',
-          drawerOpen ? 'translate-x-0' : 'translate-x-full',
-        ].join(' ')}
-        aria-label={t('projects.form.title')}
-      >
-        {/* Drawer header */}
-        <div className="flex shrink-0 items-center justify-between border-b border-[var(--border)] px-5 py-4">
-          <div>
-            <h3 className="text-base font-semibold">
-              {editingProject ? `Edytuj projekt: ${editingProject.name}` : t('projects.form.title')}
-            </h3>
-            <p className="mt-0.5 text-sm text-[var(--muted-foreground)]">
-              {editingProject ? 'Wyświetlanie detali projektu' : t('projects.form.subtitle')}
-            </p>
-          </div>
-          <Button size="icon-sm" variant="outline" onClick={handleCloseDrawer} aria-label={t('projects.form.actions.cancel')}>
-            <X size={16} />
-          </Button>
-        </div>
-
-        {/* Drawer form body */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar px-5 py-4 space-y-5">
-          {editingProject && (
-            <div className="flex border-b border-[var(--border)] mb-4">
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('details')
-                  setMilestoneError('')
-                }}
-                className={`flex-1 pb-2.5 text-[11px] font-semibold border-b-2 transition-all ${activeTab === 'details'
-                  ? 'border-[var(--sidebar-primary)] text-[var(--sidebar-primary)]'
-                  : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
-                  }`}
-              >
-                Ogólne
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('milestones')
-                  setMilestoneError('')
-                }}
-                className={`flex-1 pb-2.5 text-[11px] font-semibold border-b-2 transition-all ${activeTab === 'milestones'
-                  ? 'border-[var(--sidebar-primary)] text-[var(--sidebar-primary)]'
-                  : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
-                  }`}
-              >
-                Kamienie milowe
-              </button>
-            </div>
-          )}
-
-          {activeTab === 'details' ? (
-            <>
-              {/* Section: Basic */}
-              <div>
-                <p className="mb-3 border-b border-[var(--border)] pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
-                  {t('projects.form.sections.basic')}
-                </p>
-                <div className="space-y-3">
-                  <label className="block space-y-1">
-                    <span className="text-xs text-[var(--muted-foreground)]">
-                      {t('projects.form.labels.name')} <span className="text-rose-500">*</span>
-                    </span>
-                    <input
-                      value={formState.name}
-                      onChange={(e) => setField('name', e.target.value)}
-                      placeholder={t('projects.form.placeholders.name')}
-                      className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20"
-                    />
-                  </label>
-
-                  <label className="block space-y-1">
-                    <span className="text-xs text-[var(--muted-foreground)]">{t('projects.form.labels.status')}</span>
-                    <select
-                      value={formState.status}
-                      onChange={(e) => setField('status', e.target.value)}
-                      className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20"
-                    >
-                      <option value="DRAFT">{t('projects.form.statuses.DRAFT')}</option>
-                      <option value="ACTIVE">{t('projects.form.statuses.ACTIVE')}</option>
-                      <option value="ON_HOLD">{t('projects.form.statuses.ON_HOLD')}</option>
-                      <option value="COMPLETED">{t('projects.form.statuses.COMPLETED')}</option>
-                      <option value="CANCELLED">{t('projects.form.statuses.CANCELLED')}</option>
-                    </select>
-                  </label>
-                </div>
-              </div>
-
-              {/* Section: Location */}
-              <div>
-                <p className="mb-3 border-b border-[var(--border)] pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
-                  {t('projects.form.sections.location')}
-                </p>
-                <div className="grid grid-cols-2 gap-3">
-                  <label className="block space-y-1">
-                    <span className="text-xs text-[var(--muted-foreground)]">
-                      {t('projects.form.labels.country')} <span className="text-rose-500">*</span>
-                    </span>
-                    <input
-                      value={formState.country}
-                      onChange={(e) => setField('country', e.target.value)}
-                      placeholder={t('projects.form.placeholders.country')}
-                      className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20"
-                    />
-                  </label>
-                  <label className="block space-y-1">
-                    <span className="text-xs text-[var(--muted-foreground)]">
-                      {t('projects.form.labels.city')} <span className="text-rose-500">*</span>
-                    </span>
-                    <input
-                      value={formState.city}
-                      onChange={(e) => setField('city', e.target.value)}
-                      placeholder={t('projects.form.placeholders.city')}
-                      className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20"
-                    />
-                  </label>
-                </div>
-              </div>
-
-              {/* Section: Contract */}
-              <div>
-                <p className="mb-3 border-b border-[var(--border)] pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
-                  {t('projects.form.sections.contract')}
-                </p>
-                <div className="space-y-3">
-                  <label className="block space-y-1">
-                    <span className="text-xs text-[var(--muted-foreground)]">
-                      {t('projects.form.labels.contractor')} <span className="text-rose-500">*</span>
-                    </span>
-                    <div className="relative" ref={contractorRef}>
-                      <input
-                        value={showContractorList ? contractorSearch : selectedContractor?.name ?? ''}
-                        onChange={(e) => {
-                          setContractorSearch(e.target.value)
-                          setShowContractorList(true)
-                          // Clear selection if input doesn't match any contractor
-                          if (e.target.value === '') {
-                            setField('contractorId', '')
-                          }
-                        }}
-                        onFocus={() => setShowContractorList(true)}
-                        placeholder={contractorsLoading ? t('projects.form.placeholders.loading') : t('projects.form.placeholders.selectContractor')}
-                        disabled={contractorsLoading}
-                        className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20 disabled:opacity-50"
-                      />
-                      {showContractorList && !contractorsLoading && filteredContractors.length > 0 ? (
-                        <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-48 overflow-y-auto custom-scrollbar rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-lg">
-                          {filteredContractors.map((c) => (
-                            <button
-                              key={c.id}
-                              type="button"
-                              onClick={() => handleSelectContractor(c.id)}
-                              className="w-full px-3 py-2 text-left text-sm transition hover:bg-[var(--sidebar-primary)]/15"
-                            >
-                              {c.name}
-                            </button>
-                          ))}
-                        </div>
-                      ) : null}
-                      {showContractorList && !contractorsLoading && filteredContractors.length === 0 && contractorSearch.length > 0 ? (
-                        <div className="absolute top-full left-0 right-0 z-50 mt-1 rounded-xl border border-[var(--border)] bg-[var(--card)] p-3 text-center text-xs text-[var(--muted-foreground)]">
-                          Brak wyników
-                        </div>
-                      ) : null}
-                    </div>
-                  </label>
-
-                  <label className="block space-y-1">
-                    <span className="text-xs text-[var(--muted-foreground)]">
-                      {t('projects.form.labels.projectType')} <span className="text-rose-500">*</span>
-                    </span>
-                    <select
-                      value={formState.projectTypeId || ''}
-                      onChange={(e) => setField('projectTypeId', Number(e.target.value))}
-                      disabled={typesLoading}
-                      className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20 disabled:opacity-50"
-                    >
-                      <option value="">{typesLoading ? t('projects.form.placeholders.loading') : t('projects.form.placeholders.selectProjectType')}</option>
-                      {projectTypes.map((pt) => (
-                        <option key={pt.id} value={pt.id}>{pt.name}</option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <label className="block space-y-1">
-                      <span className="text-xs text-[var(--muted-foreground)]">{t('projects.form.labels.currency')}</span>
-                      <select
-                        value={formState.currency ?? 'PLN'}
-                        onChange={(e) => setField('currency', e.target.value)}
-                        className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20"
-                      >
-                        <option value="PLN">PLN</option>
-                        <option value="EUR">EUR</option>
-                        <option value="USD">USD</option>
-                      </select>
-                    </label>
-                    <label className="block space-y-1">
-                      <span className="text-xs text-[var(--muted-foreground)]">{t('projects.form.labels.contractNetValue')}</span>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={formState.contractNetValue ?? ''}
-                        onChange={(e) => setField('contractNetValue', e.target.value ? Number(e.target.value) : undefined)}
-                        placeholder={t('projects.form.placeholders.contractNetValue')}
-                        className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20"
-                      />
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              {/* Section: Dates */}
-              <div>
-                <p className="mb-3 border-b border-[var(--border)] pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
-                  Okresy i terminy realizacji (Plan vs Fakt)
-                </p>
-                <div className="space-y-4">
-                  {/* Row 1: Plan */}
-                  <div className="space-y-1.5">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]/80">
-                      Terminy planowane (Harmonogram)
-                    </span>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <span className="text-xs text-[var(--muted-foreground)]">{t('projects.form.labels.startDate')}</span>
-                        <DatePicker
-                          value={formState.startDateContract ?? ''}
-                          onChange={(v) => setField('startDateContract', v)}
-                          placeholder="dd.mm.rrrr"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <span className="text-xs text-[var(--muted-foreground)]">{t('projects.form.labels.endDate')}</span>
-                        <DatePicker
-                          value={formState.endDateContract ?? ''}
-                          onChange={(v) => setField('endDateContract', v)}
-                          min={formState.startDateContract || undefined}
-                          placeholder="dd.mm.rrrr"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Row 2: Fact */}
-                  {editingProject && (
-                    <div className="space-y-1.5 animate-fade-in">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]/80">
-                        Terminy rzeczywiste (Faktyczne)
-                      </span>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <span className="text-xs text-[var(--muted-foreground)]">Rzeczywisty start</span>
-                          <DatePicker
-                            value={formState.startDateFact ?? ''}
-                            onChange={(v) => setField('startDateFact', v)}
-                            placeholder="dd.mm.rrrr"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <span className="text-xs text-[var(--muted-foreground)]">Rzeczywisty koniec</span>
-                          <DatePicker
-                            value={formState.endDateFact ?? ''}
-                            onChange={(v) => setField('endDateFact', v)}
-                            min={formState.startDateFact || undefined}
-                            placeholder="dd.mm.rrrr"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Validation error */}
-              {formError ? (
-                <p className="rounded-xl border border-rose-500/35 bg-rose-500/10 px-3 py-2 text-sm text-rose-500">
-                  {formError}
-                </p>
-              ) : null}
-            </>
-          ) : (
-            <div className="space-y-4 animate-fade-in">
-              {milestoneError && (
-                <div className="rounded-xl border border-rose-500/35 bg-rose-500/10 px-3 py-2 text-xs text-rose-500">
-                  {milestoneError}
-                </div>
-              )}
-
-              {milestonesLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="animate-spin text-[var(--sidebar-primary)]" size={24} />
-                </div>
-              ) : (
-                <>
-                  {/* Milestones list */}
-                  <div className="space-y-2">
-                    {milestones.map((m) => (
-                      <div key={m.id} className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-3 relative group">
-                        <div className="flex items-start justify-between">
-                          <div className="pr-12">
-                            <span className="inline-flex items-center rounded-md bg-[var(--sidebar-primary)]/10 px-1.5 py-0.5 text-xs font-semibold text-[var(--sidebar-primary)]">
-                              {m.milestoneNo}
-                            </span>
-                            <h4 className="mt-1 text-sm font-semibold">{m.description}</h4>
-                            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--muted-foreground)]">
-                              <span>Wartość: <strong className="text-[var(--foreground)]">{m.percentage}%</strong> ({formatBudget(m.netAmount, editingProject?.currency || 'PLN')})</span>
-                              {m.invoicingPercentage && (
-                                <span>Fakturowanie: <strong className="text-[var(--foreground)]">co {m.invoicingPercentage}%</strong></span>
-                              )}
-                            </div>
-                          </div>
-                          <div className="absolute right-3 top-3 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEditingMilestoneId(m.id)
-                                setMilestoneForm({
-                                  milestoneNo: m.milestoneNo,
-                                  description: m.description,
-                                  percentage: m.percentage,
-                                  invoicingPercentage: m.invoicingPercentage ?? undefined,
-                                })
-                              }}
-                              className="rounded-lg p-1 text-[var(--sidebar-primary)] hover:bg-[var(--sidebar-primary)]/10 transition"
-                              title="Edytuj"
-                            >
-                              <Edit size={14} />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => deleteMilestoneMutation.mutate(m.id)}
-                              disabled={deleteMilestoneMutation.isPending}
-                              className="rounded-lg p-1 text-rose-500 hover:bg-rose-500/10 transition"
-                              title="Usuń"
-                            >
-                              {deleteMilestoneMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-
-                    {milestones.length === 0 && (
-                      <div className="text-center py-6 text-xs text-[var(--muted-foreground)] border border-dashed border-[var(--border)] rounded-xl">
-                        Brak zdefiniowanych kamieni milowych dla tego projektu.
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Sum progress indicators */}
-                  {milestones.length > 0 && (
-                    <div className="rounded-xl bg-[var(--muted)]/20 p-3 text-xs space-y-2 border border-[var(--border)]">
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium text-[var(--muted-foreground)]">Suma udziałów:</span>
-                        <span className={`font-bold ${milestones.reduce((s, m) => s + m.percentage, 0) === 100
-                          ? 'text-emerald-500'
-                          : milestones.reduce((s, m) => s + m.percentage, 0) > 100
-                            ? 'text-rose-500'
-                            : 'text-amber-500'
-                          }`}>
-                          {milestones.reduce((s, m) => s + m.percentage, 0).toFixed(1)}% / 100%
-                        </span>
-                      </div>
-                      <div className="relative h-1.5 w-full bg-[var(--muted)] rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all duration-300 ${milestones.reduce((s, m) => s + m.percentage, 0) === 100
-                            ? 'bg-emerald-500'
-                            : milestones.reduce((s, m) => s + m.percentage, 0) > 100
-                              ? 'bg-rose-500'
-                              : 'bg-amber-500'
-                            }`}
-                          style={{ width: `${Math.min(milestones.reduce((s, m) => s + m.percentage, 0), 100)}%` }}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between text-[10px] text-[var(--muted-foreground)]">
-                        <span>Suma wartości netto:</span>
-                        <span className="font-semibold">{formatBudget(milestones.reduce((s, m) => s + m.netAmount, 0), editingProject?.currency || 'PLN')}</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Add / Edit Milestone form */}
-                  <form onSubmit={handleMilestoneSubmit} className="border-t border-[var(--border)] pt-4 space-y-3">
-                    <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
-                      {editingMilestoneId ? 'Edytuj kamień milowy' : 'Dodaj kamień milowy'}
-                    </h4>
-
-                    <div className="grid grid-cols-3 gap-2">
-                      <label className="block col-span-1 space-y-1">
-                        <span className="text-[10px] text-[var(--muted-foreground)]">Numer (KM1) <span className="text-rose-500">*</span></span>
-                        <input
-                          value={milestoneForm.milestoneNo}
-                          onChange={(e) => setMilestoneForm((f) => ({ ...f, milestoneNo: e.target.value }))}
-                          placeholder="KM1"
-                          className="h-8 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-2.5 text-xs outline-none focus:border-[var(--sidebar-primary)]"
-                        />
-                      </label>
-                      <label className="block col-span-2 space-y-1">
-                        <span className="text-[10px] text-[var(--muted-foreground)]">Nazwa etapu <span className="text-rose-500">*</span></span>
-                        <input
-                          value={milestoneForm.description}
-                          onChange={(e) => setMilestoneForm((f) => ({ ...f, description: e.target.value }))}
-                          placeholder="np. Montaż konstrukcji"
-                          className="h-8 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-2.5 text-xs outline-none focus:border-[var(--sidebar-primary)]"
-                        />
-                      </label>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <label className="block space-y-1">
-                        <span className="text-[10px] text-[var(--muted-foreground)]">Wartość (%) <span className="text-rose-500">*</span></span>
-                        <input
-                          type="number"
-                          min="0.01"
-                          max="100"
-                          step="0.01"
-                          value={milestoneForm.percentage || ''}
-                          onChange={(e) => setMilestoneForm((f) => ({ ...f, percentage: e.target.value ? Number(e.target.value) : 0 }))}
-                          placeholder="np. 20"
-                          className="h-8 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-2.5 text-xs outline-none focus:border-[var(--sidebar-primary)]"
-                        />
-                      </label>
-                      <label className="block space-y-1">
-                        <span className="text-[10px] text-[var(--muted-foreground)]">Częst. fakturowania (%)</span>
-                        <input
-                          type="number"
-                          min="1"
-                          className="h-8 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-2.5 text-xs outline-none"
-                        />
-                      </label>
-
-                      <label className="block space-y-1">
-                        <span className="text-[10px] text-[var(--muted-foreground)]">Procent fakturowania (opcj.)</span>
-                        <input
-                          type="number"
-                          min="0.01"
-                          max="100"
-                          step="0.01"
-                          value={milestoneForm.invoicingPercentage || ''}
-                          onChange={(e) => setMilestoneForm((f) => ({ ...f, invoicingPercentage: e.target.value ? Number(e.target.value) : undefined }))}
-                          placeholder="Domyślnie jak wyżej"
-                          className="h-8 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-2.5 text-xs outline-none"
-                        />
-                      </label>
-                    </div>
-
-                    <div className="flex items-center justify-end gap-1.5 pt-1">
-                      {editingMilestoneId && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setEditingMilestoneId(null)
-                            setMilestoneForm({ milestoneNo: '', description: '', percentage: 0, invoicingPercentage: undefined })
-                            setMilestoneError('')
-                          }}
-                        >
-                          Anuluj
-                        </Button>
-                      )}
-                      <Button
-                        type="submit"
-                        size="sm"
-                        disabled={createMilestoneMutation.isPending || updateMilestoneMutation.isPending}
-                        className="bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] text-xs h-8 px-3"
-                      >
-                        {createMilestoneMutation.isPending || updateMilestoneMutation.isPending ? (
-                          <Loader2 size={12} className="animate-spin" />
-                        ) : null}
-                        {editingMilestoneId ? 'Zapisz zmiany' : 'Dodaj'}
-                      </Button>
-                    </div>
-                  </form>
-
-                  <div className="space-y-2 pt-2">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
-                      Lista kamieni milowych
-                    </p>
-                    {milestones.map((m) => (
-                      <div key={m.id} className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-3 relative group">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold text-[var(--foreground)]">{m.milestoneNo}</span>
-                              <span className="text-[10px] bg-[var(--sidebar-primary)]/10 text-[var(--sidebar-primary)] px-1.5 py-0.5 rounded font-semibold">
-                                {m.percentage}% ({formatBudget(m.netAmount)})
-                              </span>
-                              {m.invoicingPercentage && m.invoicingPercentage !== m.percentage && (
-                                <span className="text-[10px] bg-indigo-500/10 text-indigo-500 px-1.5 py-0.5 rounded font-semibold">
-                                  Faktur.: {m.invoicingPercentage}%
-                                </span>
-                              )}
-                            </div>
-                            <p className="mt-1 text-xs text-[var(--muted-foreground)]">{m.description}</p>
-                          </div>
-
-                          <div className="absolute right-3 top-3 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEditingMilestoneId(m.id)
-                                setMilestoneForm({
-                                  milestoneNo: m.milestoneNo,
-                                  description: m.description,
-                                  percentage: m.percentage,
-                                  invoicingPercentage: m.invoicingPercentage ?? undefined,
-                                })
-                              }}
-                              className="rounded-lg p-1 text-[var(--sidebar-primary)] hover:bg-[var(--sidebar-primary)]/10 transition"
-                              title="Edytuj"
-                            >
-                              <Edit size={14} />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => deleteMilestoneMutation.mutate(m.id)}
-                              disabled={deleteMilestoneMutation.isPending}
-                              className="rounded-lg p-1 text-rose-500 hover:bg-rose-500/10 transition"
-                              title="Usuń"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-
-                    {milestones.length === 0 && (
-                      <div className="text-center py-6 text-xs text-[var(--muted-foreground)] border border-dashed border-[var(--border)] rounded-xl">
-                        Brak zdefiniowanych kamieni milowych.
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Drawer footer */}
-        <div className="shrink-0 border-t border-[var(--border)] px-5 py-4 flex flex-col gap-3">
-          {activeTab === 'milestones' ? (
-            <div className="flex items-center justify-end">
-              <Button type="button" variant="outline" onClick={handleCloseDrawer}>
-                Zamknij
-              </Button>
-            </div>
-          ) : (
-            <>
-              {editingProject && canDeleteProject ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleDeleteProject}
-                  disabled={deleteMutation.isPending}
-                  className="border-rose-500/50 text-rose-500 hover:bg-rose-500/10"
-                >
-                  {deleteMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : null}
-                  <Trash2 size={14} />
-                  {deleteMutation.isPending ? 'Usuwanie...' : 'Usuń projekt'}
-                </Button>
-              ) : null}
-              <div className="flex items-center justify-end gap-2">
-                <Button type="button" variant="outline" onClick={handleCloseDrawer}>
-                  {t('projects.form.actions.cancel')}
-                </Button>
-                <Button
-                  type="button"
-                  onClick={handleCreate}
-                  disabled={createMutation.isPending || updateMutation.isPending}
-                  className="bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] hover:bg-[var(--sidebar-primary)]/90 shadow-[0_4px_14px_color-mix(in_oklch,var(--sidebar-primary),transparent_65%)]"
-                >
-                  {createMutation.isPending || updateMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : null}
-                  {createMutation.isPending || updateMutation.isPending ? t('projects.form.actions.saving') : t('projects.form.actions.save')}
-                </Button>
-              </div>
-            </>
-          )}
-        </div>
-      </aside>
     </>
   )
 }

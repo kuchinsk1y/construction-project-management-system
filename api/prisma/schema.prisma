@@ -65,6 +65,7 @@ model RefreshToken {
 model contractors {
   id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name        String     @db.VarChar(255)
+  short_name  String?    @db.VarChar(100)
   tax_number  String?    @db.VarChar(100)
   street      String?    @db.VarChar(255)
   postal_code String?    @db.VarChar(20)
@@ -243,6 +244,7 @@ model projects {
   hold_started_at                  DateTime?                      @db.Timestamptz(0)
   expected_resume_date             DateTime?                      @db.Date
   google_drive_folder_id           String?                        @db.VarChar(100)
+  dokumentation_url                String?                        @db.VarChar(512)
   deleted_at                       DateTime?                      @db.Timestamptz(0)
   created_by                       Int?
   updated_by                       Int?

@@ -26,6 +26,7 @@ class CreateProjectDto {
     startDateFact;
     endDateFact;
     managerId;
+    dokumentationUrl;
 }
 exports.CreateProjectDto = CreateProjectDto;
 __decorate([
@@ -101,4 +102,9 @@ __decorate([
     (0, class_transformer_1.Type)(() => Number),
     __metadata("design:type", Number)
 ], CreateProjectDto.prototype, "managerId", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateProjectDto.prototype, "dokumentationUrl", void 0);
 //# sourceMappingURL=create-project.dto.js.map

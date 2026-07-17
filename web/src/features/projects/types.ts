@@ -105,6 +105,7 @@ export type ApiProject = {
   contractors: ApiContractor | null
   project_types: ApiProjectType | null
   manager: { id: number; firstName: string; lastName: string } | null
+  dokumentationUrl?: string | null
 }
 
 export type CreateProjectPayload = {
@@ -121,6 +122,7 @@ export type CreateProjectPayload = {
   startDateFact?: string
   endDateFact?: string
   managerId?: number
+  dokumentationUrl?: string
 }
 
 // ---- UI display type ----
@@ -179,7 +181,7 @@ export function mapApiProjectToItem(p: ApiProject): ProjectItem {
     country: p.country,
     contractor: p.contractors?.name ?? '-',
     projectType: p.project_types?.name ?? '-',
-    dokumentationUrl: null,
+    dokumentationUrl: p.dokumentationUrl ?? null,
   }
 }
 

@@ -68,4 +68,8 @@ export class UpdateProjectDto {
   @IsOptional()
   @Type(() => Number)
   managerId?: number;
+
+  @IsOptional()
+  @IsString()
+  dokumentationUrl?: string;
 }

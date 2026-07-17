@@ -99,7 +99,7 @@ export function WorkspaceShell({ onLogout, theme, themePreset, onThemePresetChan
       </nav>
 
       <div className="shrink-0 border-t border-[var(--sidebar-border)] p-2.5">
-        <div className="rounded-xl border border-[var(--sidebar-border)] bg-[var(--sidebar-accent)]/60 p-2">
+        <div className="p-1 space-y-1">
           <div className="flex items-center gap-2 rounded-lg px-1 py-0.5">
             <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)]">
               <CircleUserRound size={16} />

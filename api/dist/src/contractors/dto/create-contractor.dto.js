@@ -19,6 +19,7 @@ class CreateContractorDto {
     city;
     country;
     notes;
+    shortName;
 }
 exports.CreateContractorDto = CreateContractorDto;
 __decorate([
@@ -64,4 +65,10 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateContractorDto.prototype, "notes", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(100, { message: 'Skrócona nazwa może mieć maksymalnie 100 znaków' }),
+    __metadata("design:type", String)
+], CreateContractorDto.prototype, "shortName", void 0);
 //# sourceMappingURL=create-contractor.dto.js.map

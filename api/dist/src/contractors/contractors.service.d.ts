@@ -13,6 +13,7 @@ export declare class ContractorsService {
         city: string | null;
         country: string | null;
         notes: string | null;
+        short_name: string | null;
         created_at: Date | null;
         updated_at: Date | null;
     }[]>;
@@ -25,6 +26,7 @@ export declare class ContractorsService {
         city: string | null;
         country: string | null;
         notes: string | null;
+        short_name: string | null;
         created_at: Date | null;
         updated_at: Date | null;
     }>;
@@ -37,6 +39,7 @@ export declare class ContractorsService {
         city: string | null;
         country: string | null;
         notes: string | null;
+        short_name: string | null;
         created_at: Date | null;
         updated_at: Date | null;
     }>;
@@ -49,6 +52,7 @@ export declare class ContractorsService {
         city: string | null;
         country: string | null;
         notes: string | null;
+        short_name: string | null;
         created_at: Date | null;
         updated_at: Date | null;
     }>;
