@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, CheckCircle2, Loader2, PencilLine, Plus, Search, UserCheck, UserX, X } from 'lucide-react' /* ShieldCheck */
+import { AlertTriangle, CheckCircle2, Loader2, PencilLine, Plus, Search, Trash2, UserCheck, UserX, X } from 'lucide-react' /* ShieldCheck */
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
-import { createUser, fetchUsers, updateUser } from '@/features/users/api'
+import { createUser, deleteUser, fetchUsers, updateUser } from '@/features/users/api'
 import type { ApiUser, CreateUserPayload, UpdateUserPayload, UserRole } from '@/features/users/types'
 
 type UsersPageProps = {
@@ -133,6 +133,7 @@ export function UsersPage({ canManage }: UsersPageProps) {
   const [formError, setFormError] = useState('')
   const [formState, setFormState] = useState<UserFormState>(emptyForm)
   const [notice, setNotice] = useState<NoticeState>(null)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null)
 
   const showNotice = (tone: NoticeTone, title: string, message: string) => {
     setNotice({ id: Date.now(), tone, title, message })
@@ -190,6 +191,20 @@ export function UsersPage({ canManage }: UsersPageProps) {
       const message = mutationError instanceof Error ? mutationError.message : t('users.notices.updateErrorMessage')
       setFormError(message)
       showNotice('error', t('users.notices.updateErrorTitle'), message)
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteUser,
+    onSuccess: async (_, deletedId) => {
+      const deletedName = users.find((u) => u.id === deletedId)
+      const nameStr = deletedName ? fullName(deletedName) : ''
+      await queryClient.invalidateQueries({ queryKey: ['users'] })
+      showNotice('success', t('users.notices.deletedTitle'), t('users.notices.deletedMessage', { name: nameStr }))
+    },
+    onError: (mutationError) => {
+      const message = mutationError instanceof Error ? mutationError.message : t('users.notices.deleteErrorMessage')
+      showNotice('error', t('users.notices.deleteErrorTitle'), message)
     },
   })
 
@@ -420,10 +435,28 @@ export function UsersPage({ canManage }: UsersPageProps) {
                         </button>
                       </td>
                       <td className="border-b border-[var(--border)] px-4 py-3 align-top text-right">
-                        <Button type="button" variant="outline" size="sm" onClick={() => openEditModal(user)}>
-                          <PencilLine size={13} />
-                          {/* {t('users.actions.edit')} */}
-                        </Button>
+                        <div className="flex justify-end gap-1.5">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openEditModal(user)}
+                            title={t('users.actions.edit')}
+                          >
+                            <PencilLine size={13} />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="text-rose-500 border-rose-500/20 hover:bg-rose-500/10"
+                            onClick={() => setDeleteConfirmId(user.id)}
+                            disabled={deleteMutation.isPending}
+                            title={t('users.actions.delete')}
+                          >
+                            <Trash2 size={13} />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -613,6 +646,50 @@ export function UsersPage({ canManage }: UsersPageProps) {
           </Button>
         </div>
       </aside>
+
+      {deleteConfirmId !== null ? (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/45 p-3 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-sm rounded-xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-2xl motion-safe:animate-[auth-rise_320ms_ease-out]">
+            <div className="flex items-start gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-rose-500/10 text-rose-500">
+                <AlertTriangle size={20} />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-sm font-bold text-[var(--foreground)]">{t('users.notices.deletedTitle')}</h4>
+                <p className="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                  Czy na pewno chcesz usunąć tego użytkownika? Tej operacji nie można cofnąć.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setDeleteConfirmId(null)}
+                disabled={deleteMutation.isPending}
+              >
+                {t('users.actions.cancel')}
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={deleteMutation.isPending}
+                onClick={() => {
+                  deleteMutation.mutate(deleteConfirmId, {
+                    onSettled: () => {
+                      setDeleteConfirmId(null)
+                    }
+                  })
+                }}
+              >
+                {deleteMutation.isPending ? <Loader2 size={14} className="animate-spin mr-1.5" /> : null}
+                {t('users.actions.delete')}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   )
 }

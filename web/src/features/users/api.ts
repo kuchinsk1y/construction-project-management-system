@@ -1,4 +1,4 @@
-import { apiGet, apiPatch, apiPost } from '@/lib/api-client'
+import { apiDelete, apiGet, apiPatch, apiPost } from '@/lib/api-client'
 
 import type { ApiUser, CreateUserPayload, UpdateUserPayload } from '@/features/users/types'
 
@@ -12,4 +12,8 @@ export function createUser(payload: CreateUserPayload): Promise<ApiUser> {
 
 export function updateUser(id: number, payload: UpdateUserPayload): Promise<ApiUser> {
   return apiPatch<ApiUser>(`/users/${id}`, payload)
+}
+
+export function deleteUser(id: number): Promise<void> {
+  return apiDelete<void>(`/users/${id}`)
 }

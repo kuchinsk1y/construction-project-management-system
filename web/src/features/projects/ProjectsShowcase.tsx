@@ -1,4 +1,4 @@
-import { AlertCircle, ArrowLeft, ArrowUpDown, Edit, ExternalLink, Folder, ListFilter, Loader2, Plus, Search, Trash2, UserRound, X } from 'lucide-react'
+import { AlertCircle, AlertTriangle, ArrowLeft, ArrowUpDown, Edit, ExternalLink, Folder, ListFilter, Loader2, Plus, Search, Trash2, UserRound, X } from 'lucide-react'
 import { useMemo, useState, useEffect, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -135,6 +135,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
   const [showContractorList, setShowContractorList] = useState(false)
   const [editingProject, setEditingProject] = useState<ApiProject | null>(null)
   const [isEditing, setIsEditing] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const contractorRef = useRef<HTMLDivElement>(null)
 
   // Milestones State & Mutations
@@ -349,10 +350,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
 
   const handleDeleteProject = () => {
     if (!canDeleteProject) return
-
-    if (editingProject && confirm('Czy na pewno chcesz usunąć ten projekt?')) {
-      deleteMutation.mutate(editingProject.id)
-    }
+    setShowDeleteConfirm(true)
   }
 
   const handleCreate = () => {
@@ -507,7 +505,8 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
 
   if (drawerOpen) {
     return (
-      <section className="flex flex-col gap-4 p-4 md:p-6 select-none max-w-7xl mx-auto w-full animate-fade-in">
+      <>
+        <section className="flex flex-col gap-4 p-4 md:p-6 select-none max-w-7xl mx-auto w-full animate-drawer-enter">
         {/* Header */}
         <header className="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--border)] pb-5">
           <div className="flex items-center gap-3">
@@ -570,7 +569,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
         <div className="w-full">
           {activeTab === 'details' ? (
             !isEditing ? (
-              <div className="w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm space-y-6 animate-fade-in">
+              <div className="w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm space-y-6 animate-tab-content">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Column 1: Basic Info, Location, Contract */}
                   <div className="space-y-6">
@@ -730,7 +729,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
                 </div>
               </div>
             ) : (
-              <div className="w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm space-y-6 animate-fade-in">
+              <div className="w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm space-y-6 animate-tab-content">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Column 1: Basic Info, Location, Contract */}
                   <div className="space-y-6">
@@ -1053,7 +1052,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
                 </div>
               </div>
             )) : (
-            <div className="w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm space-y-6">
+            <div className="w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm space-y-6 animate-tab-content">
               {milestoneError && (
                 <div className="rounded-xl border border-rose-500/35 bg-rose-500/10 px-3 py-2 text-xs text-rose-500">
                   {milestoneError}
@@ -1073,8 +1072,12 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
                     </p>
 
                     <div className="space-y-2">
-                      {milestones.map((m) => (
-                        <div key={m.id} className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-3 relative group">
+                      {milestones.map((m, index) => (
+                        <div
+                          key={m.id}
+                          style={{ animationDelay: `${index * 30}ms` }}
+                          className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-3 relative group animate-row-fade-in"
+                        >
                           <div className="flex items-start justify-between">
                             <div className="pr-12">
                               <span className="inline-flex items-center rounded-md bg-[var(--sidebar-primary)]/10 px-1.5 py-0.5 text-xs font-semibold text-[var(--sidebar-primary)]">
@@ -1291,12 +1294,59 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
           )}
         </div>
       </section>
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/45 p-3 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-sm rounded-xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-2xl motion-safe:animate-[auth-rise_320ms_ease-out]">
+            <div className="flex items-start gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-rose-500/10 text-rose-500">
+                <AlertTriangle size={20} />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-sm font-bold text-[var(--foreground)]">Usuń projekt</h4>
+                <p className="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                  Czy na pewno chcesz usunąć ten projekt? Tej operacji nie można cofnąć.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleteMutation.isPending}
+              >
+                Anuluj
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={deleteMutation.isPending}
+                onClick={() => {
+                  if (editingProject) {
+                    deleteMutation.mutate(editingProject.id, {
+                      onSettled: () => {
+                        setShowDeleteConfirm(false)
+                      }
+                    })
+                  }
+                }}
+              >
+                {deleteMutation.isPending ? <Loader2 size={14} className="animate-spin mr-1.5" /> : null}
+                Usuń
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
     )
   }
 
   return (
     <>
-      <section className="grid flex-1 items-start gap-2 p-3 md:gap-4 xl:grid-cols-12">
+      <section className="grid flex-1 items-start gap-2 p-3 md:gap-4 xl:grid-cols-12 animate-page-enter">
         {isLoading ? (
           <article className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 xl:col-span-12">
             <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
@@ -1498,11 +1548,12 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
                   </thead>
 
                   <tbody>
-                    {filteredProjects.map((project) => (
+                    {filteredProjects.map((project, index) => (
                       <tr
                         key={project.id}
                         onClick={() => canEditProject && handleEditProject(project.id)}
-                        className={`group transition-colors odd:bg-[var(--background)]/25 hover:bg-[var(--sidebar-accent)]/35 ${canEditProject ? 'cursor-pointer' : ''}`}
+                        style={{ animationDelay: `${index * 25}ms` }}
+                        className={`group transition-colors odd:bg-[var(--background)]/25 hover:bg-[var(--sidebar-accent)]/35 animate-row-fade-in ${canEditProject ? 'cursor-pointer' : ''}`}
                       >
                         <td className="border-b border-[var(--border)] px-3 py-2 align-top">
                           <p className="font-semibold leading-snug">{project.name}</p>

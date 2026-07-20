@@ -371,13 +371,25 @@ export function ContractorsPage({ canManage }: ContractorsPageProps) {
                       </td>
                       <td className="border-b border-[var(--border)] px-4 py-3 align-top text-right">
                         <div className="inline-flex gap-1.5">
-                          <Button type="button" variant="outline" size="sm" onClick={() => openEditModal(c)}>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openEditModal(c)}
+                            title={t('contractors.actions.edit')}
+                          >
                             <PencilLine size={13} />
-                            {t('contractors.actions.edit')}
                           </Button>
-                          <Button type="button" variant="outline" size="sm" className="text-rose-500 border-rose-500/20 hover:bg-rose-500/10" onClick={() => handleDelete(c.id)} disabled={deleteMutation.isPending}>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="text-rose-500 border-rose-500/20 hover:bg-rose-500/10"
+                            onClick={() => handleDelete(c.id)}
+                            disabled={deleteMutation.isPending}
+                            title={t('contractors.actions.delete')}
+                          >
                             <Trash2 size={13} />
-                            {t('contractors.actions.delete')}
                           </Button>
                         </div>
                       </td>

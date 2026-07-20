@@ -52,4 +52,5 @@ export declare class UsersController {
     }, "telegramId"> & {
         telegramId: string | null;
     }>;
+    remove(id: number): Promise<void>;
 }

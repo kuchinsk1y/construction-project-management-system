@@ -137,6 +137,35 @@ let UsersService = class UsersService {
         });
         return this.toView(updated);
     }
+    async remove(id) {
+        const existing = await this.prisma.user.findUnique({
+            where: { id },
+            include: {
+                project_department_foremen: { select: { id: true } },
+                projects_projects_manager_idTousers: { select: { id: true } },
+                projects_projects_created_byTousers: { select: { id: true } },
+                projects_projects_updated_byTousers: { select: { id: true } },
+                project_status_history: { select: { id: true } },
+            },
+        });
+        if (!existing) {
+            throw new common_1.NotFoundException('User not found');
+        }
+        if (existing.project_department_foremen.length > 0) {
+            throw new common_1.BadRequestException('Nie można usunąć użytkownika, ponieważ jest przypisany jako brygadzista w projektach');
+        }
+        if (existing.projects_projects_manager_idTousers.length > 0) {
+            throw new common_1.BadRequestException('Nie można usunąć użytkownika, ponieważ jest kierownikiem projektu');
+        }
+        if (existing.projects_projects_created_byTousers.length > 0 ||
+            existing.projects_projects_updated_byTousers.length > 0 ||
+            existing.project_status_history.length > 0) {
+            throw new common_1.BadRequestException('Nie można usunąć użytkownika, ponieważ posiada powiązane logi lub historię zmian projektów');
+        }
+        await this.prisma.user.delete({
+            where: { id },
+        });
+    }
 };
 exports.UsersService = UsersService;
 exports.UsersService = UsersService = __decorate([

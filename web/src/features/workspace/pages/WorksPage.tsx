@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Edit,
+  AlertTriangle,
   Loader2,
   Plus,
   Trash2,
@@ -98,6 +99,7 @@ export function WorksPage({ canManage }: WorksPageProps) {
   })
   const [editingWorkTypeId, setEditingWorkTypeId] = useState<string | null>(null)
   const [workTypeError, setWorkTypeError] = useState('')
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
 
   // Fetch all projects for dropdown
   const { data: projects = [], isLoading: projectsLoading } = useQuery<ApiProject[]>({
@@ -708,9 +710,7 @@ export function WorksPage({ canManage }: WorksPageProps) {
                                       <button
                                         type="button"
                                         onClick={() => {
-                                          if (window.confirm('Czy na pewno chcesz usunąć tę robotę ze słownika projektu?')) {
-                                            deleteWorkTypeMutation.mutate(wt.id)
-                                          }
+                                          setDeleteConfirmId(wt.id)
                                         }}
                                         disabled={deleteWorkTypeMutation.isPending}
                                         className="rounded-lg p-1.5 text-rose-500 hover:bg-rose-500/10 hover:text-rose-600 transition disabled:opacity-50"
@@ -744,6 +744,49 @@ export function WorksPage({ canManage }: WorksPageProps) {
           </div>
         )}
       </div>
+      {deleteConfirmId !== null ? (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/45 p-3 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-sm rounded-xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-2xl motion-safe:animate-[auth-rise_320ms_ease-out]">
+            <div className="flex items-start gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-rose-500/10 text-rose-500">
+                <AlertTriangle size={20} />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-sm font-bold text-[var(--foreground)]">Usuń robotę</h4>
+                <p className="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                  Czy na pewno chcesz usunąć tę robotę ze słownika projektu? Tej operacji nie można cofnąć.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setDeleteConfirmId(null)}
+                disabled={deleteWorkTypeMutation.isPending}
+              >
+                Anuluj
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={deleteWorkTypeMutation.isPending}
+                onClick={() => {
+                  deleteWorkTypeMutation.mutate(deleteConfirmId, {
+                    onSettled: () => {
+                      setDeleteConfirmId(null)
+                    }
+                  })
+                }}
+              >
+                {deleteWorkTypeMutation.isPending ? <Loader2 size={14} className="animate-spin mr-1.5" /> : null}
+                Usuń
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

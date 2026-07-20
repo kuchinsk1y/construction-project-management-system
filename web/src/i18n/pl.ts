@@ -259,6 +259,7 @@ export const pl = {
     },
     actions: {
       edit: 'Edytuj',
+      delete: 'Usuń',
       cancel: 'Anuluj',
       save: 'Zapisz zmiany',
       closeAlert: 'Zamknij alert',
@@ -303,6 +304,10 @@ export const pl = {
       activatedTitle: 'Uzytkownik aktywowany',
       deactivatedMessage: '{{name}} jest teraz nieaktywny.',
       activatedMessage: '{{name}} jest teraz aktywny.',
+      deletedTitle: 'Uzytkownik usuniety',
+      deletedMessage: 'Konto uzytkownika {{name}} zostalo usuniete.',
+      deleteErrorTitle: 'Blad usuwania',
+      deleteErrorMessage: 'Nie udalo sie usunac uzytkownika.',
     },
     roles: {
       admin: 'Administrator',

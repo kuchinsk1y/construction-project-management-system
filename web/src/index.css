@@ -666,6 +666,7 @@ table td {
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -674,4 +675,168 @@ table td {
 
 .animate-row-fade-in {
   animation: row-slide-up 400ms cubic-bezier(0.215, 0.610, 0.355, 1.000) both;
+}
+
+/* ==========================================
+   Interactive UI Elements Style Enhancements
+   ========================================== */
+
+/* Appropriate pointer cursors for interactive items */
+a,
+button,
+select,
+summary,
+[role="button"],
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+input[type="checkbox"],
+input[type="radio"] {
+  cursor: pointer;
+}
+
+/* Default transitions for interactive properties */
+a,
+button,
+select,
+input,
+textarea,
+[role="button"] {
+  transition: border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              filter 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Clear disabled cursors and styles */
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled,
+[role="button"]:disabled,
+.disabled-element {
+  cursor: not-allowed !important;
+  opacity: 0.55 !important;
+  pointer-events: none !important;
+}
+
+/* Smooth, high-fidelity hover state for inputs, selects and textareas */
+input:not([type="submit"]):not([type="button"]):not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+  outline: none;
+}
+
+input:not([type="submit"]):not([type="button"]):not([type="checkbox"]):not([type="radio"]):hover:not(:focus):not(:disabled),
+select:hover:not(:focus):not(:disabled),
+textarea:hover:not(:focus):not(:disabled) {
+  border-color: var(--ring);
+}
+
+/* Glow ring focus state for inputs, selects, and textareas */
+input:not([type="submit"]):not([type="button"]):not([type="checkbox"]):not([type="radio"]):focus,
+select:focus,
+textarea:focus {
+  border-color: var(--sidebar-primary) !important;
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--sidebar-primary) 18%, transparent) !important;
+}
+
+/* Hover effects for checkboxes and radio buttons */
+input[type="checkbox"]:hover:not(:disabled),
+input[type="radio"]:hover:not(:disabled) {
+  transform: scale(1.05);
+  filter: brightness(0.95);
+}
+
+/* Active micro-animations for buttons and list actions */
+button:not(:disabled):active,
+[role="button"]:not(:disabled):active,
+input[type="submit"]:active,
+input[type="button"]:active {
+  transform: scale(0.975);
+}
+
+/* Additional hover brightness overlay for buttons */
+button:not(:disabled):hover,
+[role="button"]:not(:disabled):hover {
+  filter: brightness(1.04);
+}
+
+/* ==========================================
+   Page Transitions & Tab Change Animations
+   ========================================== */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes drawerEnter {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes tabContentEnter {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.995);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.animate-slide-down {
+  animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-page-enter {
+  animation: pageEnter 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-drawer-enter {
+  animation: drawerEnter 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-tab-content {
+  animation: tabContentEnter 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
 }

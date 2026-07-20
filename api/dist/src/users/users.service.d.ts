@@ -27,5 +27,6 @@ export declare class UsersService {
     list(): Promise<UserView[]>;
     create(dto: CreateUserDto): Promise<UserView>;
     update(id: number, dto: UpdateUserDto): Promise<UserView>;
+    remove(id: number): Promise<void>;
 }
 export {};
