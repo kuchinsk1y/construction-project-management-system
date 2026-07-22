@@ -9,7 +9,6 @@ import {
   deleteProject,
   fetchContractors,
   fetchProjectTypes,
-  fetchProjects,
   updateProject,
   fetchMilestones,
   createMilestone,
@@ -19,17 +18,15 @@ import {
 import { useProjectsQuery } from '@/features/projects/useProjectsQuery'
 import {
   mapApiProjectToItem,
-  type ApiContractor,
   type ApiProject,
-  type ApiProjectType,
   type CreateMilestonePayload,
   type CreateProjectPayload,
   type ProjectStatus,
 } from '@/features/projects/types'
 
 import { apiGet } from '@/lib/api-client'
-import { ProjectsFilterBar, type ViewMode } from './components/ProjectsFilterBar'
-import { ProjectsTableView, type SortColumn, type SortDirection } from './components/ProjectsTableView'
+import { ProjectsFilterBar } from './components/ProjectsFilterBar'
+import { ProjectsTableView, type ViewMode, type SortColumn, type SortDirection } from './components/ProjectsTableView'
 import { ProjectsGanttView } from './components/ProjectsGanttView'
 import { ProjectDetailsDrawer } from './components/ProjectDetailsDrawer'
 

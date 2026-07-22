@@ -1,4 +1,4 @@
-import { ArrowUpDown, BarChart3, LayoutList, Plus } from 'lucide-react'
+import { ArrowUpDown, BarChart3, Calendar, ChevronRight, LayoutList, MapPin, Plus, User } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import type { ProjectItem, ProjectStatus } from '@/features/projects/types'
@@ -51,23 +51,23 @@ export function ProjectsTableView({
   const { t } = useTranslation()
 
   return (
-    <article className="w-full overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
+    <article className="w-full overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-2xs">
       {/* Table Card Header with View Switcher & Action Button */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] p-3 sm:px-4 sm:py-3.5">
         <div>
-          <p className="text-sm font-semibold">{t('projects.table.title')}</p>
+          <p className="text-sm font-bold tracking-tight text-[var(--foreground)]">{t('projects.table.title')}</p>
           <p className="text-xs text-[var(--muted-foreground)]">
             {t('projects.table.rows', { filtered: filteredProjects.length, total: totalProjectsCount })}
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 ml-auto sm:ml-0">
           {/* View Mode Switcher */}
           <div className="flex items-center gap-1 p-1 rounded-xl bg-[var(--background)] border border-[var(--border)] shrink-0">
             <button
               type="button"
               onClick={() => setViewMode('table')}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 viewMode === 'table'
                   ? 'bg-[var(--card)] text-[var(--sidebar-primary)] shadow-2xs border border-[var(--border)]/60'
                   : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
@@ -80,7 +80,7 @@ export function ProjectsTableView({
             <button
               type="button"
               onClick={() => setViewMode('gantt')}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 viewMode === 'gantt'
                   ? 'bg-[var(--card)] text-[var(--sidebar-primary)] shadow-2xs border border-[var(--border)]/60'
                   : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
@@ -96,57 +96,160 @@ export function ProjectsTableView({
             <Button
               type="button"
               onClick={onOpenDrawer}
-              className="bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] hover:bg-[var(--sidebar-primary)]/90"
+              className="bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] hover:bg-[var(--sidebar-primary)]/90 h-9 px-3"
             >
               <Plus size={15} />
-              {t('projects.addButton')}
+              <span className="hidden sm:inline">{t('projects.addButton')}</span>
+              <span className="sm:hidden">Dodaj</span>
             </Button>
           ) : null}
         </div>
       </div>
 
-      <div className="overflow-x-auto hide-scrollbar">
+      {/* MOBILE & TABLET CARD GRID (< 1024px) */}
+      <div className="block lg:hidden p-3 space-y-3">
+        {filteredProjects.length === 0 ? (
+          <div className="py-8 text-center text-sm text-[var(--muted-foreground)]">
+            {t('projects.states.noResults')}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {filteredProjects.map((project, index) => {
+              const hasFactDates = Boolean(project.startDateFact || project.endDateFact)
+              const startPlan = formatDate(project.startDate, '–')
+              const endPlan = formatDate(project.endDate, '–')
+              const hasPlanDates = startPlan !== '–' || endPlan !== '–'
+
+              return (
+                <div
+                  key={project.id}
+                  onClick={() => canEditProject && onSelectProject(project.id)}
+                  style={{ animationDelay: `${index * 30}ms` }}
+                  className={`group relative rounded-xl border border-[var(--border)] bg-[var(--background)]/40 p-3.5 transition-all duration-200 hover:border-[var(--sidebar-primary)]/40 hover:bg-[var(--background)] hover:shadow-md animate-row-fade-in ${
+                    canEditProject ? 'cursor-pointer' : ''
+                  }`}
+                >
+                  {/* Card Header: Title, Type & Status */}
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-bold text-sm leading-snug text-[var(--foreground)] group-hover:text-[var(--sidebar-primary)] transition-colors truncate">
+                        {project.name}
+                      </h3>
+                      {project.projectType && project.projectType !== '-' ? (
+                        <p className="mt-0.5 text-xs font-medium text-[var(--muted-foreground)] truncate">
+                          {project.projectType}
+                        </p>
+                      ) : null}
+                    </div>
+                    <span className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${statusTone(project.status)}`}>
+                      {statusLabel(project.status, t)}
+                    </span>
+                  </div>
+
+                  {/* Details Grid */}
+                  <div className="space-y-1.5 text-xs text-[var(--muted-foreground)] mb-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="flex items-center gap-1 truncate">
+                        <User size={12} className="shrink-0 text-[var(--sidebar-primary)]" />
+                        <span className="font-semibold text-[var(--foreground)]">{project.owner || 'Brak kierownika'}</span>
+                      </span>
+                      <span className="shrink-0 text-[11px] bg-[var(--muted)]/50 px-1.5 py-0.5 rounded">
+                        {project.contractor || 'Brak wykonawcy'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="flex items-center gap-1 truncate">
+                        <MapPin size={12} className="shrink-0" />
+                        <span>{project.location}</span>
+                      </span>
+
+                      {/* Dates Tag */}
+                      <span className="flex items-center gap-1 shrink-0 text-[11px]">
+                        <Calendar size={11} className="shrink-0" />
+                        {hasFactDates ? (
+                          <span className="text-emerald-500 font-semibold">
+                            Fakt: {project.startDateFact ? formatDate(project.startDateFact, '–') : '–'}
+                          </span>
+                        ) : hasPlanDates ? (
+                          <span>
+                            {startPlan} – {endPlan}
+                          </span>
+                        ) : (
+                          <span className="italic text-[var(--muted-foreground)]/70">Brak terminu</span>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Progress Bar Footer */}
+                  <div className="pt-2 border-t border-[var(--border)]/50 flex items-center justify-between gap-3">
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between text-[11px] mb-1">
+                        <span className="text-[var(--muted-foreground)]">{t('projects.table.row.completion')}</span>
+                        <span className="font-bold text-[var(--foreground)]">{project.progress}%</span>
+                      </div>
+                      <progress
+                        value={project.progress}
+                        max={100}
+                        aria-label={`${t('projects.table.row.completion')} ${project.name}`}
+                        className="h-1.5 w-full overflow-hidden rounded-full [appearance:none] [&::-webkit-progress-bar]:bg-[var(--muted)] [&::-webkit-progress-value]:bg-[var(--sidebar-primary)] [&::-webkit-progress-value]:transition-all [&::-webkit-progress-value]:duration-500 [&::-moz-progress-bar]:bg-[var(--sidebar-primary)]"
+                      />
+                    </div>
+                    {canEditProject ? (
+                      <ChevronRight size={16} className="text-[var(--muted-foreground)] group-hover:text-[var(--sidebar-primary)] group-hover:translate-x-0.5 transition-all shrink-0" />
+                    ) : null}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* DESKTOP TABLE VIEW (>= 1024px) */}
+      <div className="hidden lg:block overflow-x-auto hide-scrollbar">
         <table className="w-full whitespace-nowrap border-separate border-spacing-0 text-[13px]">
           <thead className="sticky top-0 z-10">
             <tr className="bg-[var(--background)]/95 backdrop-blur supports-[backdrop-filter]:bg-[var(--background)]/80">
               <th className="border-b border-[var(--border)] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
-                <button type="button" onClick={() => onSort('project')} className="inline-flex items-center gap-1 hover:text-[var(--foreground)] transition">
+                <button type="button" onClick={() => onSort('project')} className="inline-flex items-center gap-1 hover:text-[var(--foreground)] transition cursor-pointer">
                   {t('projects.table.columns.project')}
                   <ArrowUpDown size={12} className={sortColumn === 'project' ? 'text-[var(--foreground)]' : ''} />
                 </button>
               </th>
               <th className="border-b border-[var(--border)] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
-                <button type="button" onClick={() => onSort('status')} className="inline-flex items-center gap-1 hover:text-[var(--foreground)] transition">
+                <button type="button" onClick={() => onSort('status')} className="inline-flex items-center gap-1 hover:text-[var(--foreground)] transition cursor-pointer">
                   {t('projects.table.columns.status')}
                   <ArrowUpDown size={12} className={sortColumn === 'status' ? 'text-[var(--foreground)]' : ''} />
                 </button>
               </th>
               <th className="border-b border-[var(--border)] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
-                <button type="button" onClick={() => onSort('manager')} className="inline-flex items-center gap-1 hover:text-[var(--foreground)] transition">
+                <button type="button" onClick={() => onSort('manager')} className="inline-flex items-center gap-1 hover:text-[var(--foreground)] transition cursor-pointer">
                   {t('projects.table.columns.manager')}
                   <ArrowUpDown size={12} className={sortColumn === 'manager' ? 'text-[var(--foreground)]' : ''} />
                 </button>
               </th>
               <th className="border-b border-[var(--border)] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
-                <button type="button" onClick={() => onSort('contractor')} className="inline-flex items-center gap-1 hover:text-[var(--foreground)] transition">
+                <button type="button" onClick={() => onSort('contractor')} className="inline-flex items-center gap-1 hover:text-[var(--foreground)] transition cursor-pointer">
                   {t('projects.table.columns.contractor')}
                   <ArrowUpDown size={12} className={sortColumn === 'contractor' ? 'text-[var(--foreground)]' : ''} />
                 </button>
               </th>
               <th className="border-b border-[var(--border)] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
-                <button type="button" onClick={() => onSort('location')} className="inline-flex items-center gap-1 hover:text-[var(--foreground)] transition">
+                <button type="button" onClick={() => onSort('location')} className="inline-flex items-center gap-1 hover:text-[var(--foreground)] transition cursor-pointer">
                   {t('projects.table.columns.location')}
                   <ArrowUpDown size={12} className={sortColumn === 'location' ? 'text-[var(--foreground)]' : ''} />
                 </button>
               </th>
               <th className="border-b border-[var(--border)] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
-                <button type="button" onClick={() => onSort('schedule')} className="inline-flex items-center gap-1 hover:text-[var(--foreground)] transition">
+                <button type="button" onClick={() => onSort('schedule')} className="inline-flex items-center gap-1 hover:text-[var(--foreground)] transition cursor-pointer">
                   {t('projects.table.columns.schedule')}
                   <ArrowUpDown size={12} className={sortColumn === 'schedule' ? 'text-[var(--foreground)]' : ''} />
                 </button>
               </th>
               <th className="border-b border-[var(--border)] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
-                <button type="button" onClick={() => onSort('progress')} className="inline-flex items-center gap-1 hover:text-[var(--foreground)] transition">
+                <button type="button" onClick={() => onSort('progress')} className="inline-flex items-center gap-1 hover:text-[var(--foreground)] transition cursor-pointer">
                   {t('projects.table.columns.progress')}
                   <ArrowUpDown size={12} className={sortColumn === 'progress' ? 'text-[var(--foreground)]' : ''} />
                 </button>
@@ -202,7 +305,7 @@ export function ProjectsTableView({
 
                   <td className="px-4 py-3.5 align-middle text-xs">
                     {hasFactDates ? (
-                      <div className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-emerald-500 font-semibold shadow-xs">
+                      <div className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-emerald-500 font-semibold shadow-2xs">
                         <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
                         <span>Fakt: {project.startDateFact ? formatDate(project.startDateFact, '–') : '–'} – {project.endDateFact ? formatDate(project.endDateFact, '–') : '–'}</span>
                       </div>

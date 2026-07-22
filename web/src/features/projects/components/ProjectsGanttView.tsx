@@ -54,29 +54,29 @@ export function ProjectsGanttView({
   const { t } = useTranslation()
 
   return (
-    <article className="w-full overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm animate-fade-in">
+    <article className="w-full overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-2xs animate-fade-in">
       {/* Gantt Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] p-3 sm:px-4 sm:py-3.5">
         <div>
-          <p className="text-sm font-semibold flex items-center gap-2">
+          <p className="text-sm font-bold tracking-tight flex items-center gap-2 text-[var(--foreground)]">
             <GanttChart size={16} className="text-[var(--sidebar-primary)]" />
             <span>Wykres Gantta projektów</span>
           </p>
           <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
-            Harmonogram czasowy realizacji dla {filteredProjects.length} z {totalProjectsCount} projektów
+            Harmonogram czasowy dla {filteredProjects.length} z {totalProjectsCount} projektów
           </p>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 ml-auto sm:ml-0">
           {/* Legend */}
-          <div className="hidden sm:flex items-center gap-4 text-xs font-semibold">
+          <div className="hidden md:flex items-center gap-3 text-xs font-semibold">
             <div className="flex items-center gap-1.5">
               <span className="size-2.5 rounded-full bg-[var(--sidebar-primary)] shadow-2xs" />
-              <span className="text-[var(--muted-foreground)]">Plan (Harmonogram)</span>
+              <span className="text-[var(--muted-foreground)]">Plan</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="size-2.5 rounded-full bg-emerald-500 shadow-2xs" />
-              <span className="text-[var(--muted-foreground)]">Fakt (Realizacja)</span>
+              <span className="text-[var(--muted-foreground)]">Fakt</span>
             </div>
           </div>
 
@@ -85,7 +85,7 @@ export function ProjectsGanttView({
             <button
               type="button"
               onClick={() => setViewMode('table')}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 viewMode === 'table'
                   ? 'bg-[var(--card)] text-[var(--sidebar-primary)] shadow-2xs border border-[var(--border)]/60'
                   : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
@@ -98,7 +98,7 @@ export function ProjectsGanttView({
             <button
               type="button"
               onClick={() => setViewMode('gantt')}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 viewMode === 'gantt'
                   ? 'bg-[var(--card)] text-[var(--sidebar-primary)] shadow-2xs border border-[var(--border)]/60'
                   : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
@@ -114,27 +114,29 @@ export function ProjectsGanttView({
             <Button
               type="button"
               onClick={onOpenDrawer}
-              className="bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] hover:bg-[var(--sidebar-primary)]/90"
+              className="bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] hover:bg-[var(--sidebar-primary)]/90 h-9 px-3"
             >
               <Plus size={15} />
-              {t('projects.addButton')}
+              <span className="hidden sm:inline">{t('projects.addButton')}</span>
+              <span className="sm:hidden">Dodaj</span>
             </Button>
           ) : null}
         </div>
       </div>
 
-      {/* Gantt Timeline Container */}
-      <div className="w-full p-4 overflow-hidden">
-        <div className="w-full overflow-x-auto custom-scrollbar border border-[var(--border)] rounded-xl bg-[var(--background)]/35">
-          <div className="min-w-[900px] flex flex-col">
+      {/* Gantt Timeline Container with Sticky Left Column */}
+      <div className="w-full p-2 sm:p-4 overflow-hidden">
+        <div className="w-full overflow-x-auto touch-pan-x hide-scrollbar border border-[var(--border)] rounded-xl bg-[var(--background)]/35">
+          <div className="min-w-[750px] md:min-w-[900px] flex flex-col">
             {/* Gantt Header Months */}
-            <div className="grid grid-cols-12 border-b border-[var(--border)] bg-[var(--card)] text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
-              <div className="col-span-3 px-3 py-2.5 border-r border-[var(--border)] font-extrabold text-[var(--foreground)] flex items-center gap-1.5">
+            <div className="grid grid-cols-12 border-b border-[var(--border)] bg-[var(--card)] text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] sticky top-0 z-30">
+              {/* Sticky Left Column Header */}
+              <div className="col-span-3 px-3 py-2.5 border-r border-[var(--border)] font-extrabold text-[var(--foreground)] flex items-center gap-1.5 sticky left-0 z-40 bg-[var(--card)]">
                 <span>Projekt & Kierownik</span>
               </div>
               <div className="col-span-9 grid" style={{ gridTemplateColumns: `repeat(${timelineBounds.months.length}, minmax(0, 1fr))` }}>
                 {timelineBounds.months.map((m) => (
-                  <div key={`${m.year}-${m.month}`} className="px-2 py-2.5 text-center border-r border-[var(--border)]/40 truncate">
+                  <div key={`${m.year}-${m.month}`} className="px-1.5 py-2.5 text-center border-r border-[var(--border)]/40 truncate">
                     {m.label}
                   </div>
                 ))}
@@ -176,8 +178,8 @@ export function ProjectsGanttView({
                     style={{ animationDelay: `${idx * 25}ms` }}
                     className={`grid grid-cols-12 group hover:bg-[var(--sidebar-primary)]/[0.045] transition-colors items-center py-2.5 ${canEditProject ? 'cursor-pointer' : ''}`}
                   >
-                    {/* Left Column: Project Info */}
-                    <div className="col-span-3 px-3 py-1 border-r border-[var(--border)]/60 flex flex-col justify-center gap-1">
+                    {/* Left Column: Sticky Project Info */}
+                    <div className="col-span-3 px-3 py-1 border-r border-[var(--border)]/60 flex flex-col justify-center gap-1 sticky left-0 z-20 bg-[var(--card)] group-hover:bg-[var(--card)] shadow-xs">
                       <div className="flex items-center justify-between gap-1.5">
                         <span className="text-xs font-bold text-[var(--foreground)] truncate group-hover:text-[var(--sidebar-primary)] transition">
                           {project.name}
@@ -187,7 +189,7 @@ export function ProjectsGanttView({
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-[10px] text-[var(--muted-foreground)]">
-                        <span className="truncate max-w-[120px]">{project.owner || 'Brak kierownika'}</span>
+                        <span className="truncate max-w-[100px]">{project.owner || 'Brak kierownika'}</span>
                         <span className="font-semibold text-[var(--foreground)]">{project.progress}%</span>
                       </div>
                     </div>
@@ -196,7 +198,7 @@ export function ProjectsGanttView({
                     <div className="col-span-9 relative h-10 flex items-center px-1">
                       {/* Background Month Grid Lines */}
                       <div className="absolute inset-0 grid pointer-events-none" style={{ gridTemplateColumns: `repeat(${timelineBounds.months.length}, minmax(0, 1fr))` }}>
-                        {timelineBounds.months.map((m, i) => (
+                        {timelineBounds.months.map((_, i) => (
                           <div key={i} className="border-r border-[var(--border)]/20 h-full" />
                         ))}
                       </div>
