@@ -163,6 +163,11 @@ export function mapApiProjectToItem(p: ApiProject): ProjectItem {
     ? `${p.manager.firstName} ${p.manager.lastName}`.trim()
     : 'Nieprzypisany'
 
+  const cityStr = p.city && p.city !== 'undefined' ? p.city.trim() : ''
+  const countryStr = p.country && p.country !== 'undefined' ? p.country.trim() : ''
+  const locationParts = [cityStr, countryStr].filter(Boolean)
+  const location = locationParts.length > 0 ? locationParts.join(', ') : '-'
+
   return {
     id: p.id,
     name: p.name,
@@ -177,8 +182,8 @@ export function mapApiProjectToItem(p: ApiProject): ProjectItem {
     dueDate: p.end_date_contract ?? 'Brak terminu',
     priority: p.project_types?.code ?? 'Ogolny',
     health: 'Zgodnie z planem',
-    location: `${p.city}, ${p.country}`,
-    country: p.country,
+    location,
+    country: countryStr,
     contractor: p.contractors?.name ?? '-',
     projectType: p.project_types?.name ?? '-',
     dokumentationUrl: p.dokumentationUrl ?? null,

@@ -70,12 +70,55 @@ let ProjectsService = class ProjectsService {
             dokumentationUrl: p.dokumentation_url,
         }));
     }
+    async ensureCurrencyExists(currencyCode) {
+        if (!currencyCode)
+            return;
+        await this.prisma.currencies.upsert({
+            where: { code: currencyCode },
+            update: {},
+            create: {
+                code: currencyCode,
+                name: currencyCode,
+                symbol: currencyCode === 'PLN' ? 'zł' : currencyCode === 'EUR' ? '€' : '$',
+            },
+        });
+    }
+    async ensureProjectTypeExists(projectTypeId) {
+        const defaultTypes = [
+            { code: 'PV', name: 'Fotowoltaika (PV)', description: 'Instalacje i farmy fotowoltaiczne' },
+            { code: 'MAGAZYN_ENERGII', name: 'Magazyn energii', description: 'Systemy magazynowania energii (BESS)' },
+            { code: 'HYBRYDA', name: 'Instalacja hybrydowa (PV + Magazyn)', description: 'Połączenie PV i magazynu energii' },
+            { code: 'BUDOWNICTWO', name: 'Budownictwo ogólne', description: 'Inne projekty budowlane' },
+        ];
+        if (projectTypeId) {
+            const existing = await this.prisma.project_types.findUnique({
+                where: { id: BigInt(projectTypeId) },
+            });
+            if (existing)
+                return existing.id;
+        }
+        let firstId = null;
+        for (const pt of defaultTypes) {
+            const row = await this.prisma.project_types.upsert({
+                where: { code: pt.code },
+                update: {},
+                create: pt,
+            });
+            if (!firstId)
+                firstId = row.id;
+        }
+        return firstId ?? 1n;
+    }
     async create(dto) {
+        if (dto.currency) {
+            await this.ensureCurrencyExists(dto.currency);
+        }
+        const projectTypeId = await this.ensureProjectTypeExists(dto.projectTypeId);
         const project = await this.prisma.projects.create({
             data: {
                 name: dto.name,
                 contractor_id: dto.contractorId,
-                project_type_id: BigInt(dto.projectTypeId),
+                project_type_id: projectTypeId,
                 country: dto.country,
                 city: dto.city,
                 status: dto.status ?? 'DRAFT',
@@ -99,6 +142,9 @@ let ProjectsService = class ProjectsService {
             include: {
                 contractors: { select: { id: true, name: true } },
                 project_types: { select: { id: true, name: true, code: true } },
+                users_projects_manager_idTousers: {
+                    select: { id: true, firstName: true, lastName: true },
+                },
             },
         });
         return sanitizeDecimals({
@@ -121,7 +167,13 @@ let ProjectsService = class ProjectsService {
                     code: project.project_types.code,
                 }
                 : null,
-            manager: null,
+            manager: project.users_projects_manager_idTousers
+                ? {
+                    id: project.users_projects_manager_idTousers.id,
+                    firstName: project.users_projects_manager_idTousers.firstName,
+                    lastName: project.users_projects_manager_idTousers.lastName,
+                }
+                : null,
             dokumentationUrl: project.dokumentation_url,
         });
     }
@@ -132,21 +184,26 @@ let ProjectsService = class ProjectsService {
         });
     }
     async listProjectTypes() {
+        await this.ensureProjectTypeExists(null);
         const rows = await this.prisma.project_types.findMany({
             select: { id: true, name: true, code: true },
-            orderBy: { name: 'asc' },
+            orderBy: { id: 'asc' },
         });
         return rows.map((r) => ({ id: Number(r.id), name: r.name, code: r.code }));
     }
     async update(id, dto) {
+        if (dto.currency) {
+            await this.ensureCurrencyExists(dto.currency);
+        }
+        const projectTypeId = dto.projectTypeId
+            ? await this.ensureProjectTypeExists(dto.projectTypeId)
+            : undefined;
         const project = await this.prisma.projects.update({
             where: { id },
             data: {
                 name: dto.name,
                 contractor_id: dto.contractorId,
-                project_type_id: dto.projectTypeId
-                    ? BigInt(dto.projectTypeId)
-                    : undefined,
+                project_type_id: projectTypeId,
                 country: dto.country,
                 city: dto.city,
                 status: dto.status,
@@ -170,6 +227,9 @@ let ProjectsService = class ProjectsService {
             include: {
                 contractors: { select: { id: true, name: true } },
                 project_types: { select: { id: true, name: true, code: true } },
+                users_projects_manager_idTousers: {
+                    select: { id: true, firstName: true, lastName: true },
+                },
             },
         });
         return sanitizeDecimals({
@@ -192,7 +252,13 @@ let ProjectsService = class ProjectsService {
                     code: project.project_types.code,
                 }
                 : null,
-            manager: null,
+            manager: project.users_projects_manager_idTousers
+                ? {
+                    id: project.users_projects_manager_idTousers.id,
+                    firstName: project.users_projects_manager_idTousers.firstName,
+                    lastName: project.users_projects_manager_idTousers.lastName,
+                }
+                : null,
             dokumentationUrl: project.dokumentation_url,
         });
     }

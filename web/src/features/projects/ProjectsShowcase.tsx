@@ -1,10 +1,9 @@
-import { AlertCircle, AlertTriangle, ArrowLeft, ArrowUpDown, CalendarRange, Coins, Edit, ExternalLink, FileText, Folder, Layers, ListFilter, Loader2, MapPin, Plus, Search, Trash2, UserRound, UserRoundCheck, X } from 'lucide-react'
-import { useMemo, useState, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { AlertCircle, Folder, Loader2, Plus } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import { DatePicker } from '@/components/ui/date-picker'
 import {
   createProject,
   deleteProject,
@@ -18,38 +17,26 @@ import {
   deleteMilestone,
 } from '@/features/projects/api'
 import { useProjectsQuery } from '@/features/projects/useProjectsQuery'
-import type {
-  CreateProjectPayload,
-  ProjectStatus,
-  ApiProject,
-  CreateMilestonePayload,
+import {
+  mapApiProjectToItem,
+  type ApiContractor,
+  type ApiProject,
+  type ApiProjectType,
+  type CreateMilestonePayload,
+  type CreateProjectPayload,
+  type ProjectStatus,
 } from '@/features/projects/types'
-import type { UserProfile } from '@/types/auth'
-import { fetchUsers } from '@/features/users/api'
 
-function statusTone(status: string): string {
-  switch (status) {
-    case 'done': return 'bg-emerald-500/15 text-emerald-500 border-emerald-500/40'
-    case 'blocked': return 'bg-rose-500/15 text-rose-500 border-rose-500/40'
-    case 'planning': return 'bg-amber-500/15 text-amber-500 border-amber-500/40'
-    default: return 'bg-sky-500/15 text-sky-500 border-sky-500/40'
-  }
-}
+import { apiGet } from '@/lib/api-client'
+import { ProjectsFilterBar, type ViewMode } from './components/ProjectsFilterBar'
+import { ProjectsTableView, type SortColumn, type SortDirection } from './components/ProjectsTableView'
+import { ProjectsGanttView } from './components/ProjectsGanttView'
+import { ProjectDetailsDrawer } from './components/ProjectDetailsDrawer'
 
-function statusLabel(status: string, t: (key: string) => string): string {
-  if (!status) return t('projects.status.unknown')
-  if (status === 'planning') return t('projects.status.planning')
-  if (status === 'active') return t('projects.status.active')
-  if (status === 'blocked') return t('projects.status.blocked')
-  if (status === 'done') return t('projects.status.done')
-  return status
-}
-
-function formatDate(value: string, noDeadlineLabel: string): string {
-  if (!value || value === 'No deadline' || value === 'Brak terminu') return noDeadlineLabel
-
+// Helper formatters
+function formatDate(value: string, fallback = ''): string {
+  if (!value || value === 'No deadline' || value === 'Brak terminu') return fallback
   const date = parseDateValue(value)
-
   if (!date) return value
 
   const day = String(date.getDate()).padStart(2, '0')
@@ -60,24 +47,14 @@ function formatDate(value: string, noDeadlineLabel: string): string {
 
 function parseDateValue(value: string): Date | null {
   if (!value || value === 'No deadline' || value === 'Brak terminu') return null
-
   const gvizMatch = value.match(/^Date\((\d{4}),(\d{1,2}),(\d{1,2})(?:,[^)]*)?\)$/)
-  const date = gvizMatch ? new Date(Number(gvizMatch[1]), Number(gvizMatch[2]), Number(gvizMatch[3])) : new Date(value)
+  const date = gvizMatch
+    ? new Date(Number(gvizMatch[1]), Number(gvizMatch[2]), Number(gvizMatch[3]))
+    : new Date(value)
 
   if (Number.isNaN(date.getTime())) return null
   return date
 }
-
-type SortColumn =
-  | 'project'
-  | 'status'
-  | 'manager'
-  | 'contractor'
-  | 'location'
-  | 'schedule'
-  | 'progress'
-
-type SortDirection = 'asc' | 'desc'
 
 function formatBudget(value: number, currencyCode = 'PLN'): string {
   return new Intl.NumberFormat('pl-PL', {
@@ -85,6 +62,37 @@ function formatBudget(value: number, currencyCode = 'PLN'): string {
     currency: currencyCode || 'PLN',
     maximumFractionDigits: 0,
   }).format(value)
+}
+
+function statusTone(status: string): string {
+  switch (status.toLowerCase()) {
+    case 'active':
+      return 'border-emerald-500/25 bg-emerald-500/10 text-emerald-500'
+    case 'planning':
+    case 'draft':
+      return 'border-amber-500/25 bg-amber-500/10 text-amber-500'
+    case 'blocked':
+    case 'on_hold':
+      return 'border-rose-500/25 bg-rose-500/10 text-rose-500'
+    case 'done':
+    case 'completed':
+      return 'border-blue-500/25 bg-blue-500/10 text-blue-500'
+    default:
+      return 'border-[var(--border)] bg-[var(--background)] text-[var(--muted-foreground)]'
+  }
+}
+
+function statusLabel(status: ProjectStatus, t: any): string {
+  switch (status) {
+    case 'active':
+      return t('projects.status.active')
+    case 'planning':
+      return t('projects.status.planning')
+    case 'blocked':
+      return t('projects.status.blocked')
+    case 'done':
+      return t('projects.status.done')
+  }
 }
 
 const emptyForm: CreateProjectPayload = {
@@ -104,6 +112,11 @@ const emptyForm: CreateProjectPayload = {
   dokumentationUrl: '',
 }
 
+type UserProfile = {
+  role?: string
+  roles?: string[]
+}
+
 type ProjectsShowcaseProps = {
   profile: UserProfile | null
 }
@@ -111,23 +124,34 @@ type ProjectsShowcaseProps = {
 export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const { data: projects = [], isLoading, isError, error } = useProjectsQuery()
 
-  // Raw API data for editing
-  const { data: projectsRaw = [] } = useQuery({
-    queryKey: ['projects', 'raw'],
-    queryFn: fetchProjects,
-    staleTime: 1000 * 60 * 2,
-    gcTime: 1000 * 60 * 10,
-  } as const) as { data: ApiProject[] }
+  // Queries
+  const { data: rawProjects = [], isLoading, isError, error } = useProjectsQuery()
+  const { data: contractors = [], isLoading: contractorsLoading } = useQuery({
+    queryKey: ['contractors'],
+    queryFn: fetchContractors,
+  })
+  const { data: projectTypes = [], isLoading: typesLoading } = useQuery({
+    queryKey: ['projectTypes'],
+    queryFn: fetchProjectTypes,
+  })
+  const { data: users = [] } = useQuery<Array<{ id: number; firstName: string; lastName: string; position?: string; roles?: string[] }>>({
+    queryKey: ['users'],
+    queryFn: () => apiGet<Array<{ id: number; firstName: string; lastName: string; position?: string; roles?: string[] }>>('/users'),
+  })
 
+  const projects = useMemo(() => rawProjects.map(mapApiProjectToItem), [rawProjects])
+
+  // Filters and sorting
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | ProjectStatus>('all')
   const [managerFilter, setManagerFilter] = useState('all')
   const [dateFilter, setDateFilter] = useState('')
   const [sortColumn, setSortColumn] = useState<SortColumn>('schedule')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
+  const [viewMode, setViewMode] = useState<ViewMode>('table')
 
+  // Drawer / Form state
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [formState, setFormState] = useState<CreateProjectPayload>(emptyForm)
   const [formError, setFormError] = useState('')
@@ -140,6 +164,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
 
   // Milestones State & Mutations
   const [activeTab, setActiveTab] = useState<'details' | 'milestones'>('details')
+  const [showMilestoneForm, setShowMilestoneForm] = useState(false)
   const [milestoneForm, setMilestoneForm] = useState<CreateMilestonePayload>({
     milestoneNo: '',
     description: '',
@@ -157,19 +182,55 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
     setFormError('')
     setActiveTab('details')
     setEditingMilestoneId(null)
+    setShowMilestoneForm(false)
     setMilestoneForm({ milestoneNo: '', description: '', percentage: 0, invoicingPercentage: undefined })
     setMilestoneError('')
     setIsEditing(false)
   }
 
-  // Queries
+  // Milestones Query
   const { data: milestones = [], isLoading: milestonesLoading } = useQuery({
     queryKey: ['milestones', editingProject?.id],
     queryFn: () => fetchMilestones(editingProject!.id),
     enabled: !!editingProject && activeTab === 'milestones',
   })
 
-  // Mutations
+  // Project Mutations
+  const createMutation = useMutation({
+    mutationFn: createProject,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['projects'] })
+      handleCloseDrawer()
+    },
+    onError: (err: Error) => {
+      setFormError(err.message)
+    },
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: Partial<CreateProjectPayload> }) =>
+      updateProject(id, payload),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['projects'] })
+      handleCloseDrawer()
+    },
+    onError: (err: Error) => {
+      setFormError(err.message)
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteProject,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['projects'] })
+      handleCloseDrawer()
+    },
+    onError: (err: Error) => {
+      setFormError(err.message)
+    },
+  })
+
+  // Milestone Mutations
   const createMilestoneMutation = useMutation({
     mutationFn: (payload: CreateMilestonePayload) => createMilestone(editingProject!.id, payload),
     onSuccess: async () => {
@@ -177,6 +238,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
       await queryClient.invalidateQueries({ queryKey: ['projects'] })
       setMilestoneForm({ milestoneNo: '', description: '', percentage: 0, invoicingPercentage: undefined })
       setMilestoneError('')
+      setShowMilestoneForm(false)
     },
     onError: (err: Error) => {
       setMilestoneError(err.message)
@@ -192,6 +254,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
       setMilestoneForm({ milestoneNo: '', description: '', percentage: 0, invoicingPercentage: undefined })
       setEditingMilestoneId(null)
       setMilestoneError('')
+      setShowMilestoneForm(false)
     },
     onError: (err: Error) => {
       setMilestoneError(err.message)
@@ -243,140 +306,100 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
   const normalizedRoles = (profile?.roles ?? []).map((entry) => entry.toLowerCase())
   const hasRole = (role: string) => normalizedRole === role || normalizedRoles.includes(role)
 
-  const canCreateProject = hasRole('admin') || hasRole('administrator') || hasRole('operational_director')
-  const canEditProject = canCreateProject || hasRole('project_manager')
-  const canDeleteProject = canCreateProject
-
-  const { data: contractors = [], isLoading: contractorsLoading } = useQuery({
-    queryKey: ['contractors'],
-    queryFn: fetchContractors,
-    enabled: drawerOpen,
-    staleTime: 1000 * 60 * 5,
-  })
-
-  const { data: projectTypes = [], isLoading: typesLoading } = useQuery({
-    queryKey: ['project-types'],
-    queryFn: fetchProjectTypes,
-    enabled: drawerOpen,
-    staleTime: 1000 * 60 * 5,
-  })
-
-  const { data: users = [] } = useQuery({
-    queryKey: ['users'],
-    queryFn: fetchUsers,
-    enabled: drawerOpen,
-    staleTime: 1000 * 60 * 5,
-  })
+  const canCreateProject = hasRole('admin') || hasRole('manager')
+  const canEditProject = hasRole('admin') || hasRole('manager')
+  const canDeleteProject = hasRole('admin')
 
   const managerList = useMemo(() => {
-    return users
-      .filter((u) => u.isActive && (u.roles.includes('project_manager') || u.id === formState.managerId))
-      .sort((a, b) => `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`))
-  }, [users, formState.managerId])
+    return users.filter((u) => {
+      if (formState.managerId && u.id === formState.managerId) return true
+      if (editingProject?.manager && u.id === editingProject.manager.id) return true
 
-  const createMutation = useMutation({
-    mutationFn: createProject,
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['projects'] })
-      handleCloseDrawer()
-    },
-    onError: (err) => {
-      setFormError(err instanceof Error ? err.message : t('projects.form.error.defaultMessage'))
-    },
-  })
+      const roles = (u.roles || []).map((r) => r.toLowerCase())
+      const pos = (u.position || '').toLowerCase()
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: Partial<CreateProjectPayload> }) =>
-      updateProject(id, payload),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['projects'] })
-      handleCloseDrawer()
-    },
-    onError: (err) => {
-      setFormError(err instanceof Error ? err.message : t('projects.form.error.defaultMessage'))
-    },
-  })
+      const isManagerRole = roles.some((r) =>
+        r === 'manager' ||
+        r === 'kierownik' ||
+        r === 'project_manager' ||
+        r.includes('manager') ||
+        r.includes('kierownik')
+      )
 
-  const deleteMutation = useMutation({
-    mutationFn: deleteProject,
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['projects'] })
-      handleCloseDrawer()
-    },
-    onError: (err) => {
-      setFormError(err instanceof Error ? err.message : t('projects.form.error.defaultMessage'))
-    },
-  })
+      const isManagerPosition = pos.includes('kierownik') || pos.includes('manager')
+
+      return isManagerRole || isManagerPosition
+    })
+  }, [users, formState.managerId, editingProject])
 
   const handleOpenDrawer = () => {
-    setFormState(emptyForm)
     setEditingProject(null)
+    setFormState(emptyForm)
     setFormError('')
-    setContractorSearch('')
-    setShowContractorList(false)
-    setDrawerOpen(true)
     setIsEditing(true)
+    setActiveTab('details')
+    setDrawerOpen(true)
   }
 
-  const handleEditProject = (id: string) => {
-    if (!canEditProject) return
+  const handleEditProject = (projectId: string) => {
+    const raw = rawProjects.find((p) => p.id === projectId)
+    if (!raw) return
 
-    const project = projectsRaw.find((p) => p.id === id)
-    if (!project) return
-
-    setEditingProject(project)
+    setEditingProject(raw)
     setFormState({
-      name: project.name,
-      contractorId: project.contractors?.id ?? '',
-      projectTypeId: project.project_types?.id ?? 0,
-      country: project.country,
-      city: project.city,
-      status: project.status as ProjectStatus,
-      currency: project.currency || 'PLN',
-      contractNetValue: project.contract_net_value ? Number(project.contract_net_value) : undefined,
-      startDateContract: project.start_date_contract || '',
-      endDateContract: project.end_date_contract || '',
-      startDateFact: project.start_date_fact || '',
-      endDateFact: project.end_date_fact || '',
-      managerId: project.manager?.id ?? undefined,
-      dokumentationUrl: project.dokumentationUrl ?? '',
+      name: raw.name,
+      contractorId: raw.contractors?.id ?? '',
+      projectTypeId: raw.project_types?.id ?? 0,
+      country: raw.country,
+      city: raw.city,
+      status: raw.status as ProjectStatus,
+      currency: raw.currency || 'PLN',
+      contractNetValue: raw.contract_net_value ? Number(raw.contract_net_value) : undefined,
+      startDateContract: raw.start_date_contract || '',
+      endDateContract: raw.end_date_contract || '',
+      startDateFact: raw.start_date_fact || '',
+      endDateFact: raw.end_date_fact || '',
+      managerId: raw.manager?.id ?? undefined,
+      dokumentationUrl: raw.dokumentationUrl ?? '',
     })
     setFormError('')
-    setContractorSearch('')
-    setShowContractorList(false)
-    setDrawerOpen(true)
     setIsEditing(false)
+    setActiveTab('details')
+    setDrawerOpen(true)
   }
 
   const handleDeleteProject = () => {
-    if (!canDeleteProject) return
+    if (!editingProject) return
     setShowDeleteConfirm(true)
   }
 
-  const handleCreate = () => {
-    if (!canCreateProject && !editingProject) return
-    if (!canEditProject && editingProject) return
-
-    setFormError('')
-    if (
-      !formState.name.trim()
-      || !formState.contractorId
-      || !formState.projectTypeId
-      || !formState.country.trim()
-      || !formState.city.trim()
-    ) {
-      setFormError(t('projects.form.validation.required'))
+  const handleCreate = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!formState.name.trim()) {
+      setFormError(t('projects.form.errors.nameRequired'))
+      return
+    }
+    if (!formState.contractorId) {
+      setFormError(t('projects.form.errors.contractorRequired'))
+      return
+    }
+    if (!formState.projectTypeId) {
+      setFormError(t('projects.form.errors.projectTypeRequired'))
+      return
+    }
+    if (!formState.country.trim() || !formState.city.trim()) {
+      setFormError(t('projects.form.errors.locationRequired'))
       return
     }
 
-    const payload = {
+    const payload: CreateProjectPayload = {
       name: formState.name.trim(),
       contractorId: formState.contractorId,
       projectTypeId: formState.projectTypeId,
       country: formState.country.trim(),
       city: formState.city.trim(),
-      status: formState.status,
-      currency: formState.currency || undefined,
+      status: formState.status || 'DRAFT',
+      currency: formState.currency || 'PLN',
       contractNetValue: formState.contractNetValue || undefined,
       startDateContract: formState.startDateContract || undefined,
       endDateContract: formState.endDateContract || undefined,
@@ -454,7 +477,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
     }
   }, [])
 
-  const managerOptions = useMemo(() => ['all', ...new Set(projects.map((project) => project.owner).filter(Boolean))], [projects],)
+  const managerOptions = useMemo(() => ['all', ...new Set(projects.map((project) => project.owner).filter(Boolean))], [projects])
 
   const filteredProjects = useMemo(() => {
     const query = searchQuery.trim().toLowerCase()
@@ -503,1114 +526,230 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
     return sorted
   }, [projects, searchQuery, statusFilter, managerFilter, dateFilter, sortColumn, sortDirection])
 
+  // Timeline bounds calculation for Gantt view
+  const timelineBounds = useMemo(() => {
+    let minTime = Number.POSITIVE_INFINITY
+    let maxTime = Number.NEGATIVE_INFINITY
+
+    filteredProjects.forEach((p) => {
+      const start = parseDateValue(p.startDate) ?? parseDateValue(p.startDateFact)
+      const end = parseDateValue(p.endDate) ?? parseDateValue(p.dueDate) ?? parseDateValue(p.endDateFact)
+
+      if (start) minTime = Math.min(minTime, start.getTime())
+      if (end) maxTime = Math.max(maxTime, end.getTime())
+    })
+
+    const now = new Date()
+    if (!Number.isFinite(minTime)) {
+      minTime = new Date(now.getFullYear(), 0, 1).getTime()
+    }
+    if (!Number.isFinite(maxTime)) {
+      maxTime = new Date(now.getFullYear(), 11, 31).getTime()
+    }
+
+    const minDate = new Date(minTime)
+    const maxDate = new Date(maxTime)
+
+    const startDate = new Date(minDate.getFullYear(), minDate.getMonth(), 1)
+    const endDate = new Date(maxDate.getFullYear(), maxDate.getMonth() + 1, 0)
+
+    const months: Array<{ label: string; year: number; month: number; days: number; startTs: number; endTs: number }> = []
+    const cur = new Date(startDate)
+
+    const monthNames = ['Sty', 'Lut', 'Mar', 'Kwi', 'Maj', 'Cze', 'Lip', 'Sie', 'Wrz', 'Paź', 'Lis', 'Gru']
+
+    while (cur <= endDate) {
+      const y = cur.getFullYear()
+      const m = cur.getMonth()
+      const monthStart = new Date(y, m, 1)
+      const monthEnd = new Date(y, m + 1, 0, 23, 59, 59)
+      const days = monthEnd.getDate()
+
+      months.push({
+        label: `${monthNames[m]} ${y}`,
+        year: y,
+        month: m,
+        days,
+        startTs: monthStart.getTime(),
+        endTs: monthEnd.getTime(),
+      })
+
+      cur.setMonth(cur.getMonth() + 1)
+    }
+
+    const totalDuration = Math.max(1, endDate.getTime() - startDate.getTime())
+
+    return {
+      startDate,
+      endDate,
+      totalDuration,
+      months,
+    }
+  }, [filteredProjects])
+
   if (drawerOpen) {
     return (
-      <>
-        <section className="flex flex-col gap-4 p-3 select-none w-full ">
-          {/* Header */}
-          <header className="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--border)] pb-5">
-            <div className="flex items-center gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                size="icon-sm"
-                onClick={handleCloseDrawer}
-                className="rounded-xl border-[var(--sidebar-primary)]/20 text-[var(--sidebar-primary)] hover:bg-[var(--sidebar-primary)]/10"
-                aria-label="Wróć do listy"
-              >
-                <ArrowLeft size={16} />
-              </Button>
-              <div>
-                <h1 className="text-xl font-bold tracking-tight md:text-2xl">
-                  {editingProject ? `Projekt: ${editingProject.name}` : t('projects.form.title')}
-                </h1>
-                <p className="text-xs text-[var(--muted-foreground)] md:text-sm">
-                  {editingProject ? 'Szczegóły i edycja projektu' : t('projects.form.subtitle')}
-                </p>
-              </div>
-            </div>
-          </header>
-
-          {/* Tab navigation */}
-          {editingProject && (
-            <div className="flex border-b border-[var(--border)] mb-4">
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('details')
-                  setMilestoneError('')
-                }}
-                className={`pb-2.5 px-4 text-sm font-semibold border-b-2 transition-all ${activeTab === 'details'
-                  ? 'border-[var(--sidebar-primary)] text-[var(--sidebar-primary)]'
-                  : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
-                  }`}
-              >
-                Ogólne
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('milestones')
-                  setMilestoneError('')
-                }}
-                className={`pb-2.5 px-4 text-sm font-semibold border-b-2 transition-all ${activeTab === 'milestones'
-                  ? 'border-[var(--sidebar-primary)] text-[var(--sidebar-primary)]'
-                  : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
-                  }`}
-              >
-                Kamienie milowe
-              </button>
-            </div>
-          )}
-
-          {/* Main Details and Milestones Form View */}
-          <div className="w-full">
-            {activeTab === 'details' ? (
-              !isEditing ? (
-                <div className="w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 md:p-6 shadow-sm space-y-6 animate-tab-content">
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                    {/* Left Column: Basic Info & Financials */}
-                    <div className="lg:col-span-7 space-y-4">
-                      {/* Basic Info Card */}
-                      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/35 p-4 space-y-4">
-                        <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] pb-2.5">
-                          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
-                            <FileText size={14} className="text-[var(--sidebar-primary)]" />
-                            <span>{t('projects.form.sections.basic')}</span>
-                          </div>
-                          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${statusTone(formState.status || '')}`}>
-                            {t(`projects.form.statuses.${formState.status}`)}
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-                          <div>
-                            <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--muted-foreground)]">{t('projects.form.labels.name')}</span>
-                            <p className="text-sm font-extrabold text-[var(--foreground)] mt-0.5">{formState.name}</p>
-                          </div>
-                          <div>
-                            <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--muted-foreground)]">{t('projects.form.labels.manager')}</span>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                              <UserRoundCheck size={14} className="text-[var(--muted-foreground)] shrink-0" />
-                              <p className="text-xs font-semibold text-[var(--foreground)]">{managerName}</p>
-                            </div>
-                          </div>
-                          <div className="sm:col-span-2">
-                            <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--muted-foreground)]">{t('projects.form.labels.dokumentationUrl')}</span>
-                            <div className="mt-1">
-                              {formState.dokumentationUrl ? (
-                                <a
-                                  href={formState.dokumentationUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-xs font-semibold text-[var(--sidebar-primary)] hover:bg-[var(--sidebar-primary)]/10 transition"
-                                >
-                                  <span>Otwórz dokumentację</span>
-                                  <ExternalLink size={12} />
-                                </a>
-                              ) : (
-                                <p className="text-xs font-medium text-[var(--muted-foreground)] italic">Brak linku do dokumentacji</p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Financials Card */}
-                      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/35 p-4 space-y-4">
-                        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)] border-b border-[var(--border)] pb-2.5">
-                          <Coins size={14} className="text-[var(--sidebar-primary)]" />
-                          <span>Szczegóły wartości i kontraktu</span>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-                          <div>
-                            <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--muted-foreground)]">{t('projects.form.labels.contractor')}</span>
-                            <p className="text-xs font-bold text-[var(--foreground)] mt-0.5">{selectedContractor?.name || '-'}</p>
-                          </div>
-                          <div>
-                            <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--muted-foreground)]">{t('projects.form.labels.projectType')}</span>
-                            <p className="text-xs font-semibold text-[var(--foreground)] mt-0.5">{selectedProjectType?.name || '-'}</p>
-                          </div>
-                          <div>
-                            <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--muted-foreground)]">{t('projects.form.labels.contractNetValue')}</span>
-                            <p className="text-sm font-extrabold text-[var(--foreground)] mt-0.5">
-                              {formState.contractNetValue ? formatBudget(formState.contractNetValue, formState.currency) : '-'}
-                            </p>
-                          </div>
-                          <div>
-                            <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--muted-foreground)]">{t('projects.form.labels.currency')}</span>
-                            <p className="text-xs font-semibold text-[var(--foreground)] mt-0.5">{formState.currency || '-'}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Right Column: Location & Timeline */}
-                    <div className="lg:col-span-5 space-y-4">
-                      {/* Location Card */}
-                      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/35 p-4 space-y-4">
-                        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)] border-b border-[var(--border)] pb-2.5">
-                          <MapPin size={14} className="text-[var(--sidebar-primary)]" />
-                          <span>{t('projects.form.sections.location')}</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4 pt-1">
-                          <div>
-                            <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--muted-foreground)]">{t('projects.form.labels.country')}</span>
-                            <p className="text-xs font-semibold text-[var(--foreground)] mt-0.5">{formState.country || '-'}</p>
-                          </div>
-                          <div>
-                            <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--muted-foreground)]">{t('projects.form.labels.city')}</span>
-                            <p className="text-xs font-semibold text-[var(--foreground)] mt-0.5">{formState.city || '-'}</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Timeline & Dates Card */}
-                      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/35 p-4 space-y-4">
-                        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)] border-b border-[var(--border)] pb-2.5">
-                          <CalendarRange size={14} className="text-[var(--sidebar-primary)]" />
-                          <span>Okresy i terminy realizacji</span>
-                        </div>
-                        <div className="space-y-4 pt-1">
-                          {/* Planned Dates */}
-                          <div className="space-y-2 border-l-2 border-[var(--sidebar-primary)]/45 pl-2.5">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]/80 block">
-                              Terminy planowane (Harmonogram)
-                            </span>
-                            <div className="grid grid-cols-2 gap-2">
-                              <div>
-                                <span className="text-[9px] uppercase font-bold tracking-wider text-[var(--muted-foreground)]">{t('projects.form.labels.startDate')}</span>
-                                <p className="text-xs font-semibold text-[var(--foreground)] mt-0.5">{formatDate(formState.startDateContract || '', '-')}</p>
-                              </div>
-                              <div>
-                                <span className="text-[9px] uppercase font-bold tracking-wider text-[var(--muted-foreground)]">{t('projects.form.labels.endDate')}</span>
-                                <p className="text-xs font-semibold text-[var(--foreground)] mt-0.5">{formatDate(formState.endDateContract || '', '-')}</p>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Actual Dates */}
-                          <div className="space-y-2 border-l-2 border-emerald-500/45 pl-2.5">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]/80 block">
-                              Terminy rzeczywiste (Faktyczne)
-                            </span>
-                            <div className="grid grid-cols-2 gap-2">
-                              <div>
-                                <span className="text-[9px] uppercase font-bold tracking-wider text-[var(--muted-foreground)]">Faktyczny start</span>
-                                <p className="text-xs font-semibold text-emerald-500 mt-0.5">{formatDate(formState.startDateFact || '', '-')}</p>
-                              </div>
-                              <div>
-                                <span className="text-[9px] uppercase font-bold tracking-wider text-[var(--muted-foreground)]">Faktyczny koniec</span>
-                                <p className="text-xs font-semibold text-emerald-500 mt-0.5">{formatDate(formState.endDateFact || '', '-')}</p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Action Buttons Footer (Read-only) */}
-                  <div className="border-t border-[var(--border)] pt-5 flex items-center justify-between gap-4">
-                    <div />
-                    <div className="flex items-center gap-3">
-                      <Button type="button" variant="outline" onClick={handleCloseDrawer} className="rounded-xl">
-                        Zamknij
-                      </Button>
-                      {canEditProject && (
-                        <Button
-                          type="button"
-                          onClick={() => setIsEditing(true)}
-                          className="rounded-xl bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] hover:bg-[var(--sidebar-primary)]/90 shadow-[0_4px_14px_color-mix(in_oklch,var(--sidebar-primary),transparent_65%)]"
-                        >
-                          <Edit size={14} className="mr-1.5" />
-                          Edytuj
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 md:p-6 shadow-sm space-y-6 animate-tab-content">
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                    {/* Left Column: Basic Info & Timeline */}
-                    <div className="lg:col-span-6 space-y-4">
-                      {/* Basic Info Card */}
-                      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/35 p-4 space-y-4">
-                        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)] border-b border-[var(--border)] pb-2.5">
-                          <FileText size={14} className="text-[var(--sidebar-primary)]" />
-                          <span>{t('projects.form.sections.basic')}</span>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-                          <label className="block sm:col-span-2 space-y-1">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
-                              {t('projects.form.labels.name')} <span className="text-rose-500">*</span>
-                            </span>
-                            <input
-                              value={formState.name}
-                              onChange={(e) => setField('name', e.target.value)}
-                              placeholder={t('projects.form.placeholders.name')}
-                              className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 text-xs outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20 transition-all"
-                            />
-                          </label>
-                          <label className="block space-y-1">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">{t('projects.form.labels.status')}</span>
-                            <select
-                              value={formState.status}
-                              onChange={(e) => setField('status', e.target.value)}
-                              className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 text-xs outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20 transition-all cursor-pointer"
-                            >
-                              <option value="DRAFT">{t('projects.form.statuses.DRAFT')}</option>
-                              <option value="ACTIVE">{t('projects.form.statuses.ACTIVE')}</option>
-                              <option value="ON_HOLD">{t('projects.form.statuses.ON_HOLD')}</option>
-                              <option value="COMPLETED">{t('projects.form.statuses.COMPLETED')}</option>
-                              <option value="CANCELLED">{t('projects.form.statuses.CANCELLED')}</option>
-                            </select>
-                          </label>
-                          <label className="block space-y-1">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">{t('projects.form.labels.manager')}</span>
-                            <select
-                              value={formState.managerId || ''}
-                              onChange={(e) => setField('managerId', e.target.value ? Number(e.target.value) : undefined)}
-                              className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 text-xs outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20 transition-all cursor-pointer"
-                            >
-                              <option value="">{t('projects.form.placeholders.selectManager')}</option>
-                              {managerList.map((m) => (
-                                <option key={m.id} value={m.id}>
-                                  {m.lastName} {m.firstName}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                          <label className="block sm:col-span-2 space-y-1">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">{t('projects.form.labels.dokumentationUrl')}</span>
-                            <input
-                              value={formState.dokumentationUrl || ''}
-                              onChange={(e) => setField('dokumentationUrl', e.target.value)}
-                              placeholder={t('projects.form.placeholders.dokumentationUrl')}
-                              className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 text-xs outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20 transition-all"
-                            />
-                          </label>
-                        </div>
-                      </div>
-
-                      {/* Timeline & Schedule Card */}
-                      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/35 p-4 space-y-4">
-                        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)] border-b border-[var(--border)] pb-2.5">
-                          <CalendarRange size={14} className="text-[var(--sidebar-primary)]" />
-                          <span>Terminy i harmonogram realizacji</span>
-                        </div>
-                        <div className="space-y-4 pt-1">
-                          {/* Planned Dates */}
-                          <div className="space-y-2 border-l-2 border-[var(--sidebar-primary)]/45 pl-2.5">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]/80 block">
-                              Terminy planowane (Harmonogram)
-                            </span>
-                            <div className="grid grid-cols-2 gap-3">
-                              <div className="space-y-1">
-                                <span className="text-[9px] uppercase font-bold tracking-wider text-[var(--muted-foreground)]">{t('projects.form.labels.startDate')}</span>
-                                <DatePicker
-                                  value={formState.startDateContract ?? ''}
-                                  onChange={(v) => setField('startDateContract', v)}
-                                  placeholder="dd.mm.rrrr"
-                                />
-                              </div>
-                              <div className="space-y-1">
-                                <span className="text-[9px] uppercase font-bold tracking-wider text-[var(--muted-foreground)]">{t('projects.form.labels.endDate')}</span>
-                                <DatePicker
-                                  value={formState.endDateContract ?? ''}
-                                  onChange={(v) => setField('endDateContract', v)}
-                                  min={formState.startDateContract || undefined}
-                                  placeholder="dd.mm.rrrr"
-                                />
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Actual Dates */}
-                          <div className="space-y-2 border-l-2 border-emerald-500/45 pl-2.5">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]/80 block">
-                              Terminy rzeczywiste (Faktyczne)
-                            </span>
-                            <div className="grid grid-cols-2 gap-3">
-                              <div className="space-y-1">
-                                <span className="text-[9px] uppercase font-bold tracking-wider text-[var(--muted-foreground)]">Faktyczny start</span>
-                                <DatePicker
-                                  value={formState.startDateFact ?? ''}
-                                  onChange={(v) => setField('startDateFact', v)}
-                                  placeholder="dd.mm.rrrr"
-                                />
-                              </div>
-                              <div className="space-y-1">
-                                <span className="text-[9px] uppercase font-bold tracking-wider text-[var(--muted-foreground)]">Faktyczny koniec</span>
-                                <DatePicker
-                                  value={formState.endDateFact ?? ''}
-                                  onChange={(v) => setField('endDateFact', v)}
-                                  min={formState.startDateFact || undefined}
-                                  placeholder="dd.mm.rrrr"
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Right Column: Contract, Location, Financials */}
-                    <div className="lg:col-span-6 space-y-4">
-                      {/* Contract Details Card */}
-                      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/35 p-4 space-y-4">
-                        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)] border-b border-[var(--border)] pb-2.5">
-                          <Coins size={14} className="text-[var(--sidebar-primary)]" />
-                          <span>Szczegóły wartości i kontraktu</span>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-                          <label className="block space-y-1">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
-                              {t('projects.form.labels.contractor')} <span className="text-rose-500">*</span>
-                            </span>
-                            <div className="relative" ref={contractorRef}>
-                              <input
-                                value={showContractorList ? contractorSearch : selectedContractor?.name ?? ''}
-                                onChange={(e) => {
-                                  setContractorSearch(e.target.value)
-                                  setShowContractorList(true)
-                                  if (e.target.value === '') {
-                                    setField('contractorId', '')
-                                  }
-                                }}
-                                onFocus={() => setShowContractorList(true)}
-                                placeholder={contractorsLoading ? t('projects.form.placeholders.loading') : t('projects.form.placeholders.selectContractor')}
-                                disabled={contractorsLoading}
-                                className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 text-xs outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20 disabled:opacity-50 transition-all"
-                              />
-                              {showContractorList && !contractorsLoading && filteredContractors.length > 0 ? (
-                                <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-48 overflow-y-auto custom-scrollbar rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-lg">
-                                  {filteredContractors.map((c) => (
-                                    <button
-                                      key={c.id}
-                                      type="button"
-                                      onClick={() => handleSelectContractor(c.id)}
-                                      className="w-full px-3 py-2 text-left text-xs transition hover:bg-[var(--sidebar-primary)]/10"
-                                    >
-                                      {c.name}
-                                    </button>
-                                  ))}
-                                </div>
-                              ) : null}
-                            </div>
-                          </label>
-
-                          <label className="block space-y-1">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
-                              {t('projects.form.labels.projectType')} <span className="text-rose-500">*</span>
-                            </span>
-                            <select
-                              value={formState.projectTypeId || ''}
-                              onChange={(e) => setField('projectTypeId', Number(e.target.value))}
-                              disabled={typesLoading}
-                              className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 text-xs outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20 disabled:opacity-50 transition-all cursor-pointer"
-                            >
-                              <option value="">{typesLoading ? t('projects.form.placeholders.loading') : t('projects.form.placeholders.selectProjectType')}</option>
-                              {projectTypes.map((pt) => (
-                                <option key={pt.id} value={pt.id}>{pt.name}</option>
-                              ))}
-                            </select>
-                          </label>
-
-                          <label className="block space-y-1">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">{t('projects.form.labels.currency')}</span>
-                            <select
-                              value={formState.currency ?? 'PLN'}
-                              onChange={(e) => setField('currency', e.target.value)}
-                              className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 text-xs outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20 transition-all cursor-pointer"
-                            >
-                              <option value="PLN">PLN</option>
-                              <option value="EUR">EUR</option>
-                              <option value="USD">USD</option>
-                            </select>
-                          </label>
-
-                          <label className="block space-y-1">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">{t('projects.form.labels.contractNetValue')}</span>
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={formState.contractNetValue ?? ''}
-                              onChange={(e) => setField('contractNetValue', e.target.value ? Number(e.target.value) : undefined)}
-                              placeholder={t('projects.form.placeholders.contractNetValue')}
-                              className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 text-xs outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20 transition-all"
-                            />
-                          </label>
-                        </div>
-                      </div>
-
-                      {/* Location Card */}
-                      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/35 p-4 space-y-4">
-                        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)] border-b border-[var(--border)] pb-2.5">
-                          <MapPin size={14} className="text-[var(--sidebar-primary)]" />
-                          <span>{t('projects.form.sections.location')}</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4 pt-1">
-                          <label className="block space-y-1">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
-                              {t('projects.form.labels.country')} <span className="text-rose-500">*</span>
-                            </span>
-                            <input
-                              value={formState.country}
-                              onChange={(e) => setField('country', e.target.value)}
-                              placeholder={t('projects.form.placeholders.country')}
-                              className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 text-xs outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20 transition-all"
-                            />
-                          </label>
-                          <label className="block space-y-1">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
-                              {t('projects.form.labels.city')} <span className="text-rose-500">*</span>
-                            </span>
-                            <input
-                              value={formState.city}
-                              onChange={(e) => setField('city', e.target.value)}
-                              placeholder={t('projects.form.placeholders.city')}
-                              className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 text-xs outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20 transition-all"
-                            />
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {formError && (
-                    <p className="rounded-xl border border-rose-500/35 bg-rose-500/10 px-3 py-2 text-sm text-rose-500">
-                      {formError}
-                    </p>
-                  )}
-
-                  {/* Action Buttons Footer (Edit Mode) */}
-                  <div className="border-t border-[var(--border)] pt-5 flex items-center justify-between gap-4">
-                    {editingProject && canDeleteProject ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleDeleteProject}
-                        disabled={deleteMutation.isPending}
-                        className="border-rose-500/50 text-rose-500 hover:bg-rose-500/10 rounded-xl"
-                      >
-                        {deleteMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : null}
-                        <Trash2 size={14} />
-                        {deleteMutation.isPending ? 'Usuwanie...' : 'Usuń projekt'}
-                      </Button>
-                    ) : (
-                      <div />
-                    )}
-                    <div className="flex items-center gap-3">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          if (editingProject) {
-                            setFormState({
-                              name: editingProject.name,
-                              contractorId: editingProject.contractors?.id ?? '',
-                              projectTypeId: editingProject.project_types?.id ?? 0,
-                              country: editingProject.country,
-                              city: editingProject.city,
-                              status: editingProject.status as ProjectStatus,
-                              currency: editingProject.currency || 'PLN',
-                              contractNetValue: editingProject.contract_net_value ? Number(editingProject.contract_net_value) : undefined,
-                              startDateContract: editingProject.start_date_contract || '',
-                              endDateContract: editingProject.end_date_contract || '',
-                              startDateFact: editingProject.start_date_fact || '',
-                              endDateFact: editingProject.end_date_fact || '',
-                              managerId: editingProject.manager?.id ?? undefined,
-                              dokumentationUrl: editingProject.dokumentationUrl ?? '',
-                            })
-                            setFormError('')
-                            setIsEditing(false)
-                          } else {
-                            handleCloseDrawer()
-                          }
-                        }}
-                        className="rounded-xl"
-                      >
-                        {t('projects.form.actions.cancel')}
-                      </Button>
-                      <Button
-                        type="button"
-                        onClick={handleCreate}
-                        disabled={createMutation.isPending || updateMutation.isPending}
-                        className="rounded-xl bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] hover:bg-[var(--sidebar-primary)]/90 shadow-[0_4px_14px_color-mix(in_oklch,var(--sidebar-primary),transparent_65%)]"
-                      >
-                        {createMutation.isPending || updateMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : null}
-                        {createMutation.isPending || updateMutation.isPending ? t('projects.form.actions.saving') : t('projects.form.actions.save')}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )) : (
-              <div className="w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 md:p-6 shadow-sm space-y-6 animate-tab-content">
-                {milestoneError && (
-                  <div className="rounded-xl border border-rose-500/35 bg-rose-500/10 px-3 py-2 text-xs text-rose-500">
-                    {milestoneError}
-                  </div>
-                )}
-
-                {milestonesLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="animate-spin text-[var(--sidebar-primary)]" size={24} />
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                    {/* Left Column (7/12): Milestones List */}
-                    <div className="lg:col-span-7 space-y-4">
-                      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)] border-b border-[var(--border)] pb-2">
-                        <Layers size={14} className="text-[var(--sidebar-primary)]" />
-                        <span>Lista etapów (Kamienie milowe)</span>
-                      </div>
-
-                      <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1 custom-scrollbar">
-                        {milestones.map((m, index) => (
-                          <div
-                            key={m.id}
-                            style={{ animationDelay: `${index * 30}ms` }}
-                            className="rounded-xl border border-[var(--border)] bg-[var(--background)]/35 p-3.5 relative group animate-row-fade-in hover:shadow-sm hover:border-[var(--sidebar-primary)]/20 transition-all duration-200"
-                          >
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="space-y-1">
-                                <span className="inline-flex items-center rounded-md bg-[var(--sidebar-primary)]/10 px-2 py-0.5 text-[10px] font-bold text-[var(--sidebar-primary)]">
-                                  {m.milestoneNo}
-                                </span>
-                                <h4 className="text-xs font-bold text-[var(--foreground)]">{m.description}</h4>
-                                <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-[var(--muted-foreground)] pt-0.5">
-                                  <span>
-                                    Wartość: <strong className="text-[var(--foreground)]">{m.percentage}%</strong> ({formatBudget(m.netAmount, editingProject?.currency || 'PLN')})
-                                  </span>
-                                  {m.invoicingPercentage && (
-                                    <span>
-                                      Fakturowanie: <strong className="text-[var(--foreground)]">co {m.invoicingPercentage}%</strong>
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-1.5 transition-opacity duration-150">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setEditingMilestoneId(m.id)
-                                    setMilestoneForm({
-                                      milestoneNo: m.milestoneNo,
-                                      description: m.description,
-                                      percentage: m.percentage,
-                                      invoicingPercentage: m.invoicingPercentage ?? undefined,
-                                    })
-                                  }}
-                                  className="rounded-lg p-1.5 text-[var(--sidebar-primary)] hover:bg-[var(--sidebar-primary)]/10 transition"
-                                  title="Edytuj"
-                                >
-                                  <Edit size={13} />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => deleteMilestoneMutation.mutate(m.id)}
-                                  disabled={deleteMilestoneMutation.isPending}
-                                  className="rounded-lg p-1.5 text-rose-500 hover:bg-rose-500/10 transition"
-                                  title="Usuń"
-                                >
-                                  {deleteMilestoneMutation.isPending ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-
-                        {milestones.length === 0 && (
-                          <div className="text-center py-8 text-xs text-[var(--muted-foreground)] border border-dashed border-[var(--border)] rounded-xl bg-[var(--background)]/20">
-                            Brak zdefiniowanych kamieni milowych dla tego projektu.
-                          </div>
-                        )}
-                      </div>
-
-                      {milestones.length > 0 && (
-                        <div className="rounded-xl bg-[var(--background)]/35 p-4 space-y-3 border border-[var(--border)] shadow-sm">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="font-semibold text-[var(--muted-foreground)]">Suma udziałów etapów:</span>
-                            <span
-                              className={`font-bold px-2.5 py-0.5 rounded-full text-[10px] ${milestones.reduce((s, m) => s + m.percentage, 0) === 100
-                                ? 'text-emerald-500 bg-emerald-500/10'
-                                : milestones.reduce((s, m) => s + m.percentage, 0) > 100
-                                  ? 'text-rose-500 bg-rose-500/10'
-                                  : 'text-amber-500 bg-amber-500/10'
-                                }`}
-                            >
-                              {milestones.reduce((s, m) => s + m.percentage, 0).toFixed(1)}% / 100%
-                            </span>
-                          </div>
-                          <div className="relative h-2 w-full bg-[var(--muted)]/50 rounded-full overflow-hidden">
-                            <div
-                              className={`h-full rounded-full transition-all duration-300 ${milestones.reduce((s, m) => s + m.percentage, 0) === 100
-                                ? 'bg-emerald-500'
-                                : milestones.reduce((s, m) => s + m.percentage, 0) > 100
-                                  ? 'bg-rose-500'
-                                  : 'bg-amber-500'
-                                }`}
-                              style={{ width: `${Math.min(milestones.reduce((s, m) => s + m.percentage, 0), 100)}%` }}
-                            />
-                          </div>
-                          <div className="flex items-center justify-between text-[11px] text-[var(--muted-foreground)] pt-0.5">
-                            <span>Łączna wartość netto:</span>
-                            <span className="font-bold text-[var(--foreground)]">
-                              {formatBudget(
-                                milestones.reduce((s, m) => s + m.netAmount, 0),
-                                editingProject?.currency || 'PLN'
-                              )}
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Right Column (5/12): Add/Edit Form */}
-                    <div className="lg:col-span-5 border-l border-[var(--border)] pl-0 lg:pl-6 space-y-4">
-                      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/35 p-4 space-y-4">
-                        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)] border-b border-[var(--border)] pb-2.5">
-                          <span>{editingMilestoneId ? 'Edytuj kamień milowy' : 'Dodaj kamień milowy'}</span>
-                        </div>
-
-                        <form onSubmit={handleMilestoneSubmit} className="space-y-4">
-                          <div className="grid grid-cols-3 gap-3">
-                            <label className="block col-span-1 space-y-1">
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
-                                Symbol <span className="text-rose-500">*</span>
-                              </span>
-                              <input
-                                value={milestoneForm.milestoneNo}
-                                onChange={(e) => setMilestoneForm((f) => ({ ...f, milestoneNo: e.target.value }))}
-                                placeholder="np. KM1"
-                                className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 text-xs outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20 transition-all"
-                              />
-                            </label>
-                            <label className="block col-span-2 space-y-1">
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
-                                Nazwa etapu <span className="text-rose-500">*</span>
-                              </span>
-                              <input
-                                value={milestoneForm.description}
-                                onChange={(e) => setMilestoneForm((f) => ({ ...f, description: e.target.value }))}
-                                placeholder="np. Montaż konstrukcji"
-                                className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 text-xs outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20 transition-all"
-                              />
-                            </label>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-3">
-                            <label className="block space-y-1">
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
-                                Udział (%) <span className="text-rose-500">*</span>
-                              </span>
-                              <input
-                                type="number"
-                                min="0.01"
-                                max="100"
-                                step="0.01"
-                                value={milestoneForm.percentage || ''}
-                                onChange={(e) =>
-                                  setMilestoneForm((f) => ({ ...f, percentage: e.target.value ? Number(e.target.value) : 0 }))
-                                }
-                                placeholder="np. 20"
-                                className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 text-xs outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20 transition-all"
-                              />
-                            </label>
-
-                            <label className="block space-y-1">
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">Fakturowanie (%)</span>
-                              <input
-                                type="number"
-                                min="0.01"
-                                max="100"
-                                step="0.01"
-                                value={milestoneForm.invoicingPercentage || ''}
-                                onChange={(e) =>
-                                  setMilestoneForm((f) =>
-                                  ({
-                                    ...f,
-                                    invoicingPercentage: e.target.value ? Number(e.target.value) : undefined,
-                                  })
-                                  )
-                                }
-                                placeholder="Domyślnie jak wyżej"
-                                className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 text-xs outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20 transition-all"
-                              />
-                            </label>
-                          </div>
-
-                          <div className="flex items-center justify-end gap-1.5 pt-2">
-                            {editingMilestoneId && (
-                              <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => {
-                                  setEditingMilestoneId(null)
-                                  setMilestoneForm({ milestoneNo: '', description: '', percentage: 0 })
-                                  setMilestoneError('')
-                                }}
-                                className="h-9 text-xs px-4 rounded-xl"
-                              >
-                                Anuluj
-                              </Button>
-                            )}
-                            <Button
-                              type="submit"
-                              disabled={createMilestoneMutation.isPending || updateMilestoneMutation.isPending}
-                              className="h-9 text-xs px-4 rounded-xl bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] hover:bg-[var(--sidebar-primary)]/90 shadow-[0_4px_14px_color-mix(in_oklch,var(--sidebar-primary),transparent_65%)]"
-                            >
-                              {createMilestoneMutation.isPending || updateMilestoneMutation.isPending ? <Loader2 size={12} className="animate-spin mr-1.5" /> : null}
-                              {editingMilestoneId ? 'Zapisz' : 'Dodaj'}
-                            </Button>
-                          </div>
-                        </form>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Back Footer */}
-                <div className="border-t border-[var(--border)] pt-5 flex items-center justify-end">
-                  <Button type="button" variant="outline" onClick={handleCloseDrawer} className="rounded-xl">
-                    Zamknij
-                  </Button>
-                </div>
-              </div>
-            )
-            }
-          </div>
-        </section>
-
-        {showDeleteConfirm && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/45 p-3 backdrop-blur-sm animate-fade-in">
-            <div className="w-full max-w-sm rounded-xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-2xl motion-safe:animate-[auth-rise_320ms_ease-out]">
-              <div className="flex items-start gap-3">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-rose-500/10 text-rose-500">
-                  <AlertTriangle size={20} />
-                </div>
-                <div className="space-y-1">
-                  <h4 className="text-sm font-bold text-[var(--foreground)]">Usuń projekt</h4>
-                  <p className="text-xs text-[var(--muted-foreground)] leading-relaxed">
-                    Czy na pewno chcesz usunąć ten projekt? Tej operacji nie można cofnąć.
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-5 flex justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowDeleteConfirm(false)}
-                  disabled={deleteMutation.isPending}
-                >
-                  Anuluj
-                </Button>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  disabled={deleteMutation.isPending}
-                  onClick={() => {
-                    if (editingProject) {
-                      deleteMutation.mutate(editingProject.id, {
-                        onSettled: () => {
-                          setShowDeleteConfirm(false)
-                        }
-                      })
-                    }
-                  }}
-                >
-                  {deleteMutation.isPending ? <Loader2 size={14} className="animate-spin mr-1.5" /> : null}
-                  Usuń
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-      </>
+      <ProjectDetailsDrawer
+        editingProject={editingProject}
+        isEditing={isEditing}
+        setIsEditing={setIsEditing}
+        formState={formState}
+        setField={setField}
+        setFormState={setFormState}
+        formError={formError}
+        setFormError={setFormError}
+        canEditProject={canEditProject}
+        canDeleteProject={canDeleteProject}
+        handleCloseDrawer={handleCloseDrawer}
+        handleCreate={handleCreate}
+        handleDeleteProject={handleDeleteProject}
+        createMutation={createMutation}
+        updateMutation={updateMutation}
+        deleteMutation={deleteMutation}
+        contractors={contractors}
+        contractorsLoading={contractorsLoading}
+        projectTypes={projectTypes}
+        typesLoading={typesLoading}
+        users={users}
+        managerList={managerList}
+        managerName={managerName}
+        selectedContractor={selectedContractor}
+        selectedProjectType={selectedProjectType}
+        filteredContractors={filteredContractors}
+        contractorSearch={contractorSearch}
+        setContractorSearch={setContractorSearch}
+        showContractorList={showContractorList}
+        setShowContractorList={setShowContractorList}
+        handleSelectContractor={handleSelectContractor}
+        contractorRef={contractorRef}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        milestones={milestones}
+        milestonesLoading={milestonesLoading}
+        showMilestoneForm={showMilestoneForm}
+        setShowMilestoneForm={setShowMilestoneForm}
+        milestoneForm={milestoneForm}
+        setMilestoneForm={setMilestoneForm}
+        editingMilestoneId={editingMilestoneId}
+        setEditingMilestoneId={setEditingMilestoneId}
+        milestoneError={milestoneError}
+        setMilestoneError={setMilestoneError}
+        handleMilestoneSubmit={handleMilestoneSubmit}
+        createMilestoneMutation={createMilestoneMutation}
+        updateMilestoneMutation={updateMilestoneMutation}
+        deleteMilestoneMutation={deleteMilestoneMutation}
+        formatDate={formatDate}
+        formatBudget={formatBudget}
+        statusTone={statusTone}
+        showDeleteConfirm={showDeleteConfirm}
+        setShowDeleteConfirm={setShowDeleteConfirm}
+      />
     )
   }
 
   return (
-    <>
-      <section className="grid flex-1 items-start gap-2 p-3 md:gap-4 xl:grid-cols-12 animate-page-enter">
-        {isLoading ? (
-          <article className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 xl:col-span-12">
-            <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
-              <Loader2 size={16} className="animate-spin" />
-              {t('projects.states.loading')}
-            </div>
-          </article>
-        ) : null}
-
-        {isError ? (
-          <article className="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-4 xl:col-span-12">
-            <div className="flex items-start gap-3">
-              <AlertCircle size={18} className="mt-0.5 text-rose-500" />
-              <div>
-                <p className="font-medium text-rose-500">{t('projects.states.errorTitle')}</p>
-                <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-                  {error instanceof Error ? error.message : t('projects.states.errorHint')}
-                </p>
-              </div>
-            </div>
-          </article>
-        ) : null}
-
-        {!isLoading && !isError && projects.length === 0 ? (
-          <article className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)] p-10 xl:col-span-12">
-            <div className="flex flex-col items-center gap-3 text-center">
-              <div className="flex size-12 items-center justify-center rounded-full bg-[var(--sidebar-primary)]/10 text-[var(--sidebar-primary)]">
-                <Folder size={22} />
-              </div>
-              <p className="font-medium">{t('projects.states.empty')}</p>
-              <p className="text-sm text-[var(--muted-foreground)]">{t('projects.states.emptyHint')}</p>
-              {canCreateProject ? (
-                <Button
-                  type="button"
-                  onClick={handleOpenDrawer}
-                  className="mt-2 bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] hover:bg-[var(--sidebar-primary)]/90"
-                >
-                  <Plus size={16} />
-                  {t('projects.addButton')}
-                </Button>
-              ) : null}
-            </div>
-          </article>
-        ) : null}
-
-        {!isLoading && !isError && projects.length > 0 ? (
-          <div className="xl:col-span-12 flex flex-col gap-2">
-            {/* ─── Filter Panel ─── */}
-            <div>
-              <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 shadow-sm">
-
-                {/* Search — grows to fill available space */}
-                <label className="relative min-w-[160px] flex-1">
-                  <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)]" />
-                  <input
-                    value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)}
-                    placeholder={t('projects.filters.searchPlaceholder')}
-                    aria-label={t('projects.filters.searchAria')}
-                    className="h-8 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] pl-8 pr-3 text-sm outline-none transition focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20"
-                  />
-                </label>
-
-                {/* Status */}
-                <label className="relative shrink-0">
-                  <ListFilter size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)]" />
-                  <select
-                    value={statusFilter}
-                    onChange={(event) => setStatusFilter(event.target.value as 'all' | ProjectStatus)}
-                    aria-label={t('projects.filters.statusAria')}
-                    className="h-8 w-[148px] appearance-none rounded-xl border border-[var(--border)] bg-[var(--background)] pl-8 pr-6 text-sm outline-none transition focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20"
-                  >
-                    <option value="all">{t('projects.filters.allStatuses')}</option>
-                    <option value="active">{t('projects.status.active')}</option>
-                    <option value="planning">{t('projects.status.planning')}</option>
-                    <option value="blocked">{t('projects.status.blocked')}</option>
-                    <option value="done">{t('projects.status.done')}</option>
-                  </select>
-                </label>
-
-                {/* Manager */}
-                <label className="relative shrink-0">
-                  <UserRound size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)]" />
-                  <select
-                    value={managerFilter}
-                    onChange={(event) => setManagerFilter(event.target.value)}
-                    aria-label={t('projects.filters.managerAria')}
-                    className="h-8 w-[148px] appearance-none rounded-xl border border-[var(--border)] bg-[var(--background)] pl-8 pr-6 text-sm outline-none transition focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20"
-                  >
-                    {managerOptions.map((manager) => (
-                      <option key={manager} value={manager}>
-                        {manager === 'all' ? t('projects.filters.allManagers') : manager}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                {/* Single Date filter */}
-                <div className="flex shrink-0 items-center gap-1.5">
-                  <DatePicker
-                    value={dateFilter}
-                    onChange={setDateFilter}
-                    title={t('projects.filters.dateTitle')}
-                    ariaLabel={t('projects.filters.dateAria')}
-                    placeholder={t('projects.filters.datePlaceholder')}
-                    size="sm"
-                    className="w-[200px]"
-                  />
-                </div>
-
-                {/* Reset — themed button, always visible, disabled if no filters are active */}
-                <Button
-                  type="button"
-                  disabled={!(searchQuery || statusFilter !== 'all' || managerFilter !== 'all' || dateFilter)}
-                  onClick={() => {
-                    setSearchQuery('')
-                    setStatusFilter('all')
-                    setManagerFilter('all')
-                    setDateFilter('')
-                  }}
-                  variant="outline"
-                  className="ml-auto shrink-0 gap-1.5 rounded-xl border-[var(--sidebar-primary)]/20 text-[var(--sidebar-primary)] hover:bg-[var(--sidebar-primary)]/10 hover:text-[var(--sidebar-primary)] disabled:border-[var(--border)] disabled:bg-transparent disabled:text-[var(--muted-foreground)]/50 disabled:opacity-50 transition-all duration-200"
-                >
-                  <X size={13} />
-                  {t('projects.filters.reset')}
-                </Button>
-              </div>
-            </div>
-
-            {/* ─── Table card ─── */}
-            <article className="w-full overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
-              <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
-                <div>
-                  <p className="text-sm font-semibold">{t('projects.table.title')}</p>
-                  <p className="text-xs text-[var(--muted-foreground)]">
-                    {t('projects.table.rows', { filtered: filteredProjects.length, total: projects.length })}
-                  </p>
-                </div>
-
-                {canCreateProject ? (
-                  <Button
-                    type="button"
-                    onClick={handleOpenDrawer}
-                    className="bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] hover:bg-[var(--sidebar-primary)]/90"
-                  >
-                    <Plus size={15} />
-                    {t('projects.addButton')}
-                  </Button>
-                ) : null}
-              </div>
-
-              <div className="overflow-x-auto hide-scrollbar">
-                <table className="w-full whitespace-nowrap border-separate border-spacing-0 text-[13px]">
-                  <thead className="sticky top-0 z-10">
-                    <tr className="bg-[var(--background)]/95 backdrop-blur supports-[backdrop-filter]:bg-[var(--background)]/80">
-                      <th className="border-b border-[var(--border)] px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide text-[var(--muted-foreground)]">
-                        <button type="button" onClick={() => handleSort('project')} className="inline-flex items-center gap-1 hover:text-[var(--foreground)]">
-                          {t('projects.table.columns.project')}
-                          <ArrowUpDown size={12} className={sortColumn === 'project' ? 'text-[var(--foreground)]' : ''} />
-                        </button>
-                      </th>
-                      <th className="border-b border-[var(--border)] px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide text-[var(--muted-foreground)]">
-                        <button type="button" onClick={() => handleSort('status')} className="inline-flex items-center gap-1 hover:text-[var(--foreground)]">
-                          {t('projects.table.columns.status')}
-                          <ArrowUpDown size={12} className={sortColumn === 'status' ? 'text-[var(--foreground)]' : ''} />
-                        </button>
-                      </th>
-                      <th className="border-b border-[var(--border)] px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide text-[var(--muted-foreground)]">
-                        <button type="button" onClick={() => handleSort('manager')} className="inline-flex items-center gap-1 hover:text-[var(--foreground)]">
-                          {t('projects.table.columns.manager')}
-                          <ArrowUpDown size={12} className={sortColumn === 'manager' ? 'text-[var(--foreground)]' : ''} />
-                        </button>
-                      </th>
-                      <th className="border-b border-[var(--border)] px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide text-[var(--muted-foreground)]">
-                        <button type="button" onClick={() => handleSort('contractor')} className="inline-flex items-center gap-1 hover:text-[var(--foreground)]">
-                          {t('projects.table.columns.contractor')}
-                          <ArrowUpDown size={12} className={sortColumn === 'contractor' ? 'text-[var(--foreground)]' : ''} />
-                        </button>
-                      </th>
-                      <th className="border-b border-[var(--border)] px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide text-[var(--muted-foreground)]">
-                        <button type="button" onClick={() => handleSort('location')} className="inline-flex items-center gap-1 hover:text-[var(--foreground)]">
-                          {t('projects.table.columns.location')}
-                          <ArrowUpDown size={12} className={sortColumn === 'location' ? 'text-[var(--foreground)]' : ''} />
-                        </button>
-                      </th>
-                      <th className="border-b border-[var(--border)] px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide text-[var(--muted-foreground)]">
-                        <button type="button" onClick={() => handleSort('schedule')} className="inline-flex items-center gap-1 hover:text-[var(--foreground)]">
-                          {t('projects.table.columns.schedule')}
-                          <ArrowUpDown size={12} className={sortColumn === 'schedule' ? 'text-[var(--foreground)]' : ''} />
-                        </button>
-                      </th>
-                      <th className="border-b border-[var(--border)] px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide text-[var(--muted-foreground)]">
-                        <button type="button" onClick={() => handleSort('progress')} className="inline-flex items-center gap-1 hover:text-[var(--foreground)]">
-                          {t('projects.table.columns.progress')}
-                          <ArrowUpDown size={12} className={sortColumn === 'progress' ? 'text-[var(--foreground)]' : ''} />
-                        </button>
-                      </th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {filteredProjects.map((project, index) => (
-                      <tr
-                        key={project.id}
-                        onClick={() => canEditProject && handleEditProject(project.id)}
-                        style={{ animationDelay: `${index * 25}ms` }}
-                        className={`group transition-colors odd:bg-[var(--background)]/25 hover:bg-[var(--sidebar-accent)]/35 animate-row-fade-in ${canEditProject ? 'cursor-pointer' : ''}`}
-                      >
-                        <td className="border-b border-[var(--border)] px-3 py-2 align-top">
-                          <p className="font-semibold leading-snug">{project.name}</p>
-                          <p className="mt-1 text-xs text-[var(--muted-foreground)]">{t('projects.table.row.type')}: {project.projectType}</p>
-                        </td>
-
-                        <td className="border-b border-[var(--border)] px-3 py-2 align-top">
-                          <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${statusTone(project.status)}`}>
-                            {statusLabel(project.status, t)}
-                          </span>
-                        </td>
-
-                        <td className="border-b border-[var(--border)] px-3 py-2 align-top">
-                          <p className="font-medium">{project.owner}</p>
-                          <p className="mt-1 text-xs text-[var(--muted-foreground)]">{t('projects.table.row.priority')}: {project.priority}</p>
-                        </td>
-
-                        <td className="border-b border-[var(--border)] px-3 py-2 align-top">{project.contractor}</td>
-
-                        <td className="border-b border-[var(--border)] px-3 py-2 align-top">
-                          <p>{project.location}</p>
-                          <p className="mt-1 text-xs text-[var(--muted-foreground)]">{project.country}</p>
-                        </td>
-
-                        <td className="border-b border-[var(--border)] px-3 py-2 align-top">
-                          <div className="space-y-1">
-                            <p className="text-[11px] text-[var(--muted-foreground)] leading-tight">
-                              <span className="font-semibold text-[var(--foreground)]">Plan:</span> <br />
-                              {formatDate(project.startDate, '–')} – {formatDate(project.endDate, '–')}
-                            </p>
-                            {(project.startDateFact || project.endDateFact) && (
-                              <p className="text-[11px] text-emerald-500 font-medium leading-tight">
-                                <span className="font-semibold">Fakt:</span> <br />
-                                {project.startDateFact ? formatDate(project.startDateFact, '–') : '–'} – {project.endDateFact ? formatDate(project.endDateFact, '–') : '–'}
-                              </p>
-                            )}
-                          </div>
-                        </td>
-
-                        <td className="border-b border-[var(--border)] px-3 py-2 align-top">
-                          <div className="w-40">
-                            <div className="mb-1 flex items-center justify-between text-xs">
-                              <span className="text-[var(--muted-foreground)]">{t('projects.table.row.completion')}</span>
-                              <span className="font-medium">{project.progress}%</span>
-                            </div>
-                            <progress
-                              value={project.progress}
-                              max={100}
-                              aria-label={`${t('projects.table.row.completion')} ${project.name}`}
-                              className="h-2 w-full overflow-hidden rounded-full [appearance:none] [&::-webkit-progress-bar]:bg-[var(--muted)] [&::-webkit-progress-value]:bg-[var(--sidebar-primary)] [&::-webkit-progress-value]:transition-all [&::-webkit-progress-value]:duration-500 [&::-moz-progress-bar]:bg-[var(--sidebar-primary)]"
-                            />
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-
-                {filteredProjects.length === 0 ? (
-                  <div className="border-t border-[var(--border)] px-3 py-6 text-center text-sm text-[var(--muted-foreground)]">
-                    {t('projects.states.noResults')}
-                  </div>
-                ) : null}
-              </div>
-            </article>
+    <section className="grid flex-1 items-start gap-2 p-3 md:gap-4 xl:grid-cols-12 animate-page-enter">
+      {isLoading ? (
+        <article className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 xl:col-span-12">
+          <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
+            <Loader2 size={16} className="animate-spin" />
+            {t('projects.states.loading')}
           </div>
-        ) : null}
-      </section>
-    </>
+        </article>
+      ) : null}
+
+      {isError ? (
+        <article className="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-4 xl:col-span-12">
+          <div className="flex items-start gap-3">
+            <AlertCircle size={18} className="mt-0.5 text-rose-500" />
+            <div>
+              <p className="font-medium text-rose-500">{t('projects.states.errorTitle')}</p>
+              <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+                {error instanceof Error ? error.message : t('projects.states.errorHint')}
+              </p>
+            </div>
+          </div>
+        </article>
+      ) : null}
+
+      {!isLoading && !isError && projects.length === 0 ? (
+        <article className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)] p-10 xl:col-span-12">
+          <div className="flex flex-col items-center gap-3 text-center">
+            <div className="flex size-12 items-center justify-center rounded-full bg-[var(--sidebar-primary)]/10 text-[var(--sidebar-primary)]">
+              <Folder size={22} />
+            </div>
+            <p className="font-medium">{t('projects.states.empty')}</p>
+            <p className="text-sm text-[var(--muted-foreground)]">{t('projects.states.emptyHint')}</p>
+            {canCreateProject ? (
+              <Button
+                type="button"
+                onClick={handleOpenDrawer}
+                className="mt-2 bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] hover:bg-[var(--sidebar-primary)]/90"
+              >
+                <Plus size={16} />
+                {t('projects.addButton')}
+              </Button>
+            ) : null}
+          </div>
+        </article>
+      ) : null}
+
+      {!isLoading && !isError && projects.length > 0 ? (
+        <div className="xl:col-span-12 flex flex-col gap-2">
+          {/* Filter Panel */}
+          <ProjectsFilterBar
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+            managerFilter={managerFilter}
+            setManagerFilter={setManagerFilter}
+            dateFilter={dateFilter}
+            setDateFilter={setDateFilter}
+            managerOptions={managerOptions}
+            viewMode={viewMode}
+            setViewMode={setViewMode}
+            onReset={() => {
+              setSearchQuery('')
+              setStatusFilter('all')
+              setManagerFilter('all')
+              setDateFilter('')
+            }}
+          />
+
+          {/* Main Content View (Table or Gantt) */}
+          {viewMode === 'table' ? (
+            <ProjectsTableView
+              filteredProjects={filteredProjects}
+              totalProjectsCount={projects.length}
+              sortColumn={sortColumn}
+              sortDirection={sortDirection}
+              onSort={handleSort}
+              canCreateProject={canCreateProject}
+              canEditProject={canEditProject}
+              onOpenDrawer={handleOpenDrawer}
+              onSelectProject={handleEditProject}
+              formatDate={formatDate}
+              statusTone={statusTone}
+              statusLabel={statusLabel}
+            />
+          ) : (
+            <ProjectsGanttView
+              filteredProjects={filteredProjects}
+              totalProjectsCount={projects.length}
+              timelineBounds={timelineBounds}
+              canCreateProject={canCreateProject}
+              canEditProject={canEditProject}
+              onOpenDrawer={handleOpenDrawer}
+              onSelectProject={handleEditProject}
+              parseDateValue={parseDateValue}
+              formatDate={formatDate}
+              statusTone={statusTone}
+              statusLabel={statusLabel}
+            />
+          )}
+        </div>
+      ) : null}
+    </section>
   )
 }
