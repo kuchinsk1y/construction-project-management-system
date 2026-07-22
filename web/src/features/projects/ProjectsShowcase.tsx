@@ -707,8 +707,6 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
             dateFilter={dateFilter}
             setDateFilter={setDateFilter}
             managerOptions={managerOptions}
-            viewMode={viewMode}
-            setViewMode={setViewMode}
             onReset={() => {
               setSearchQuery('')
               setStatusFilter('all')
@@ -725,6 +723,8 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
               sortColumn={sortColumn}
               sortDirection={sortDirection}
               onSort={handleSort}
+              viewMode={viewMode}
+              setViewMode={setViewMode}
               canCreateProject={canCreateProject}
               canEditProject={canEditProject}
               onOpenDrawer={handleOpenDrawer}
@@ -738,6 +738,8 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
               filteredProjects={filteredProjects}
               totalProjectsCount={projects.length}
               timelineBounds={timelineBounds}
+              viewMode={viewMode}
+              setViewMode={setViewMode}
               canCreateProject={canCreateProject}
               canEditProject={canEditProject}
               onOpenDrawer={handleOpenDrawer}

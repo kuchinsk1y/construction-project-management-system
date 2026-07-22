@@ -1,7 +1,9 @@
-import { ArrowUpDown, Plus } from 'lucide-react'
+import { ArrowUpDown, BarChart3, LayoutList, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import type { ProjectItem, ProjectStatus } from '@/features/projects/types'
+
+export type ViewMode = 'table' | 'gantt'
 
 export type SortColumn =
   | 'project'
@@ -20,6 +22,8 @@ type ProjectsTableViewProps = {
   sortColumn: SortColumn
   sortDirection: SortDirection
   onSort: (column: SortColumn) => void
+  viewMode: ViewMode
+  setViewMode: (mode: ViewMode) => void
   canCreateProject: boolean
   canEditProject: boolean
   onOpenDrawer: () => void
@@ -34,6 +38,8 @@ export function ProjectsTableView({
   totalProjectsCount,
   sortColumn,
   onSort,
+  viewMode,
+  setViewMode,
   canCreateProject,
   canEditProject,
   onOpenDrawer,
@@ -46,7 +52,8 @@ export function ProjectsTableView({
 
   return (
     <article className="w-full overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
-      <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
+      {/* Table Card Header with View Switcher & Action Button */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3">
         <div>
           <p className="text-sm font-semibold">{t('projects.table.title')}</p>
           <p className="text-xs text-[var(--muted-foreground)]">
@@ -54,16 +61,48 @@ export function ProjectsTableView({
           </p>
         </div>
 
-        {canCreateProject ? (
-          <Button
-            type="button"
-            onClick={onOpenDrawer}
-            className="bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] hover:bg-[var(--sidebar-primary)]/90"
-          >
-            <Plus size={15} />
-            {t('projects.addButton')}
-          </Button>
-        ) : null}
+        <div className="flex items-center gap-3">
+          {/* View Mode Switcher */}
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-[var(--background)] border border-[var(--border)] shrink-0">
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                viewMode === 'table'
+                  ? 'bg-[var(--card)] text-[var(--sidebar-primary)] shadow-2xs border border-[var(--border)]/60'
+                  : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+              }`}
+              title="Tabela projektów"
+            >
+              <LayoutList size={13} />
+              <span className="hidden sm:inline">Tabela</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('gantt')}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                viewMode === 'gantt'
+                  ? 'bg-[var(--card)] text-[var(--sidebar-primary)] shadow-2xs border border-[var(--border)]/60'
+                  : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+              }`}
+              title="Wykres Gantta"
+            >
+              <BarChart3 size={13} />
+              <span className="hidden sm:inline">Wykres Gantta</span>
+            </button>
+          </div>
+
+          {canCreateProject ? (
+            <Button
+              type="button"
+              onClick={onOpenDrawer}
+              className="bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] hover:bg-[var(--sidebar-primary)]/90"
+            >
+              <Plus size={15} />
+              {t('projects.addButton')}
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       <div className="overflow-x-auto hide-scrollbar">

@@ -1,7 +1,8 @@
-import { GanttChart, Plus } from 'lucide-react'
+import { BarChart3, GanttChart, LayoutList, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import type { ProjectItem, ProjectStatus } from '@/features/projects/types'
+import type { ViewMode } from './ProjectsTableView'
 
 type MonthBounds = {
   label: string
@@ -23,6 +24,8 @@ type ProjectsGanttViewProps = {
   filteredProjects: ProjectItem[]
   totalProjectsCount: number
   timelineBounds: TimelineBounds
+  viewMode: ViewMode
+  setViewMode: (mode: ViewMode) => void
   canCreateProject: boolean
   canEditProject: boolean
   onOpenDrawer: () => void
@@ -37,6 +40,8 @@ export function ProjectsGanttView({
   filteredProjects,
   totalProjectsCount,
   timelineBounds,
+  viewMode,
+  setViewMode,
   canCreateProject,
   canEditProject,
   onOpenDrawer,
@@ -63,6 +68,7 @@ export function ProjectsGanttView({
         </div>
 
         <div className="flex items-center gap-4">
+          {/* Legend */}
           <div className="hidden sm:flex items-center gap-4 text-xs font-semibold">
             <div className="flex items-center gap-1.5">
               <span className="size-2.5 rounded-full bg-[var(--sidebar-primary)] shadow-2xs" />
@@ -72,6 +78,36 @@ export function ProjectsGanttView({
               <span className="size-2.5 rounded-full bg-emerald-500 shadow-2xs" />
               <span className="text-[var(--muted-foreground)]">Fakt (Realizacja)</span>
             </div>
+          </div>
+
+          {/* View Mode Switcher */}
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-[var(--background)] border border-[var(--border)] shrink-0">
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                viewMode === 'table'
+                  ? 'bg-[var(--card)] text-[var(--sidebar-primary)] shadow-2xs border border-[var(--border)]/60'
+                  : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+              }`}
+              title="Tabela projektów"
+            >
+              <LayoutList size={13} />
+              <span className="hidden sm:inline">Tabela</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('gantt')}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                viewMode === 'gantt'
+                  ? 'bg-[var(--card)] text-[var(--sidebar-primary)] shadow-2xs border border-[var(--border)]/60'
+                  : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+              }`}
+              title="Wykres Gantta"
+            >
+              <BarChart3 size={13} />
+              <span className="hidden sm:inline">Wykres Gantta</span>
+            </button>
           </div>
 
           {canCreateProject ? (

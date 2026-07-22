@@ -1,10 +1,8 @@
-import { Search, ListFilter, UserRound, X, LayoutList, BarChart3 } from 'lucide-react'
+import { Search, ListFilter, UserRound, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
 import type { ProjectStatus } from '@/features/projects/types'
-
-export type ViewMode = 'table' | 'gantt'
 
 type ProjectsFilterBarProps = {
   searchQuery: string
@@ -16,8 +14,6 @@ type ProjectsFilterBarProps = {
   dateFilter: string
   setDateFilter: (val: string) => void
   managerOptions: string[]
-  viewMode: ViewMode
-  setViewMode: (mode: ViewMode) => void
   onReset: () => void
 }
 
@@ -31,8 +27,6 @@ export function ProjectsFilterBar({
   dateFilter,
   setDateFilter,
   managerOptions,
-  viewMode,
-  setViewMode,
   onReset,
 }: ProjectsFilterBarProps) {
   const { t } = useTranslation()
@@ -99,36 +93,6 @@ export function ProjectsFilterBar({
             size="sm"
             className="w-[200px]"
           />
-        </div>
-
-        {/* View Mode Switcher Segmented Control */}
-        <div className="flex items-center gap-1 p-1 rounded-xl bg-[var(--background)] border border-[var(--border)] shrink-0">
-          <button
-            type="button"
-            onClick={() => setViewMode('table')}
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
-              viewMode === 'table'
-                ? 'bg-[var(--card)] text-[var(--sidebar-primary)] shadow-2xs border border-[var(--border)]/60'
-                : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
-            }`}
-            title="Tabela projektów"
-          >
-            <LayoutList size={13} />
-            <span className="hidden sm:inline">Tabela</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode('gantt')}
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
-              viewMode === 'gantt'
-                ? 'bg-[var(--card)] text-[var(--sidebar-primary)] shadow-2xs border border-[var(--border)]/60'
-                : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
-            }`}
-            title="Wykres Gantta"
-          >
-            <BarChart3 size={13} />
-            <span className="hidden sm:inline">Wykres Gantta</span>
-          </button>
         </div>
 
         {/* Reset */}
