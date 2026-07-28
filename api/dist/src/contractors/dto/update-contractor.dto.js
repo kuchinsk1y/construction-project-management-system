@@ -52,7 +52,9 @@ __decorate([
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.MaxLength)(100, { message: 'Nazwa miejscowości może mieć maksymalnie 100 znaków' }),
+    (0, class_validator_1.MaxLength)(100, {
+        message: 'Nazwa miejscowości może mieć maksymalnie 100 znaków',
+    }),
     __metadata("design:type", String)
 ], UpdateContractorDto.prototype, "city", void 0);
 __decorate([
@@ -69,7 +71,9 @@ __decorate([
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.MaxLength)(100, { message: 'Skrócona nazwa może mieć maksymalnie 100 znaków' }),
+    (0, class_validator_1.MaxLength)(100, {
+        message: 'Skrócona nazwa może mieć maksymalnie 100 znaków',
+    }),
     __metadata("design:type", String)
 ], UpdateContractorDto.prototype, "shortName", void 0);
 //# sourceMappingURL=update-contractor.dto.js.map

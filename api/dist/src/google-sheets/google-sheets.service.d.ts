@@ -12,4 +12,10 @@ export declare class GoogleSheetsService {
     private getAuthToken;
     private parseGvizResponse;
     private numberToColumn;
+    private getSheetsClient;
+    getHeaders(spreadsheetId: string, sheetName: string): Promise<string[]>;
+    findRowIndexById(spreadsheetId: string, sheetName: string, id: string): Promise<number | null>;
+    updateRow(spreadsheetId: string, sheetName: string, rowNumber: number, data: Record<string, unknown>): Promise<void>;
+    appendRow(spreadsheetId: string, sheetName: string, data: Record<string, unknown>): Promise<void>;
+    private stringifyValue;
 }

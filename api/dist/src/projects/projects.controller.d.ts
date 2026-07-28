@@ -59,12 +59,13 @@ export declare class ProjectsController {
         lastName: string;
     }[]>;
     delete(id: string): Promise<{
+        status: string;
         id: string;
+        name: string;
         contractor_id: string;
+        country: string;
         project_type_id: bigint;
         manager_id: number | null;
-        name: string;
-        country: string;
         city: string;
         latitude: import("@prisma/client-runtime-utils").Decimal | null;
         longitude: import("@prisma/client-runtime-utils").Decimal | null;
@@ -78,7 +79,6 @@ export declare class ProjectsController {
         payment_term_days: number | null;
         warranty_percent: import("@prisma/client-runtime-utils").Decimal | null;
         warranty_months: number | null;
-        status: string;
         hold_reason: string | null;
         hold_started_at: Date | null;
         expected_resume_date: Date | null;

@@ -29,7 +29,7 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
         this.auth = new googleapis_1.google.auth.GoogleAuth({
             keyFile: (0, path_1.join)(process.cwd(), keyFile),
             scopes: [
-                'https://www.googleapis.com/auth/spreadsheets.readonly',
+                'https://www.googleapis.com/auth/spreadsheets',
                 'https://www.googleapis.com/auth/drive.readonly',
             ],
         });
@@ -113,6 +113,123 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
             n = Math.floor((n - 1) / 26);
         }
         return label;
+    }
+    getSheetsClient() {
+        return googleapis_1.google.sheets({ version: 'v4', auth: this.auth });
+    }
+    async getHeaders(spreadsheetId, sheetName) {
+        const sheets = this.getSheetsClient();
+        try {
+            const response = await sheets.spreadsheets.values.get({
+                spreadsheetId,
+                range: `${sheetName}!1:1`,
+            });
+            const rows = response.data.values;
+            if (!rows || rows.length === 0) {
+                return [];
+            }
+            return rows[0].map((h) => String(h).trim().toLowerCase());
+        }
+        catch (error) {
+            this.logger.error(`Failed to get headers for sheet ${sheetName}`, error);
+            throw error;
+        }
+    }
+    async findRowIndexById(spreadsheetId, sheetName, id) {
+        const headers = await this.getHeaders(spreadsheetId, sheetName);
+        const idColIndex = headers.indexOf('id');
+        if (idColIndex === -1) {
+            this.logger.warn(`Column "id" not found in sheet ${sheetName}`);
+            return null;
+        }
+        const colLetter = this.numberToColumn(idColIndex + 1);
+        const sheets = this.getSheetsClient();
+        try {
+            const response = await sheets.spreadsheets.values.get({
+                spreadsheetId,
+                range: `${sheetName}!${colLetter}:${colLetter}`,
+            });
+            const values = response.data.values;
+            if (!values)
+                return null;
+            for (let i = 1; i < values.length; i++) {
+                if (values[i] && String(values[i][0]).trim() === String(id).trim()) {
+                    return i + 1;
+                }
+            }
+            return null;
+        }
+        catch (error) {
+            this.logger.error(`Failed to find row index by ID ${id} in sheet ${sheetName}`, error);
+            return null;
+        }
+    }
+    async updateRow(spreadsheetId, sheetName, rowNumber, data) {
+        const headers = await this.getHeaders(spreadsheetId, sheetName);
+        const lowercaseData = {};
+        for (const key of Object.keys(data)) {
+            lowercaseData[key.toLowerCase()] = data[key];
+        }
+        const values = headers.map((header) => {
+            const val = lowercaseData[header];
+            return this.stringifyValue(val);
+        });
+        const maxColLetter = this.numberToColumn(headers.length);
+        const sheets = this.getSheetsClient();
+        try {
+            await sheets.spreadsheets.values.update({
+                spreadsheetId,
+                range: `${sheetName}!A${rowNumber}:${maxColLetter}${rowNumber}`,
+                valueInputOption: 'USER_ENTERED',
+                requestBody: {
+                    values: [values],
+                },
+            });
+            this.logger.log(`Successfully updated row ${rowNumber} in sheet ${sheetName}`);
+        }
+        catch (error) {
+            this.logger.error(`Failed to update row ${rowNumber} in sheet ${sheetName}`, error);
+            throw error;
+        }
+    }
+    async appendRow(spreadsheetId, sheetName, data) {
+        const headers = await this.getHeaders(spreadsheetId, sheetName);
+        const lowercaseData = {};
+        for (const key of Object.keys(data)) {
+            lowercaseData[key.toLowerCase()] = data[key];
+        }
+        const values = headers.map((header) => {
+            const val = lowercaseData[header];
+            return this.stringifyValue(val);
+        });
+        const sheets = this.getSheetsClient();
+        try {
+            await sheets.spreadsheets.values.append({
+                spreadsheetId,
+                range: `${sheetName}!A:A`,
+                valueInputOption: 'USER_ENTERED',
+                requestBody: {
+                    values: [values],
+                },
+            });
+            this.logger.log(`Successfully appended row to sheet ${sheetName}`);
+        }
+        catch (error) {
+            this.logger.error(`Failed to append row to sheet ${sheetName}`, error);
+            throw error;
+        }
+    }
+    stringifyValue(val) {
+        if (val === null || val === undefined) {
+            return '';
+        }
+        if (typeof val === 'object') {
+            if (val instanceof Date) {
+                return val.toISOString();
+            }
+            return JSON.stringify(val);
+        }
+        return String(val);
     }
 };
 exports.GoogleSheetsService = GoogleSheetsService;

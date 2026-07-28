@@ -169,7 +169,7 @@ export function UsersPage({ canManage }: UsersPageProps) {
       showNotice('success', t('users.notices.addedTitle'), t('users.notices.addedMessage'))
     },
     onError: (mutationError) => {
-      const message = mutationError instanceof Error ? mutationError.message : t('users.notices.addErrorMessage')
+      const message = mutationError?.message || t('users.notices.addErrorMessage')
       setFormError(message)
       showNotice('error', t('users.notices.addErrorTitle'), message)
     },
@@ -188,7 +188,7 @@ export function UsersPage({ canManage }: UsersPageProps) {
       showNotice('success', noticeTitle, noticeMessage)
     },
     onError: (mutationError) => {
-      const message = mutationError instanceof Error ? mutationError.message : t('users.notices.updateErrorMessage')
+      const message = mutationError?.message || t('users.notices.updateErrorMessage')
       setFormError(message)
       showNotice('error', t('users.notices.updateErrorTitle'), message)
     },
@@ -203,7 +203,7 @@ export function UsersPage({ canManage }: UsersPageProps) {
       showNotice('success', t('users.notices.deletedTitle'), t('users.notices.deletedMessage', { name: nameStr }))
     },
     onError: (mutationError) => {
-      const message = mutationError instanceof Error ? mutationError.message : t('users.notices.deleteErrorMessage')
+      const message = mutationError?.message || t('users.notices.deleteErrorMessage')
       showNotice('error', t('users.notices.deleteErrorTitle'), message)
     },
   })
@@ -386,7 +386,7 @@ export function UsersPage({ canManage }: UsersPageProps) {
 
           {isError ? (
             <div className="px-4 py-6 text-sm text-rose-500">
-              {error instanceof Error ? error.message : t('users.states.loadError')}
+              {error?.message || t('users.states.loadError')}
             </div>
           ) : null}
 

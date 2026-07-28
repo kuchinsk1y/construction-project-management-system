@@ -8,9 +8,14 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ProjectsService = void 0;
 const common_1 = require("@nestjs/common");
+const bullmq_1 = require("@nestjs/bullmq");
+const bullmq_2 = require("bullmq");
 const prisma_service_1 = require("../prisma/prisma.service");
 function sanitizeDecimals(obj) {
     return JSON.parse(JSON.stringify(obj, (_key, value) => {
@@ -21,8 +26,10 @@ function sanitizeDecimals(obj) {
 }
 let ProjectsService = class ProjectsService {
     prisma;
-    constructor(prisma) {
+    syncQueue;
+    constructor(prisma, syncQueue) {
         this.prisma = prisma;
+        this.syncQueue = syncQueue;
     }
     async list() {
         const rows = await this.prisma.projects.findMany({
@@ -85,10 +92,26 @@ let ProjectsService = class ProjectsService {
     }
     async ensureProjectTypeExists(projectTypeId) {
         const defaultTypes = [
-            { code: 'PV', name: 'Fotowoltaika (PV)', description: 'Instalacje i farmy fotowoltaiczne' },
-            { code: 'MAGAZYN_ENERGII', name: 'Magazyn energii', description: 'Systemy magazynowania energii (BESS)' },
-            { code: 'HYBRYDA', name: 'Instalacja hybrydowa (PV + Magazyn)', description: 'Połączenie PV i magazynu energii' },
-            { code: 'BUDOWNICTWO', name: 'Budownictwo ogólne', description: 'Inne projekty budowlane' },
+            {
+                code: 'PV',
+                name: 'Fotowoltaika (PV)',
+                description: 'Instalacje i farmy fotowoltaiczne',
+            },
+            {
+                code: 'MAGAZYN_ENERGII',
+                name: 'Magazyn energii',
+                description: 'Systemy magazynowania energii (BESS)',
+            },
+            {
+                code: 'HYBRYDA',
+                name: 'Instalacja hybrydowa (PV + Magazyn)',
+                description: 'Połączenie PV i magazynu energii',
+            },
+            {
+                code: 'BUDOWNICTWO',
+                name: 'Budownictwo ogólne',
+                description: 'Inne projekty budowlane',
+            },
         ];
         if (projectTypeId) {
             const existing = await this.prisma.project_types.findUnique({
@@ -130,12 +153,8 @@ let ProjectsService = class ProjectsService {
                 end_date_contract: dto.endDateContract
                     ? new Date(dto.endDateContract)
                     : null,
-                start_date_fact: dto.startDateFact
-                    ? new Date(dto.startDateFact)
-                    : null,
-                end_date_fact: dto.endDateFact
-                    ? new Date(dto.endDateFact)
-                    : null,
+                start_date_fact: dto.startDateFact ? new Date(dto.startDateFact) : null,
+                end_date_fact: dto.endDateFact ? new Date(dto.endDateFact) : null,
                 manager_id: dto.managerId ?? null,
                 dokumentation_url: dto.dokumentationUrl ?? null,
             },
@@ -146,6 +165,10 @@ let ProjectsService = class ProjectsService {
                     select: { id: true, firstName: true, lastName: true },
                 },
             },
+        });
+        await this.syncQueue.add('sync-project', {
+            projectId: project.id,
+            action: 'create',
         });
         return sanitizeDecimals({
             id: project.id,
@@ -215,12 +238,8 @@ let ProjectsService = class ProjectsService {
                 end_date_contract: dto.endDateContract
                     ? new Date(dto.endDateContract)
                     : null,
-                start_date_fact: dto.startDateFact
-                    ? new Date(dto.startDateFact)
-                    : null,
-                end_date_fact: dto.endDateFact
-                    ? new Date(dto.endDateFact)
-                    : null,
+                start_date_fact: dto.startDateFact ? new Date(dto.startDateFact) : null,
+                end_date_fact: dto.endDateFact ? new Date(dto.endDateFact) : null,
                 manager_id: dto.managerId ?? null,
                 dokumentation_url: dto.dokumentationUrl,
             },
@@ -231,6 +250,10 @@ let ProjectsService = class ProjectsService {
                     select: { id: true, firstName: true, lastName: true },
                 },
             },
+        });
+        await this.syncQueue.add('sync-project', {
+            projectId: project.id,
+            action: 'update',
         });
         return sanitizeDecimals({
             id: project.id,
@@ -417,8 +440,7 @@ let ProjectsService = class ProjectsService {
             select: { id: true, firstName: true, lastName: true, roles: true },
         });
         return users
-            .filter((u) => u.roles.some((r) => r.toLowerCase() === 'foreman' ||
-            r.toLowerCase() === 'brygadzista'))
+            .filter((u) => u.roles.some((r) => r.toLowerCase() === 'foreman' || r.toLowerCase() === 'brygadzista'))
             .map((u) => ({
             id: u.id,
             firstName: u.firstName,
@@ -588,6 +610,8 @@ let ProjectsService = class ProjectsService {
 exports.ProjectsService = ProjectsService;
 exports.ProjectsService = ProjectsService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __param(1, (0, bullmq_1.InjectQueue)('projects-sync')),
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        bullmq_2.Queue])
 ], ProjectsService);
 //# sourceMappingURL=projects.service.js.map

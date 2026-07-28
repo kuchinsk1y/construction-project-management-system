@@ -1,5 +1,4 @@
 import { AlertTriangle, ArrowLeft, CalendarRange, Coins, Edit, ExternalLink, FileText, Loader2, MapPin, Trash2, UserRoundCheck } from 'lucide-react'
-import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { UseMutationResult } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'

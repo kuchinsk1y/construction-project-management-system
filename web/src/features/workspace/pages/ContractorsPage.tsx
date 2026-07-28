@@ -88,7 +88,7 @@ export function ContractorsPage({ canManage }: ContractorsPageProps) {
       showNotice('success', t('contractors.notices.addedTitle'), t('contractors.notices.addedMessage'))
     },
     onError: (mutationError) => {
-      const message = mutationError instanceof Error ? mutationError.message : t('contractors.notices.addErrorMessage')
+      const message = mutationError?.message || t('contractors.notices.addErrorMessage')
       setFormError(message)
       showNotice('error', t('contractors.notices.addErrorTitle'), message)
     },
@@ -107,7 +107,7 @@ export function ContractorsPage({ canManage }: ContractorsPageProps) {
       showNotice('success', t('contractors.notices.savedTitle'), t('contractors.notices.savedMessage'))
     },
     onError: (mutationError) => {
-      const message = mutationError instanceof Error ? mutationError.message : t('contractors.notices.updateErrorMessage')
+      const message = mutationError?.message || t('contractors.notices.updateErrorMessage')
       setFormError(message)
       showNotice('error', t('contractors.notices.updateErrorTitle'), message)
     },
@@ -121,7 +121,7 @@ export function ContractorsPage({ canManage }: ContractorsPageProps) {
       showNotice('success', t('contractors.notices.deletedTitle'), t('contractors.notices.deletedMessage', { name: deletedName }))
     },
     onError: (mutationError) => {
-      const message = mutationError instanceof Error ? mutationError.message : t('contractors.notices.deleteErrorMessage')
+      const message = mutationError?.message || t('contractors.notices.deleteErrorMessage')
       showNotice('error', t('contractors.notices.deleteErrorTitle'), message)
     },
   })
@@ -314,7 +314,7 @@ export function ContractorsPage({ canManage }: ContractorsPageProps) {
 
           {isError ? (
             <div className="px-4 py-6 text-sm text-rose-500">
-              {error instanceof Error ? error.message : t('contractors.states.loadError')}
+              {error?.message || t('contractors.states.loadError')}
             </div>
           ) : null}
 

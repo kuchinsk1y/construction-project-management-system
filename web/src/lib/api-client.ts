@@ -3,11 +3,26 @@ function resolveBaseUrl(): string {
 }
 
 async function parseResponse<T>(response: Response): Promise<T> {
+  let body: any = {}
   const text = await response.text()
-  const body = text ? (JSON.parse(text) as Record<string, unknown>) : {}
+  
+  if (text) {
+    try {
+      body = JSON.parse(text)
+    } catch (e) {
+      body = { message: text }
+    }
+  }
 
   if (!response.ok) {
-    const message = typeof body.message === 'string' ? body.message : 'Niepowodzenie zadania'
+    let message = 'Niepowodzenie zadania'
+    if (typeof body.message === 'string') {
+      message = body.message
+    } else if (Array.isArray(body.message)) {
+      message = body.message.join(', ')
+    } else if (typeof body.error === 'string') {
+      message = body.error
+    }
     throw new Error(message)
   }
 

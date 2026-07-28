@@ -1,3 +1,4 @@
+import { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
@@ -7,7 +8,8 @@ import { CreateWorkTypeDto } from './dto/create-work-type.dto';
 import { CreateResourcePlanDto } from './dto/create-resource-plan.dto';
 export declare class ProjectsService {
     private readonly prisma;
-    constructor(prisma: PrismaService);
+    private readonly syncQueue;
+    constructor(prisma: PrismaService, syncQueue: Queue);
     list(): Promise<{
         id: string;
         name: string;
@@ -52,12 +54,13 @@ export declare class ProjectsService {
     }[]>;
     update(id: string, dto: UpdateProjectDto): Promise<Record<string, unknown>>;
     delete(id: string): Promise<{
+        status: string;
         id: string;
+        name: string;
         contractor_id: string;
+        country: string;
         project_type_id: bigint;
         manager_id: number | null;
-        name: string;
-        country: string;
         city: string;
         latitude: import("@prisma/client-runtime-utils").Decimal | null;
         longitude: import("@prisma/client-runtime-utils").Decimal | null;
@@ -71,7 +74,6 @@ export declare class ProjectsService {
         payment_term_days: number | null;
         warranty_percent: import("@prisma/client-runtime-utils").Decimal | null;
         warranty_months: number | null;
-        status: string;
         hold_reason: string | null;
         hold_started_at: Date | null;
         expected_resume_date: Date | null;

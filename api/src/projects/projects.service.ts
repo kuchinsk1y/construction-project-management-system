@@ -3,6 +3,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
@@ -24,7 +26,10 @@ function sanitizeDecimals(
 
 @Injectable()
 export class ProjectsService {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(
+    private readonly prisma: PrismaService,
+    @InjectQueue('projects-sync') private readonly syncQueue: Queue,
+  ) {}
 
   async list() {
     const rows = await this.prisma.projects.findMany({
@@ -49,10 +54,8 @@ export class ProjectsService {
         p.start_date_contract?.toISOString().split('T')[0] ?? null,
       end_date_contract:
         p.end_date_contract?.toISOString().split('T')[0] ?? null,
-      start_date_fact:
-        p.start_date_fact?.toISOString().split('T')[0] ?? null,
-      end_date_fact:
-        p.end_date_fact?.toISOString().split('T')[0] ?? null,
+      start_date_fact: p.start_date_fact?.toISOString().split('T')[0] ?? null,
+      end_date_fact: p.end_date_fact?.toISOString().split('T')[0] ?? null,
       contract_net_value: p.contract_net_value?.toString() ?? null,
       currency: p.currency,
       created_at: p.created_at,
@@ -62,17 +65,17 @@ export class ProjectsService {
         : null,
       project_types: p.project_types
         ? {
-          id: Number(p.project_types.id),
-          name: p.project_types.name,
-          code: p.project_types.code,
-        }
+            id: Number(p.project_types.id),
+            name: p.project_types.name,
+            code: p.project_types.code,
+          }
         : null,
       manager: p.users_projects_manager_idTousers
         ? {
-          id: p.users_projects_manager_idTousers.id,
-          firstName: p.users_projects_manager_idTousers.firstName,
-          lastName: p.users_projects_manager_idTousers.lastName,
-        }
+            id: p.users_projects_manager_idTousers.id,
+            firstName: p.users_projects_manager_idTousers.firstName,
+            lastName: p.users_projects_manager_idTousers.lastName,
+          }
         : null,
       dokumentationUrl: p.dokumentation_url,
     }));
@@ -86,17 +89,36 @@ export class ProjectsService {
       create: {
         code: currencyCode,
         name: currencyCode,
-        symbol: currencyCode === 'PLN' ? 'zł' : currencyCode === 'EUR' ? '€' : '$',
+        symbol:
+          currencyCode === 'PLN' ? 'zł' : currencyCode === 'EUR' ? '€' : '$',
       },
     });
   }
 
-  private async ensureProjectTypeExists(projectTypeId?: number | bigint | null): Promise<bigint> {
+  private async ensureProjectTypeExists(
+    projectTypeId?: number | bigint | null,
+  ): Promise<bigint> {
     const defaultTypes = [
-      { code: 'PV', name: 'Fotowoltaika (PV)', description: 'Instalacje i farmy fotowoltaiczne' },
-      { code: 'MAGAZYN_ENERGII', name: 'Magazyn energii', description: 'Systemy magazynowania energii (BESS)' },
-      { code: 'HYBRYDA', name: 'Instalacja hybrydowa (PV + Magazyn)', description: 'Połączenie PV i magazynu energii' },
-      { code: 'BUDOWNICTWO', name: 'Budownictwo ogólne', description: 'Inne projekty budowlane' },
+      {
+        code: 'PV',
+        name: 'Fotowoltaika (PV)',
+        description: 'Instalacje i farmy fotowoltaiczne',
+      },
+      {
+        code: 'MAGAZYN_ENERGII',
+        name: 'Magazyn energii',
+        description: 'Systemy magazynowania energii (BESS)',
+      },
+      {
+        code: 'HYBRYDA',
+        name: 'Instalacja hybrydowa (PV + Magazyn)',
+        description: 'Połączenie PV i magazynu energii',
+      },
+      {
+        code: 'BUDOWNICTWO',
+        name: 'Budownictwo ogólne',
+        description: 'Inne projekty budowlane',
+      },
     ];
 
     if (projectTypeId) {
@@ -141,12 +163,8 @@ export class ProjectsService {
         end_date_contract: dto.endDateContract
           ? new Date(dto.endDateContract)
           : null,
-        start_date_fact: dto.startDateFact
-          ? new Date(dto.startDateFact)
-          : null,
-        end_date_fact: dto.endDateFact
-          ? new Date(dto.endDateFact)
-          : null,
+        start_date_fact: dto.startDateFact ? new Date(dto.startDateFact) : null,
+        end_date_fact: dto.endDateFact ? new Date(dto.endDateFact) : null,
         manager_id: dto.managerId ?? null,
         dokumentation_url: dto.dokumentationUrl ?? null,
       },
@@ -157,6 +175,11 @@ export class ProjectsService {
           select: { id: true, firstName: true, lastName: true },
         },
       },
+    });
+
+    await this.syncQueue.add('sync-project', {
+      projectId: project.id,
+      action: 'create',
     });
 
     return sanitizeDecimals({
@@ -171,24 +194,23 @@ export class ProjectsService {
         project.end_date_contract?.toISOString().split('T')[0] ?? null,
       start_date_fact:
         project.start_date_fact?.toISOString().split('T')[0] ?? null,
-      end_date_fact:
-        project.end_date_fact?.toISOString().split('T')[0] ?? null,
+      end_date_fact: project.end_date_fact?.toISOString().split('T')[0] ?? null,
       contract_net_value: project.contract_net_value?.toString() ?? null,
       currency: project.currency,
       contractors: project.contractors,
       project_types: project.project_types
         ? {
-          id: Number(project.project_types.id),
-          name: project.project_types.name,
-          code: project.project_types.code,
-        }
+            id: Number(project.project_types.id),
+            name: project.project_types.name,
+            code: project.project_types.code,
+          }
         : null,
       manager: project.users_projects_manager_idTousers
         ? {
-          id: project.users_projects_manager_idTousers.id,
-          firstName: project.users_projects_manager_idTousers.firstName,
-          lastName: project.users_projects_manager_idTousers.lastName,
-        }
+            id: project.users_projects_manager_idTousers.id,
+            firstName: project.users_projects_manager_idTousers.firstName,
+            lastName: project.users_projects_manager_idTousers.lastName,
+          }
         : null,
       dokumentationUrl: project.dokumentation_url,
     });
@@ -235,12 +257,8 @@ export class ProjectsService {
         end_date_contract: dto.endDateContract
           ? new Date(dto.endDateContract)
           : null,
-        start_date_fact: dto.startDateFact
-          ? new Date(dto.startDateFact)
-          : null,
-        end_date_fact: dto.endDateFact
-          ? new Date(dto.endDateFact)
-          : null,
+        start_date_fact: dto.startDateFact ? new Date(dto.startDateFact) : null,
+        end_date_fact: dto.endDateFact ? new Date(dto.endDateFact) : null,
         manager_id: dto.managerId ?? null,
         dokumentation_url: dto.dokumentationUrl,
       },
@@ -251,6 +269,11 @@ export class ProjectsService {
           select: { id: true, firstName: true, lastName: true },
         },
       },
+    });
+
+    await this.syncQueue.add('sync-project', {
+      projectId: project.id,
+      action: 'update',
     });
 
     return sanitizeDecimals({
@@ -265,24 +288,23 @@ export class ProjectsService {
         project.end_date_contract?.toISOString().split('T')[0] ?? null,
       start_date_fact:
         project.start_date_fact?.toISOString().split('T')[0] ?? null,
-      end_date_fact:
-        project.end_date_fact?.toISOString().split('T')[0] ?? null,
+      end_date_fact: project.end_date_fact?.toISOString().split('T')[0] ?? null,
       contract_net_value: project.contract_net_value?.toString() ?? null,
       currency: project.currency,
       contractors: project.contractors,
       project_types: project.project_types
         ? {
-          id: Number(project.project_types.id),
-          name: project.project_types.name,
-          code: project.project_types.code,
-        }
+            id: Number(project.project_types.id),
+            name: project.project_types.name,
+            code: project.project_types.code,
+          }
         : null,
       manager: project.users_projects_manager_idTousers
         ? {
-          id: project.users_projects_manager_idTousers.id,
-          firstName: project.users_projects_manager_idTousers.firstName,
-          lastName: project.users_projects_manager_idTousers.lastName,
-        }
+            id: project.users_projects_manager_idTousers.id,
+            firstName: project.users_projects_manager_idTousers.firstName,
+            lastName: project.users_projects_manager_idTousers.lastName,
+          }
         : null,
       dokumentationUrl: project.dokumentation_url,
     });
@@ -482,8 +504,7 @@ export class ProjectsService {
       .filter((u) =>
         u.roles.some(
           (r) =>
-            r.toLowerCase() === 'foreman' ||
-            r.toLowerCase() === 'brygadzista',
+            r.toLowerCase() === 'foreman' || r.toLowerCase() === 'brygadzista',
         ),
       )
       .map((u) => ({

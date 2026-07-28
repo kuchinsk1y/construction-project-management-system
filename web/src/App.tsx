@@ -101,8 +101,8 @@ function App() {
       })
       setMessage(result.message || t('app.auth.codeSent'))
       setScreen('code')
-    } catch (sendError) {
-      setError(sendError instanceof Error ? sendError.message : t('app.auth.sendFailed'))
+    } catch (sendError: any) {
+      setError(sendError?.message || t('app.auth.sendFailed'))
     } finally {
       setIsLoading(false)
     }
@@ -127,8 +127,8 @@ function App() {
       setProfile(profileFromToken(tokens.accessToken))
       setScreen('projects')
       setCode('')
-    } catch (verifyError) {
-      setError(verifyError instanceof Error ? verifyError.message : t('app.auth.verifyFailed'))
+    } catch (verifyError: any) {
+      setError(verifyError?.message || t('app.auth.verifyFailed'))
     } finally {
       setIsLoading(false)
     }

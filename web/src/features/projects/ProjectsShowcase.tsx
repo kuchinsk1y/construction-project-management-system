@@ -662,7 +662,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
             <div>
               <p className="font-medium text-rose-500">{t('projects.states.errorTitle')}</p>
               <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-                {error instanceof Error ? error.message : t('projects.states.errorHint')}
+                {error?.message || t('projects.states.errorHint')}
               </p>
             </div>
           </div>

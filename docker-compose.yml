@@ -28,9 +28,13 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_started
     environment:
       PORT: 3000
       DATABASE_URL: postgresql://${POSTGRES_USER:-erp}:${POSTGRES_PASSWORD:-erp}@postgres:5432/${POSTGRES_DB:-erp_db}?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     ports:
       - "3000:3000"
 
@@ -47,5 +51,15 @@ services:
     ports:
       - "5173:5173"
 
+  redis:
+    image: redis:7-alpine
+    container_name: erp_redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+
 volumes:
   postgres_data:
+  redis_data:

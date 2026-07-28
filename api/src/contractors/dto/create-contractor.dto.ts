@@ -25,7 +25,9 @@ export class CreateContractorDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(100, { message: 'Nazwa miejscowości może mieć maksymalnie 100 znaków' })
+  @MaxLength(100, {
+    message: 'Nazwa miejscowości może mieć maksymalnie 100 znaków',
+  })
   city?: string;
 
   @IsOptional()
@@ -39,6 +41,8 @@ export class CreateContractorDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(100, { message: 'Skrócona nazwa może mieć maksymalnie 100 znaków' })
+  @MaxLength(100, {
+    message: 'Skrócona nazwa może mieć maksymalnie 100 znaków',
+  })
   shortName?: string;
 }
