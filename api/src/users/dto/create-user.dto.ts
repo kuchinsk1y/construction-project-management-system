@@ -27,7 +27,7 @@ export class CreateUserDto {
   @IsOptional()
   @IsString()
   @MaxLength(255)
-  middleNames?: string;
+  middleNames?: string | null;
 
   @IsString()
   @MinLength(1)
@@ -42,7 +42,7 @@ export class CreateUserDto {
   @IsOptional()
   @IsNumberString()
   @MaxLength(20)
-  telegramId?: string;
+  telegramId?: string | null;
 
   @IsOptional()
   @IsArray()

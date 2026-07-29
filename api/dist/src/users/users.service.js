@@ -118,11 +118,17 @@ let UsersService = class UsersService {
             data.lastName = dto.lastName.trim();
         if (typeof dto.position === 'string')
             data.position = dto.position.trim();
-        if (typeof dto.middleNames === 'string') {
+        if (dto.middleNames === null) {
+            data.middleNames = null;
+        }
+        else if (typeof dto.middleNames === 'string') {
             const middleNames = dto.middleNames.trim();
             data.middleNames = middleNames.length > 0 ? middleNames : null;
         }
-        if (typeof dto.telegramId === 'string') {
+        if (dto.telegramId === null) {
+            data.telegramId = null;
+        }
+        else if (typeof dto.telegramId === 'string') {
             const telegramId = dto.telegramId.trim();
             data.telegramId = telegramId.length > 0 ? BigInt(telegramId) : null;
         }

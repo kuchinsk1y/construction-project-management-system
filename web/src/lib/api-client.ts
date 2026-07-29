@@ -30,7 +30,9 @@ async function parseResponse<T>(response: Response): Promise<T> {
 }
 
 export async function apiGet<T>(path: string): Promise<T> {
-  const response = await fetch(`${resolveBaseUrl()}${path}`)
+  const response = await fetch(`${resolveBaseUrl()}${path}`, {
+    cache: 'no-store',
+  })
   return parseResponse<T>(response)
 }
 

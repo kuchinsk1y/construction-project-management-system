@@ -98,11 +98,11 @@ function toCreatePayload(form: UserFormState): CreateUserPayload {
   return {
     firstName: form.firstName.trim(),
     lastName: form.lastName.trim(),
-    middleNames: form.middleNames.trim() || undefined,
+    middleNames: form.middleNames.trim() || null,
     email: form.email.trim().toLowerCase(),
     position: form.position.trim(),
     phoneNumber: form.phoneNumber.trim(),
-    telegramId: form.telegramId.trim() || undefined,
+    telegramId: form.telegramId.trim() || null,
     roles: [form.role],
     isActive: form.isActive,
   }
@@ -112,11 +112,11 @@ function toUpdatePayload(form: UserFormState): UpdateUserPayload {
   return {
     firstName: form.firstName.trim(),
     lastName: form.lastName.trim(),
-    middleNames: form.middleNames.trim() || undefined,
+    middleNames: form.middleNames.trim() || null,
     email: form.email.trim().toLowerCase(),
     position: form.position.trim(),
     phoneNumber: form.phoneNumber.trim(),
-    telegramId: form.telegramId.trim() || undefined,
+    telegramId: form.telegramId.trim() || null,
     roles: [form.role],
     isActive: form.isActive,
   }
@@ -159,7 +159,11 @@ export function UsersPage({ canManage }: UsersPageProps) {
 
   const createMutation = useMutation({
     mutationFn: createUser,
-    onSuccess: async () => {
+    onSuccess: async (createdUser) => {
+      queryClient.setQueryData<ApiUser[]>(['users'], (oldUsers) => {
+        if (!oldUsers) return [createdUser]
+        return [createdUser, ...oldUsers]
+      })
       await queryClient.invalidateQueries({ queryKey: ['users'] })
       setShowModal(false)
       setIsEditMode(false)
@@ -178,14 +182,19 @@ export function UsersPage({ canManage }: UsersPageProps) {
   const updateMutation = useMutation({
     mutationFn: ({ id, payload, noticeTitle, noticeMessage }: { id: number; payload: UpdateUserPayload; noticeTitle: string; noticeMessage: string }) =>
       updateUser(id, payload).then((updated) => ({ updated, noticeTitle, noticeMessage })),
-    onSuccess: async ({ noticeTitle, noticeMessage }) => {
+    onSuccess: async (data) => {
+      const updatedUser = data.updated
+      queryClient.setQueryData<ApiUser[]>(['users'], (oldUsers) => {
+        if (!oldUsers) return [updatedUser]
+        return oldUsers.map((u) => (u.id === updatedUser.id ? updatedUser : u))
+      })
       await queryClient.invalidateQueries({ queryKey: ['users'] })
       setShowModal(false)
       setIsEditMode(false)
       setEditingId(null)
       setFormState(emptyForm)
       setFormError('')
-      showNotice('success', noticeTitle, noticeMessage)
+      showNotice('success', data.noticeTitle, data.noticeMessage)
     },
     onError: (mutationError) => {
       const message = mutationError?.message || t('users.notices.updateErrorMessage')
@@ -199,6 +208,10 @@ export function UsersPage({ canManage }: UsersPageProps) {
     onSuccess: async (_, deletedId) => {
       const deletedName = users.find((u) => u.id === deletedId)
       const nameStr = deletedName ? fullName(deletedName) : ''
+      queryClient.setQueryData<ApiUser[]>(['users'], (oldUsers) => {
+        if (!oldUsers) return []
+        return oldUsers.filter((u) => u.id !== deletedId)
+      })
       await queryClient.invalidateQueries({ queryKey: ['users'] })
       showNotice('success', t('users.notices.deletedTitle'), t('users.notices.deletedMessage', { name: nameStr }))
     },

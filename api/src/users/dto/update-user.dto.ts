@@ -30,7 +30,7 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   @MaxLength(255)
-  middleNames?: string;
+  middleNames?: string | null;
 
   @IsOptional()
   @IsString()
@@ -47,7 +47,7 @@ export class UpdateUserDto {
   @IsOptional()
   @IsNumberString()
   @MaxLength(20)
-  telegramId?: string;
+  telegramId?: string | null;
 
   @IsOptional()
   @IsArray()

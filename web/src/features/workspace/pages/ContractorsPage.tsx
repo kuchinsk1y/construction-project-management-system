@@ -337,7 +337,7 @@ export function ContractorsPage({ canManage }: ContractorsPageProps) {
                       className="group transition-colors odd:bg-[var(--background)]/25 hover:bg-[var(--sidebar-accent)]/35 animate-row-fade-in"
                       style={{ animationDelay: `${index * 35}ms` }}
                     >
-                      <td className="border-b border-[var(--border)] px-4 py-3 align-top whitespace-normal">
+                      <td className="border-b border-[var(--border)] px-4 py-3 align-middle whitespace-normal">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <p className="font-semibold text-sm leading-snug text-[var(--foreground)]">
                             {c.name}
@@ -348,7 +348,7 @@ export function ContractorsPage({ canManage }: ContractorsPageProps) {
                             </span>
                           )}
                         </div>
-                        {c.street || c.city ? (
+                        {/* {c.street || c.city ? (
                           <p className="mt-1 text-xs text-[var(--muted-foreground)]">
                             {c.street ? `${c.street}, ` : ''}{c.postal_code ? `${c.postal_code} ` : ''}{c.city ? `${c.city}` : ''}{c.country ? `, ${c.country}` : ''}
                           </p>
@@ -359,17 +359,17 @@ export function ContractorsPage({ canManage }: ContractorsPageProps) {
                           <p className="mt-1.5 text-xs text-amber-500/90 italic leading-relaxed whitespace-pre-wrap max-w-md">
                             * {c.notes}
                           </p>
-                        ) : null}
+                        ) : null} */}
                       </td>
-                      <td className="border-b border-[var(--border)] px-4 py-3 align-top">
+                      <td className="border-b border-[var(--border)] px-4 py-3 align-middle">
                         <span className="font-mono bg-[var(--muted)]/50 px-2 py-0.5 rounded text-xs font-semibold text-[var(--foreground)]">
                           {c.tax_number || t('contractors.table.noTaxNumber')}
                         </span>
                       </td>
-                      <td className="border-b border-[var(--border)] px-4 py-3 align-top text-[var(--muted-foreground)]">
+                      <td className="border-b border-[var(--border)] px-4 py-3 align-middle text-[var(--muted-foreground)]">
                         {c.created_at ? new Date(c.created_at).toLocaleDateString() : '-'}
                       </td>
-                      <td className="border-b border-[var(--border)] px-4 py-3 align-top text-right">
+                      <td className="border-b border-[var(--border)] px-4 py-3 align-middle text-right">
                         <div className="inline-flex gap-1.5">
                           <Button
                             type="button"

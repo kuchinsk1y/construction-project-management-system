@@ -44,7 +44,7 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.MaxLength)(255),
-    __metadata("design:type", String)
+    __metadata("design:type", Object)
 ], CreateUserDto.prototype, "middleNames", void 0);
 __decorate([
     (0, class_validator_1.IsString)(),
@@ -62,7 +62,7 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsNumberString)(),
     (0, class_validator_1.MaxLength)(20),
-    __metadata("design:type", String)
+    __metadata("design:type", Object)
 ], CreateUserDto.prototype, "telegramId", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
