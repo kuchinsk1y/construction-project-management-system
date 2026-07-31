@@ -132,310 +132,7 @@ export function ProjectDetailsDrawer({
   setShowDeleteConfirm,
 }: ProjectDetailsDrawerProps) {
   const { t } = useTranslation()
-
-  if (!editingProject) {
-    // Sliding Drawer Mode for Project Creation ONLY
-    return (
-      <>
-        {/* Drawer Backdrop Overlay */}
-        {isOpen && (
-          <div
-            className="fixed inset-0 z-40 bg-black/35 backdrop-blur-[2px] transition-opacity duration-300"
-            onClick={handleCloseDrawer}
-          />
-        )}
-
-        {/* Sliding Drawer Container */}
-        <aside
-          className={[
-            'fixed inset-y-0 right-0 z-50 flex w-full max-w-[600px] flex-col overflow-hidden border-l border-[var(--border)] bg-[var(--card)] shadow-2xl transition-transform duration-300 ease-out select-none',
-            isOpen ? 'translate-x-0' : 'translate-x-full',
-          ].join(' ')}
-        >
-          {/* Drawer Header */}
-          <header className="flex shrink-0 items-center justify-between border-b border-[var(--border)] px-5 py-4">
-            <div>
-              <h3 className="text-base font-bold tracking-tight text-[var(--foreground)]">
-                {t('projects.form.title')}
-              </h3>
-              <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
-                {t('projects.form.subtitle')}
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon-sm"
-              onClick={handleCloseDrawer}
-              className="rounded-xl border-[var(--sidebar-primary)]/20 text-[var(--sidebar-primary)] hover:bg-[var(--sidebar-primary)]/10"
-              aria-label="Zamknij"
-            >
-              <X size={15} />
-            </Button>
-          </header>
-
-          {/* Drawer scrollable content body */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar px-5 py-4 space-y-4 bg-[var(--card)]">
-            <div className="w-full space-y-4 animate-tab-content pb-6">
-              <div className="flex flex-col gap-5">
-                {/* Basic Info Card */}
-                <div className="space-y-4">
-                  <p className="mb-3 border-b border-[var(--border)] pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)] flex items-center gap-1.5">
-                    <FileText size={13} className="text-[var(--sidebar-primary)]" />
-                    <span>{t('projects.form.sections.basic')}</span>
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <label className="block sm:col-span-2">
-                      <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">
-                        {t('projects.form.labels.name')} <span className="text-rose-500">*</span>
-                      </span>
-                      <input
-                        value={formState.name}
-                        onChange={(e) => setField('name', e.target.value)}
-                        placeholder={t('projects.form.placeholders.name')}
-                        className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50"
-                      />
-                    </label>
-                    <label className="block">
-                      <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">{t('projects.form.labels.status')}</span>
-                      <select
-                        value={formState.status}
-                        onChange={(e) => setField('status', e.target.value)}
-                        className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50 cursor-pointer"
-                      >
-                        <option value="DRAFT">{t('projects.form.statuses.DRAFT')}</option>
-                        <option value="ACTIVE">{t('projects.form.statuses.ACTIVE')}</option>
-                        <option value="ON_HOLD">{t('projects.form.statuses.ON_HOLD')}</option>
-                        <option value="COMPLETED">{t('projects.form.statuses.COMPLETED')}</option>
-                        <option value="CANCELLED">{t('projects.form.statuses.CANCELLED')}</option>
-                      </select>
-                    </label>
-                    <label className="block">
-                      <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">{t('projects.form.labels.manager')}</span>
-                      <select
-                        value={formState.managerId || ''}
-                        onChange={(e) => setField('managerId', e.target.value ? Number(e.target.value) : undefined)}
-                        className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50 cursor-pointer"
-                      >
-                        <option value="">{t('projects.form.placeholders.selectManager')}</option>
-                        {managerList.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.lastName} {m.firstName}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="block sm:col-span-2">
-                      <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">{t('projects.form.labels.dokumentationUrl')}</span>
-                      <input
-                        value={formState.dokumentationUrl || ''}
-                        onChange={(e) => setField('dokumentationUrl', e.target.value)}
-                        placeholder={t('projects.form.placeholders.dokumentationUrl')}
-                        className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50"
-                      />
-                    </label>
-                    <label className="block sm:col-span-2">
-                      <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">{t('projects.form.labels.pinUrl')}</span>
-                      <input
-                        value={formState.pinUrl || ''}
-                        onChange={(e) => setField('pinUrl', e.target.value)}
-                        placeholder={t('projects.form.placeholders.pinUrl')}
-                        className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50"
-                      />
-                    </label>
-                  </div>
-                </div>
-
-                {/* Timeline & Schedule Card */}
-                <div className="space-y-4">
-                  <p className="mb-3 border-b border-[var(--border)] pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)] flex items-center gap-1.5">
-                    <CalendarRange size={13} className="text-[var(--sidebar-primary)]" />
-                    <span>Terminy i harmonogram realizacji</span>
-                  </p>
-                  <div className="space-y-4 pt-1">
-                    {/* Planned Dates */}
-                    <div className="space-y-2 border-l-2 border-[var(--sidebar-primary)]/45 pl-2.5">
-                      <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">
-                        Terminy planowane (Harmonogram)
-                      </span>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <span className="text-[11px] text-[var(--muted-foreground)] block mb-1">{t('projects.form.labels.startDate')}</span>
-                          <DatePicker
-                            value={formState.startDateContract ?? ''}
-                            onChange={(v) => setField('startDateContract', v)}
-                            placeholder="dd.mm.rrrr"
-                            className="h-10 text-sm bg-[var(--background)] hover:border-zinc-400/60 dark:hover:border-zinc-600/60 focus:ring-[var(--sidebar-primary)]/15"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <span className="text-[11px] text-[var(--muted-foreground)] block mb-1">{t('projects.form.labels.endDate')}</span>
-                          <DatePicker
-                            value={formState.endDateContract ?? ''}
-                            onChange={(v) => setField('endDateContract', v)}
-                            min={formState.startDateContract || undefined}
-                            placeholder="dd.mm.rrrr"
-                            className="h-10 text-sm bg-[var(--background)] hover:border-zinc-400/60 dark:hover:border-zinc-600/60 focus:ring-[var(--sidebar-primary)]/15"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Contract Details Card */}
-                <div className="space-y-4">
-                  <p className="mb-3 border-b border-[var(--border)] pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)] flex items-center gap-1.5">
-                    <Coins size={13} className="text-[var(--sidebar-primary)]" />
-                    <span>Szczegóły wartości i kontraktu</span>
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <label className="block">
-                      <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">
-                        {t('projects.form.labels.contractor')} <span className="text-rose-500">*</span>
-                      </span>
-                      <div className="relative" ref={contractorRef}>
-                        <input
-                          value={showContractorList ? contractorSearch : selectedContractor?.name ?? ''}
-                          onChange={(e) => {
-                            setContractorSearch(e.target.value)
-                            setShowContractorList(true)
-                            if (e.target.value === '') {
-                              setField('contractorId', '')
-                            }
-                          }}
-                          onFocus={() => setShowContractorList(true)}
-                          placeholder={contractorsLoading ? t('projects.form.placeholders.loading') : t('projects.form.placeholders.selectContractor')}
-                          disabled={contractorsLoading}
-                          className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50"
-                        />
-                        {showContractorList && !contractorsLoading && filteredContractors.length > 0 ? (
-                          <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-48 overflow-y-auto custom-scrollbar rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-lg">
-                            {filteredContractors.map((c) => (
-                              <button
-                                key={c.id}
-                                type="button"
-                                onClick={() => handleSelectContractor(c.id)}
-                                className="w-full px-3 py-2 text-left text-xs transition hover:bg-[var(--sidebar-primary)]/10 cursor-pointer"
-                              >
-                                {c.name}
-                              </button>
-                            ))}
-                          </div>
-                        ) : null}
-                      </div>
-                    </label>
-
-                    <label className="block">
-                      <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">
-                        {t('projects.form.labels.projectType')} <span className="text-rose-500">*</span>
-                      </span>
-                      <select
-                        value={formState.projectTypeId || ''}
-                        onChange={(e) => setField('projectTypeId', Number(e.target.value))}
-                        disabled={typesLoading}
-                        className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50 cursor-pointer"
-                      >
-                        <option value="">{typesLoading ? t('projects.form.placeholders.loading') : t('projects.form.placeholders.selectProjectType')}</option>
-                        {projectTypes.map((pt) => (
-                          <option key={pt.id} value={pt.id}>{pt.name}</option>
-                        ))}
-                      </select>
-                    </label>
-
-                    <label className="block">
-                      <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">{t('projects.form.labels.currency')}</span>
-                      <select
-                        value={formState.currency ?? 'PLN'}
-                        onChange={(e) => setField('currency', e.target.value)}
-                        className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50 cursor-pointer"
-                      >
-                        <option value="PLN">PLN</option>
-                        <option value="EUR">EUR</option>
-                        <option value="USD">USD</option>
-                      </select>
-                    </label>
-
-                    <label className="block">
-                      <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">{t('projects.form.labels.contractNetValue')}</span>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={formState.contractNetValue ?? ''}
-                        onChange={(e) => setField('contractNetValue', e.target.value ? Number(e.target.value) : undefined)}
-                        placeholder={t('projects.form.placeholders.contractNetValue')}
-                        className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50"
-                      />
-                    </label>
-                  </div>
-                </div>
-
-                {/* Location Card */}
-                <div className="space-y-4">
-                  <p className="mb-3 border-b border-[var(--border)] pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)] flex items-center gap-1.5">
-                    <MapPin size={13} className="text-[var(--sidebar-primary)]" />
-                    <span>{t('projects.form.sections.location')}</span>
-                  </p>
-                  <div className="grid grid-cols-2 gap-4">
-                    <label className="block">
-                      <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">
-                        {t('projects.form.labels.country')} <span className="text-rose-500">*</span>
-                      </span>
-                      <input
-                        value={formState.country}
-                        onChange={(e) => setField('country', e.target.value)}
-                        placeholder={t('projects.form.placeholders.country')}
-                        className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50"
-                      />
-                    </label>
-                    <label className="block">
-                      <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">
-                        {t('projects.form.labels.city')} <span className="text-rose-500">*</span>
-                      </span>
-                      <input
-                        value={formState.city}
-                        onChange={(e) => setField('city', e.target.value)}
-                        placeholder={t('projects.form.placeholders.city')}
-                        className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50"
-                      />
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              {formError && (
-                <p className="rounded-xl border border-rose-500/35 bg-rose-500/10 px-3 py-2 text-sm text-rose-500">
-                  {formError}
-                </p>
-              )}
-
-              {/* Action Buttons Footer */}
-              <div className="border-t border-[var(--border)] pt-5 flex items-center justify-end gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleCloseDrawer}
-                  className="rounded-xl"
-                >
-                  {t('projects.form.actions.cancel')}
-                </Button>
-                <Button
-                  type="button"
-                  onClick={handleCreate}
-                  disabled={createMutation.isPending}
-                  className="rounded-xl bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] hover:bg-[var(--sidebar-primary)]/90 shadow-[0_4px_14px_color-mix(in_oklch,var(--sidebar-primary),transparent_65%)]"
-                >
-                  {createMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : null}
-                  {createMutation.isPending ? t('projects.form.actions.saving') : t('projects.form.actions.save')}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </aside>
-      </>
-    )
-  }
+  const showDrawer = (!editingProject && isOpen) || (editingProject && isEditing)
 
   return (
     <>
@@ -501,7 +198,6 @@ export function ProjectDetailsDrawer({
         {/* Main Details and Milestones View */}
         <div className="w-full">
           {activeTab === 'details' ? (
-            !isEditing ? (
               /* Read-only view */
               <div className="w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 md:p-5 shadow-sm space-y-4 animate-tab-content">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
@@ -684,339 +380,6 @@ export function ProjectDetailsDrawer({
                   </div>
                 </div>
               </div>
-            ) : (
-              /* Edit / Create Form View */
-              <div className="w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 md:p-6 shadow-sm space-y-6 animate-tab-content">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                  {/* Left Column: Basic Info & Timeline */}
-                  <div className="lg:col-span-6 space-y-5">
-                    {/* Basic Info Card */}
-                    <div className="space-y-4">
-                      <p className="mb-3 border-b border-[var(--border)] pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)] flex items-center gap-1.5">
-                        <FileText size={13} className="text-[var(--sidebar-primary)]" />
-                        <span>{t('projects.form.sections.basic')}</span>
-                      </p>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <label className="block sm:col-span-2">
-                          <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">
-                            {t('projects.form.labels.name')} <span className="text-rose-500">*</span>
-                          </span>
-                          <input
-                            value={formState.name}
-                            onChange={(e) => setField('name', e.target.value)}
-                            placeholder={t('projects.form.placeholders.name')}
-                            className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50"
-                          />
-                        </label>
-                        <label className="block">
-                          <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">{t('projects.form.labels.status')}</span>
-                          <select
-                            value={formState.status}
-                            onChange={(e) => setField('status', e.target.value)}
-                            className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50 cursor-pointer"
-                          >
-                            <option value="DRAFT">{t('projects.form.statuses.DRAFT')}</option>
-                            <option value="ACTIVE">{t('projects.form.statuses.ACTIVE')}</option>
-                            <option value="ON_HOLD">{t('projects.form.statuses.ON_HOLD')}</option>
-                            <option value="COMPLETED">{t('projects.form.statuses.COMPLETED')}</option>
-                            <option value="CANCELLED">{t('projects.form.statuses.CANCELLED')}</option>
-                          </select>
-                        </label>
-                        <label className="block">
-                          <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">{t('projects.form.labels.manager')}</span>
-                          <select
-                            value={formState.managerId || ''}
-                            onChange={(e) => setField('managerId', e.target.value ? Number(e.target.value) : undefined)}
-                            className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50 cursor-pointer"
-                          >
-                            <option value="">{t('projects.form.placeholders.selectManager')}</option>
-                            {managerList.map((m) => (
-                              <option key={m.id} value={m.id}>
-                                {m.lastName} {m.firstName}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                        <label className="block sm:col-span-2">
-                          <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">{t('projects.form.labels.dokumentationUrl')}</span>
-                          <input
-                            value={formState.dokumentationUrl || ''}
-                            onChange={(e) => setField('dokumentationUrl', e.target.value)}
-                            placeholder={t('projects.form.placeholders.dokumentationUrl')}
-                            className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50"
-                          />
-                        </label>
-                        <label className="block sm:col-span-2">
-                          <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">{t('projects.form.labels.pinUrl')}</span>
-                          <input
-                            value={formState.pinUrl || ''}
-                            onChange={(e) => setField('pinUrl', e.target.value)}
-                            placeholder={t('projects.form.placeholders.pinUrl')}
-                            className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50"
-                          />
-                        </label>
-                      </div>
-                    </div>
-
-                    {/* Timeline & Schedule Card */}
-                    <div className="space-y-4">
-                      <p className="mb-3 border-b border-[var(--border)] pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)] flex items-center gap-1.5">
-                        <CalendarRange size={13} className="text-[var(--sidebar-primary)]" />
-                        <span>Terminy i harmonogram realizacji</span>
-                      </p>
-                      <div className="space-y-4 pt-1">
-                        {/* Planned Dates */}
-                        <div className="space-y-2 border-l-2 border-[var(--sidebar-primary)]/45 pl-2.5">
-                          <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">
-                            Terminy planowane (Harmonogram)
-                          </span>
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                              <span className="text-[11px] text-[var(--muted-foreground)] block mb-1">{t('projects.form.labels.startDate')}</span>
-                              <DatePicker
-                                value={formState.startDateContract ?? ''}
-                                onChange={(v) => setField('startDateContract', v)}
-                                placeholder="dd.mm.rrrr"
-                                className="h-10 text-sm bg-[var(--background)] hover:border-zinc-400/60 dark:hover:border-zinc-600/60 focus:ring-[var(--sidebar-primary)]/15"
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <span className="text-[11px] text-[var(--muted-foreground)] block mb-1">{t('projects.form.labels.endDate')}</span>
-                              <DatePicker
-                                value={formState.endDateContract ?? ''}
-                                onChange={(v) => setField('endDateContract', v)}
-                                min={formState.startDateContract || undefined}
-                                placeholder="dd.mm.rrrr"
-                                className="h-10 text-sm bg-[var(--background)] hover:border-zinc-400/60 dark:hover:border-zinc-600/60 focus:ring-[var(--sidebar-primary)]/15"
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Actual Dates */}
-                        <div className="space-y-2 border-l-2 border-emerald-500/45 pl-2.5">
-                          <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">
-                            Terminy rzeczywiste (Faktyczne)
-                          </span>
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                              <span className="text-[11px] text-[var(--muted-foreground)] block mb-1">Faktyczny start</span>
-                              <DatePicker
-                                value={formState.startDateFact ?? ''}
-                                onChange={(v) => setField('startDateFact', v)}
-                                placeholder="dd.mm.rrrr"
-                                className="h-10 text-sm bg-[var(--background)] hover:border-zinc-400/60 dark:hover:border-zinc-600/60 focus:ring-[var(--sidebar-primary)]/15"
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <span className="text-[11px] text-[var(--muted-foreground)] block mb-1">Faktyczny koniec</span>
-                              <DatePicker
-                                value={formState.endDateFact ?? ''}
-                                onChange={(v) => setField('endDateFact', v)}
-                                min={formState.startDateFact || undefined}
-                                placeholder="dd.mm.rrrr"
-                                className="h-10 text-sm bg-[var(--background)] hover:border-zinc-400/60 dark:hover:border-zinc-600/60 focus:ring-[var(--sidebar-primary)]/15"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right Column: Contract, Location, Financials */}
-                  <div className="lg:col-span-6 space-y-5">
-                    {/* Contract Details Card */}
-                    <div className="space-y-4">
-                      <p className="mb-3 border-b border-[var(--border)] pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)] flex items-center gap-1.5">
-                        <Coins size={13} className="text-[var(--sidebar-primary)]" />
-                        <span>Szczegóły wartości i kontraktu</span>
-                      </p>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <label className="block">
-                          <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">
-                            {t('projects.form.labels.contractor')} <span className="text-rose-500">*</span>
-                          </span>
-                          <div className="relative" ref={contractorRef}>
-                            <input
-                              value={showContractorList ? contractorSearch : selectedContractor?.name ?? ''}
-                              onChange={(e) => {
-                                setContractorSearch(e.target.value)
-                                setShowContractorList(true)
-                                if (e.target.value === '') {
-                                  setField('contractorId', '')
-                                }
-                              }}
-                              onFocus={() => setShowContractorList(true)}
-                              placeholder={contractorsLoading ? t('projects.form.placeholders.loading') : t('projects.form.placeholders.selectContractor')}
-                              disabled={contractorsLoading}
-                              className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50"
-                            />
-                            {showContractorList && !contractorsLoading && filteredContractors.length > 0 ? (
-                              <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-48 overflow-y-auto custom-scrollbar rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-lg">
-                                {filteredContractors.map((c) => (
-                                  <button
-                                    key={c.id}
-                                    type="button"
-                                    onClick={() => handleSelectContractor(c.id)}
-                                    className="w-full px-3 py-2 text-left text-xs transition hover:bg-[var(--sidebar-primary)]/10 cursor-pointer"
-                                  >
-                                    {c.name}
-                                  </button>
-                                ))}
-                              </div>
-                            ) : null}
-                          </div>
-                        </label>
-
-                        <label className="block">
-                          <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">
-                            {t('projects.form.labels.projectType')} <span className="text-rose-500">*</span>
-                          </span>
-                          <select
-                            value={formState.projectTypeId || ''}
-                            onChange={(e) => setField('projectTypeId', Number(e.target.value))}
-                            disabled={typesLoading}
-                            className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50 cursor-pointer"
-                          >
-                            <option value="">{typesLoading ? t('projects.form.placeholders.loading') : t('projects.form.placeholders.selectProjectType')}</option>
-                            {projectTypes.map((pt) => (
-                              <option key={pt.id} value={pt.id}>{pt.name}</option>
-                            ))}
-                          </select>
-                        </label>
-
-                        <label className="block">
-                          <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">{t('projects.form.labels.currency')}</span>
-                          <select
-                            value={formState.currency ?? 'PLN'}
-                            onChange={(e) => setField('currency', e.target.value)}
-                            className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50 cursor-pointer"
-                          >
-                            <option value="PLN">PLN</option>
-                            <option value="EUR">EUR</option>
-                            <option value="USD">USD</option>
-                          </select>
-                        </label>
-
-                        <label className="block">
-                          <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">{t('projects.form.labels.contractNetValue')}</span>
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={formState.contractNetValue ?? ''}
-                            onChange={(e) => setField('contractNetValue', e.target.value ? Number(e.target.value) : undefined)}
-                            placeholder={t('projects.form.placeholders.contractNetValue')}
-                            className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50"
-                          />
-                        </label>
-                      </div>
-                    </div>
-
-                    {/* Location Card */}
-                    <div className="space-y-4">
-                      <p className="mb-3 border-b border-[var(--border)] pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)] flex items-center gap-1.5">
-                        <MapPin size={13} className="text-[var(--sidebar-primary)]" />
-                        <span>{t('projects.form.sections.location')}</span>
-                      </p>
-                      <div className="grid grid-cols-2 gap-4">
-                        <label className="block">
-                          <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">
-                            {t('projects.form.labels.country')} <span className="text-rose-500">*</span>
-                          </span>
-                          <input
-                            value={formState.country}
-                            onChange={(e) => setField('country', e.target.value)}
-                            placeholder={t('projects.form.placeholders.country')}
-                            className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50"
-                          />
-                        </label>
-                        <label className="block">
-                          <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">
-                            {t('projects.form.labels.city')} <span className="text-rose-500">*</span>
-                          </span>
-                          <input
-                            value={formState.city}
-                            onChange={(e) => setField('city', e.target.value)}
-                            placeholder={t('projects.form.placeholders.city')}
-                            className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50"
-                          />
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {formError && (
-                  <p className="rounded-xl border border-rose-500/35 bg-rose-500/10 px-3 py-2 text-sm text-rose-500">
-                    {formError}
-                  </p>
-                )}
-
-                {/* Action Buttons Footer (Edit Mode) */}
-                <div className="border-t border-[var(--border)] pt-5 flex items-center justify-between gap-4">
-                  {editingProject && canDeleteProject ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleDeleteProject}
-                      disabled={deleteMutation.isPending}
-                      className="border-rose-500/50 text-rose-500 hover:bg-rose-500/10 rounded-xl"
-                    >
-                      {deleteMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : null}
-                      <Trash2 size={14} />
-                      {deleteMutation.isPending ? 'Usuwanie...' : 'Usuń projekt'}
-                    </Button>
-                  ) : (
-                    <div />
-                  )}
-                  <div className="flex items-center gap-3">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        if (editingProject) {
-                          setFormState({
-                            name: editingProject.name,
-                            contractorId: editingProject.contractors?.id ?? '',
-                            projectTypeId: editingProject.project_types?.id ?? 0,
-                            country: editingProject.country,
-                            city: editingProject.city,
-                            status: editingProject.status as ProjectStatus,
-                            currency: editingProject.currency || 'PLN',
-                            contractNetValue: editingProject.contract_net_value ? Number(editingProject.contract_net_value) : undefined,
-                            startDateContract: editingProject.start_date_contract || '',
-                            endDateContract: editingProject.end_date_contract || '',
-                            startDateFact: editingProject.start_date_fact || '',
-                            endDateFact: editingProject.end_date_fact || '',
-                            managerId: editingProject.manager?.id ?? undefined,
-                            dokumentationUrl: editingProject.dokumentationUrl ?? '',
-                            pinUrl: editingProject.pinUrl ?? '',
-                          })
-                          setFormError('')
-                          setIsEditing(false)
-                        } else {
-                          handleCloseDrawer()
-                        }
-                      }}
-                      className="rounded-xl"
-                    >
-                      {t('projects.form.actions.cancel')}
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={handleCreate}
-                      disabled={createMutation.isPending || updateMutation.isPending}
-                      className="rounded-xl bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] hover:bg-[var(--sidebar-primary)]/90 shadow-[0_4px_14px_color-mix(in_oklch,var(--sidebar-primary),transparent_65%)]"
-                    >
-                      {createMutation.isPending || updateMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : null}
-                      {createMutation.isPending || updateMutation.isPending ? t('projects.form.actions.saving') : t('projects.form.actions.save')}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )
           ) : (
             /* Milestones View */
             <MilestonesTab
@@ -1043,7 +406,360 @@ export function ProjectDetailsDrawer({
         </div>
       </section>
 
-      {/* Delete Confirmation Modal */}
+      
+      {/* Form Drawer (Create & Edit) */}
+      {showDrawer && (
+        <>
+          {/* Drawer Backdrop Overlay */}
+        {showDrawer && (
+          <div
+            className="fixed inset-0 z-40 bg-black/35 backdrop-blur-[2px] transition-opacity duration-300"
+            onClick={() => isEditing ? setIsEditing(false) : handleCloseDrawer()}
+          />
+        )}
+
+        {/* Sliding Drawer Container */}
+        <aside
+          className={[
+            'fixed inset-y-0 right-0 z-50 flex w-full max-w-[600px] flex-col overflow-hidden border-l border-[var(--border)] bg-[var(--card)] shadow-2xl transition-transform duration-300 ease-out select-none',
+            showDrawer ? 'translate-x-0' : 'translate-x-full',
+          ].join(' ')}
+        >
+          {/* Drawer Header */}
+          <header className="flex shrink-0 items-center justify-between border-b border-[var(--border)] px-5 py-4">
+            <div>
+              <h3 className="text-base font-bold tracking-tight text-[var(--foreground)]">
+                {editingProject ? 'Edycja projektu' : t('projects.form.title')}
+              </h3>
+              <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
+                {editingProject ? 'Zmień szczegóły projektu' : t('projects.form.subtitle')}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              onClick={() => isEditing ? setIsEditing(false) : handleCloseDrawer()}
+              className="rounded-xl border-[var(--sidebar-primary)]/20 text-[var(--sidebar-primary)] hover:bg-[var(--sidebar-primary)]/10"
+              aria-label="Zamknij"
+            >
+              <X size={15} />
+            </Button>
+          </header>
+
+          {/* Drawer scrollable content body */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar px-5 py-4 space-y-4 bg-[var(--card)]">
+            <div className="w-full space-y-4 animate-tab-content pb-6">
+              <div className="flex flex-col gap-5">
+                {/* Basic Info Card */}
+                <div className="space-y-4">
+                  <p className="mb-3 border-b border-[var(--border)] pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)] flex items-center gap-1.5">
+                    <FileText size={13} className="text-[var(--sidebar-primary)]" />
+                    <span>{t('projects.form.sections.basic')}</span>
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <label className="block sm:col-span-2">
+                      <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">
+                        {t('projects.form.labels.name')} <span className="text-rose-500">*</span>
+                      </span>
+                      <input
+                        value={formState.name}
+                        onChange={(e) => setField('name', e.target.value)}
+                        placeholder={t('projects.form.placeholders.name')}
+                        className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">{t('projects.form.labels.status')}</span>
+                      <select
+                        value={formState.status}
+                        onChange={(e) => setField('status', e.target.value)}
+                        className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50 cursor-pointer"
+                      >
+                        <option value="DRAFT">{t('projects.form.statuses.DRAFT')}</option>
+                        <option value="ACTIVE">{t('projects.form.statuses.ACTIVE')}</option>
+                        <option value="ON_HOLD">{t('projects.form.statuses.ON_HOLD')}</option>
+                        <option value="COMPLETED">{t('projects.form.statuses.COMPLETED')}</option>
+                        <option value="CANCELLED">{t('projects.form.statuses.CANCELLED')}</option>
+                      </select>
+                    </label>
+                    <label className="block">
+                      <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">{t('projects.form.labels.manager')}</span>
+                      <select
+                        value={formState.managerId || ''}
+                        onChange={(e) => setField('managerId', e.target.value ? Number(e.target.value) : undefined)}
+                        className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50 cursor-pointer"
+                      >
+                        <option value="">{t('projects.form.placeholders.selectManager')}</option>
+                        {managerList.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.lastName} {m.firstName}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="block sm:col-span-2">
+                      <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">{t('projects.form.labels.dokumentationUrl')}</span>
+                      <input
+                        value={formState.dokumentationUrl || ''}
+                        onChange={(e) => setField('dokumentationUrl', e.target.value)}
+                        placeholder={t('projects.form.placeholders.dokumentationUrl')}
+                        className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50"
+                      />
+                    </label>
+                    <label className="block sm:col-span-2">
+                      <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">{t('projects.form.labels.pinUrl')}</span>
+                      <input
+                        value={formState.pinUrl || ''}
+                        onChange={(e) => setField('pinUrl', e.target.value)}
+                        placeholder={t('projects.form.placeholders.pinUrl')}
+                        className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50"
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Timeline & Schedule Card */}
+                <div className="space-y-4">
+                  <p className="mb-3 border-b border-[var(--border)] pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)] flex items-center gap-1.5">
+                    <CalendarRange size={13} className="text-[var(--sidebar-primary)]" />
+                    <span>Terminy i harmonogram realizacji</span>
+                  </p>
+                  <div className="space-y-4 pt-1">
+                    {/* Planned Dates */}
+                    <div className="space-y-2 border-l-2 border-[var(--sidebar-primary)]/45 pl-2.5">
+                      <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">
+                        Terminy planowane (Harmonogram)
+                      </span>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <span className="text-[11px] text-[var(--muted-foreground)] block mb-1">{t('projects.form.labels.startDate')}</span>
+                          <DatePicker
+                            value={formState.startDateContract ?? ''}
+                            onChange={(v) => setField('startDateContract', v)}
+                            placeholder="dd.mm.rrrr"
+                            className="h-10 text-sm bg-[var(--background)] hover:border-zinc-400/60 dark:hover:border-zinc-600/60 focus:ring-[var(--sidebar-primary)]/15"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <span className="text-[11px] text-[var(--muted-foreground)] block mb-1">{t('projects.form.labels.endDate')}</span>
+                          <DatePicker
+                            value={formState.endDateContract ?? ''}
+                            onChange={(v) => setField('endDateContract', v)}
+                            min={formState.startDateContract || undefined}
+                            placeholder="dd.mm.rrrr"
+                            className="h-10 text-sm bg-[var(--background)] hover:border-zinc-400/60 dark:hover:border-zinc-600/60 focus:ring-[var(--sidebar-primary)]/15"
+                          />
+                        </div>
+                      </div>
+                    
+                        {/* Actual Dates */}
+                        {editingProject && (
+                          <div className="space-y-2 border-l-2 border-emerald-500/45 pl-2.5 mt-4">
+                            <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">
+                              Terminy rzeczywiste (Faktyczne)
+                            </span>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="space-y-1">
+                                <span className="text-[11px] text-[var(--muted-foreground)] block mb-1">Faktyczny start</span>
+                                <DatePicker
+                                  value={formState.startDateFact ?? ''}
+                                  onChange={(v) => setField('startDateFact', v)}
+                                  placeholder="dd.mm.rrrr"
+                                  className="h-10 text-sm bg-[var(--background)] hover:border-zinc-400/60 dark:hover:border-zinc-600/60 focus:ring-[var(--sidebar-primary)]/15"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <span className="text-[11px] text-[var(--muted-foreground)] block mb-1">Faktyczny koniec</span>
+                                <DatePicker
+                                  value={formState.endDateFact ?? ''}
+                                  onChange={(v) => setField('endDateFact', v)}
+                                  min={formState.startDateFact || undefined}
+                                  placeholder="dd.mm.rrrr"
+                                  className="h-10 text-sm bg-[var(--background)] hover:border-zinc-400/60 dark:hover:border-zinc-600/60 focus:ring-[var(--sidebar-primary)]/15"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+</div>
+                  </div>
+                </div>
+
+                {/* Contract Details Card */}
+                <div className="space-y-4">
+                  <p className="mb-3 border-b border-[var(--border)] pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)] flex items-center gap-1.5">
+                    <Coins size={13} className="text-[var(--sidebar-primary)]" />
+                    <span>Szczegóły wartości i kontraktu</span>
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <label className="block">
+                      <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">
+                        {t('projects.form.labels.contractor')} <span className="text-rose-500">*</span>
+                      </span>
+                      <div className="relative" ref={contractorRef}>
+                        <input
+                          value={showContractorList ? contractorSearch : selectedContractor?.name ?? ''}
+                          onChange={(e) => {
+                            setContractorSearch(e.target.value)
+                            setShowContractorList(true)
+                            if (e.target.value === '') {
+                              setField('contractorId', '')
+                            }
+                          }}
+                          onFocus={() => setShowContractorList(true)}
+                          placeholder={contractorsLoading ? t('projects.form.placeholders.loading') : t('projects.form.placeholders.selectContractor')}
+                          disabled={contractorsLoading}
+                          className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50"
+                        />
+                        {showContractorList && !contractorsLoading && filteredContractors.length > 0 ? (
+                          <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-48 overflow-y-auto custom-scrollbar rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-lg">
+                            {filteredContractors.map((c) => (
+                              <button
+                                key={c.id}
+                                type="button"
+                                onClick={() => handleSelectContractor(c.id)}
+                                className="w-full px-3 py-2 text-left text-xs transition hover:bg-[var(--sidebar-primary)]/10 cursor-pointer"
+                              >
+                                {c.name}
+                              </button>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    </label>
+
+                    <label className="block">
+                      <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">
+                        {t('projects.form.labels.projectType')} <span className="text-rose-500">*</span>
+                      </span>
+                      <select
+                        value={formState.projectTypeId || ''}
+                        onChange={(e) => setField('projectTypeId', Number(e.target.value))}
+                        disabled={typesLoading}
+                        className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50 cursor-pointer"
+                      >
+                        <option value="">{typesLoading ? t('projects.form.placeholders.loading') : t('projects.form.placeholders.selectProjectType')}</option>
+                        {projectTypes.map((pt) => (
+                          <option key={pt.id} value={pt.id}>{pt.name}</option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="block">
+                      <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">{t('projects.form.labels.currency')}</span>
+                      <select
+                        value={formState.currency ?? 'PLN'}
+                        onChange={(e) => setField('currency', e.target.value)}
+                        className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50 cursor-pointer"
+                      >
+                        <option value="PLN">PLN</option>
+                        <option value="EUR">EUR</option>
+                        <option value="USD">USD</option>
+                      </select>
+                    </label>
+
+                    <label className="block">
+                      <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">{t('projects.form.labels.contractNetValue')}</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={formState.contractNetValue ?? ''}
+                        onChange={(e) => setField('contractNetValue', e.target.value ? Number(e.target.value) : undefined)}
+                        placeholder={t('projects.form.placeholders.contractNetValue')}
+                        className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50"
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Location Card */}
+                <div className="space-y-4">
+                  <p className="mb-3 border-b border-[var(--border)] pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)] flex items-center gap-1.5">
+                    <MapPin size={13} className="text-[var(--sidebar-primary)]" />
+                    <span>{t('projects.form.sections.location')}</span>
+                  </p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <label className="block">
+                      <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">
+                        {t('projects.form.labels.country')} <span className="text-rose-500">*</span>
+                      </span>
+                      <input
+                        value={formState.country}
+                        onChange={(e) => setField('country', e.target.value)}
+                        placeholder={t('projects.form.placeholders.country')}
+                        className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">
+                        {t('projects.form.labels.city')} <span className="text-rose-500">*</span>
+                      </span>
+                      <input
+                        value={formState.city}
+                        onChange={(e) => setField('city', e.target.value)}
+                        placeholder={t('projects.form.placeholders.city')}
+                        className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50"
+                      />
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {formError && (
+                <p className="rounded-xl border border-rose-500/35 bg-rose-500/10 px-3 py-2 text-sm text-rose-500">
+                  {formError}
+                </p>
+              )}
+
+              {/* Action Buttons Footer */}
+              
+              <div className="border-t border-[var(--border)] pt-5 flex items-center justify-between gap-3">
+                {editingProject && canDeleteProject ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleDeleteProject}
+                    disabled={deleteMutation.isPending}
+                    className="border-rose-500/50 text-rose-500 hover:bg-rose-500/10 rounded-xl"
+                  >
+                    {deleteMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : null}
+                    <Trash2 size={14} />
+                    {deleteMutation.isPending ? 'Usuwanie...' : 'Usuń projekt'}
+                  </Button>
+                ) : (
+                  <div />
+                )}
+                <div className="flex items-center gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => isEditing ? setIsEditing(false) : handleCloseDrawer()}
+                    className="rounded-xl"
+                  >
+                    {t('projects.form.actions.cancel')}
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleCreate}
+                    disabled={createMutation.isPending || updateMutation.isPending}
+                    className="rounded-xl bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] hover:bg-[var(--sidebar-primary)]/90 shadow-[0_4px_14px_color-mix(in_oklch,var(--sidebar-primary),transparent_65%)]"
+                  >
+                    {createMutation.isPending || updateMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : null}
+                    {createMutation.isPending || updateMutation.isPending ? t('projects.form.actions.saving') : t('projects.form.actions.save')}
+                  </Button>
+                </div>
+              </div>
+</div>
+            </div>
+          </div>
+        </aside>
+      
+        </>
+      )}
+      
+{/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/45 p-3 backdrop-blur-sm animate-fade-in">
           <div className="w-full max-w-sm rounded-xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-2xl motion-safe:animate-[auth-rise_320ms_ease-out]">
