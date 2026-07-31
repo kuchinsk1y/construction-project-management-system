@@ -128,19 +128,19 @@ export function MilestonesTab({
           <Loader2 className="animate-spin text-[var(--sidebar-primary)]" size={24} />
         </div>
       ) : (
-        <div className="w-full overflow-hidden rounded-xl border border-[var(--border)]/40 bg-[var(--card)] shadow-xs">
+        <div className="w-full overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 bg-[var(--card)] shadow-xs">
           <div className="max-h-[520px] overflow-auto custom-scrollbar">
             <table className="w-full border-collapse text-left text-xs">
-              <thead className="sticky top-0 z-10 border-b border-[var(--border)]/30 bg-[var(--background)]/90 backdrop-blur-md text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
+              <thead className="sticky top-0 z-10 border-b border-zinc-200 dark:border-zinc-800 bg-[var(--background)]/90 backdrop-blur-md text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
                 <tr>
-                  <th className="px-3 py-2.5 text-center w-16 border-r border-[var(--border)]/20">KM</th>
-                  <th className="px-3.5 py-2.5 border-r border-[var(--border)]/20">Etap / Opis prac</th>
-                  <th className="px-3 py-2.5 text-center w-24 border-r border-[var(--border)]/20">% Udziału</th>
-                  <th className="px-3.5 py-2.5 text-right w-40 border-r border-[var(--border)]/20">Kwota netto</th>
+                  <th className="px-3 py-2.5 text-center w-16 border-r border-zinc-200/70 dark:border-zinc-800/70">KM</th>
+                  <th className="px-3.5 py-2.5 border-r border-zinc-200/70 dark:border-zinc-800/70">Etap / Opis prac</th>
+                  <th className="px-3 py-2.5 text-center w-24 border-r border-zinc-200/70 dark:border-zinc-800/70">% Udziału</th>
+                  <th className="px-3.5 py-2.5 text-right w-40 border-r border-zinc-200/70 dark:border-zinc-800/70">Kwota netto</th>
                   {canEditProject && <th className="px-3 py-2.5 text-center w-24">Akcje</th>}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[var(--border)]/20 font-medium">
+              <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800/80 font-medium">
                 {milestones.map((m, index) => {
                   const netValue = Math.round((m.netAmount ? m.netAmount : (contractVal ? (m.percentage / 100) * contractVal : 0)) * 100) / 100
 
@@ -151,26 +151,26 @@ export function MilestonesTab({
                       className="group transition-colors hover:bg-[var(--sidebar-primary)]/[0.04] align-middle"
                     >
                       {/* KM Symbol */}
-                      <td className="px-3 py-2.5 text-center border-r border-[var(--border)]/15 font-bold">
+                      <td className="px-3 py-2.5 text-center border-r border-zinc-200/60 dark:border-zinc-800/60 font-bold">
                         <span className="inline-block rounded-md bg-[var(--sidebar-primary)]/10 px-2 py-0.5 text-[11px] text-[var(--sidebar-primary)] shadow-2xs font-extrabold">
                           {m.milestoneNo}
                         </span>
                       </td>
 
                       {/* Etap / Opis */}
-                      <td className="px-3.5 py-2.5 border-r border-[var(--border)]/15 text-[var(--foreground)] font-semibold leading-relaxed">
+                      <td className="px-3.5 py-2.5 border-r border-zinc-200/60 dark:border-zinc-800/60 text-[var(--foreground)] font-semibold leading-relaxed">
                         {m.description}
                       </td>
 
                       {/* % Udziału */}
-                      <td className="px-3 py-2.5 text-center border-r border-[var(--border)]/15 font-bold">
-                        <span className="inline-block rounded-full bg-[var(--background)] px-2 py-0.5 text-[11px] border border-[var(--border)]/40">
+                      <td className="px-3 py-2.5 text-center border-r border-zinc-200/60 dark:border-zinc-800/60 font-bold">
+                        <span className="inline-block rounded-full bg-[var(--background)] px-2 py-0.5 text-[11px] border border-zinc-200 dark:border-zinc-700/60">
                           {m.percentage.toFixed(1)}%
                         </span>
                       </td>
 
                       {/* Kwota netto */}
-                      <td className="px-3.5 py-2.5 text-right border-r border-[var(--border)]/15 font-bold text-[var(--foreground)]">
+                      <td className="px-3.5 py-2.5 text-right border-r border-zinc-200/60 dark:border-zinc-800/60 font-bold text-[var(--foreground)]">
                         {formatBudget(netValue, currency)}
                       </td>
 
@@ -223,18 +223,18 @@ export function MilestonesTab({
 
               {/* Summary Excel-style Footer Row */}
               {milestones.length > 0 && (
-                <tfoot className="border-t border-[var(--border)]/40 bg-[var(--background)]/90 font-extrabold text-xs">
+                <tfoot className="border-t border-zinc-200 dark:border-zinc-800 bg-[var(--background)]/90 font-extrabold text-xs">
                   <tr>
-                    <td className="px-3 py-3 text-center border-r border-[var(--border)]/20 text-[var(--sidebar-primary)]">
+                    <td className="px-3 py-3 text-center border-r border-zinc-200/70 dark:border-zinc-800/70 text-[var(--sidebar-primary)]">
                       RAZEM
                     </td>
-                    <td className="px-3.5 py-3 border-r border-[var(--border)]/20 text-[var(--foreground)] uppercase text-[10px] tracking-wider">
+                    <td className="px-3.5 py-3 border-r border-zinc-200/70 dark:border-zinc-800/70 text-[var(--foreground)] uppercase text-[10px] tracking-wider">
                       Suma całkowita etapu
                     </td>
-                    <td className="px-3 py-3 text-center border-r border-[var(--border)]/20 text-[var(--foreground)]">
+                    <td className="px-3 py-3 text-center border-r border-zinc-200/70 dark:border-zinc-800/70 text-[var(--foreground)]">
                       {totalPct.toFixed(1)}%
                     </td>
-                    <td className="px-3.5 py-3 text-right border-r border-[var(--border)]/20 text-[var(--foreground)]">
+                    <td className="px-3.5 py-3 text-right border-r border-zinc-200/70 dark:border-zinc-800/70 text-[var(--foreground)]">
                       {formatBudget(totalNet, currency)}
                     </td>
                     {canEditProject && <td className="px-3 py-3" />}
