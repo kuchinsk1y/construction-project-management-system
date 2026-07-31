@@ -127,9 +127,10 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
   // Queries
   const { data: rawProjects = [], isLoading, isError, error } = useProjectsQuery()
   const { data: contractors = [], isLoading: contractorsLoading } = useQuery({
-    queryKey: ['contractors'],
+    queryKey: ['contractors-ref'], // separate key from ContractorsPage ['contractors'] — different endpoint, partial data only
     queryFn: fetchContractors,
   })
+
   const { data: projectTypes = [], isLoading: typesLoading } = useQuery({
     queryKey: ['projectTypes'],
     queryFn: fetchProjectTypes,
@@ -217,9 +218,13 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
   const updateMutation = useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: Partial<CreateProjectPayload> }) =>
       updateProject(id, payload),
-    onSuccess: async () => {
+    onSuccess: async (updatedProject) => {
       await queryClient.invalidateQueries({ queryKey: ['projects'] })
-      handleCloseDrawer()
+      if (updatedProject) {
+        setEditingProject(updatedProject)
+      }
+      setIsEditing(false)
+      setFormError('')
     },
     onError: (err: Error) => {
       setFormError(err.message)

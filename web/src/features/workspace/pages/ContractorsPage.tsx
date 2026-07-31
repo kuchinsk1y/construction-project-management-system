@@ -70,10 +70,10 @@ export function ContractorsPage({ canManage }: ContractorsPageProps) {
     }
   }, [notice])
 
-  const { data: contractors = [], isLoading, isError, error } = useQuery({
+  const { data: contractors = [], isPending, isError, error } = useQuery({
     queryKey: ['contractors'],
     queryFn: fetchContractors,
-    staleTime: 1000 * 30,
+    staleTime: 1000 * 60 * 5, // 5 min — avoid aggressive background refetches
   })
 
   const createMutation = useMutation({
@@ -305,7 +305,7 @@ export function ContractorsPage({ canManage }: ContractorsPageProps) {
         </div>
 
         <div className="overflow-x-auto hide-scrollbar">
-          {isLoading ? (
+          {isPending ? (
             <div className="flex items-center gap-2 px-4 py-6 text-sm text-[var(--muted-foreground)]">
               <Loader2 size={16} className="animate-spin" />
               {t('contractors.states.loading')}
@@ -318,7 +318,7 @@ export function ContractorsPage({ canManage }: ContractorsPageProps) {
             </div>
           ) : null}
 
-          {!isLoading && !isError ? (
+          {!isPending && !isError ? (
             <>
               <table className="w-full whitespace-nowrap border-separate border-spacing-0 text-[13px]">
                 <thead className="sticky top-0 z-10">

@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import { BriefcaseBusiness, Building2, Settings2, UsersRound, ClipboardList, LayoutDashboard } from 'lucide-react'
+import { BriefcaseBusiness, Building2, Settings2, UsersRound, LayoutDashboard } from 'lucide-react'
 
 import type { WorkspaceSection } from '@/features/workspace/types'
 
