@@ -1,4 +1,4 @@
-import { Search, ListFilter, UserRound, X } from 'lucide-react'
+import { Search, ListFilter, UserRound, X, Calendar } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
@@ -13,7 +13,10 @@ type ProjectsFilterBarProps = {
   setManagerFilter: (val: string) => void
   dateFilter: string
   setDateFilter: (val: string) => void
+  yearFilter: string
+  setYearFilter: (val: string) => void
   managerOptions: string[]
+  yearOptions: string[]
   onReset: () => void
 }
 
@@ -26,12 +29,21 @@ export function ProjectsFilterBar({
   setManagerFilter,
   dateFilter,
   setDateFilter,
+  yearFilter,
+  setYearFilter,
   managerOptions,
+  yearOptions,
   onReset,
 }: ProjectsFilterBarProps) {
   const { t } = useTranslation()
 
-  const isFiltered = Boolean(searchQuery || statusFilter !== 'all' || managerFilter !== 'all' || dateFilter)
+  const isFiltered = Boolean(
+    searchQuery
+      || statusFilter !== 'all'
+      || managerFilter !== 'all'
+      || dateFilter
+      || yearFilter !== 'all'
+  )
 
   return (
     <div className="w-full">
@@ -79,6 +91,24 @@ export function ProjectsFilterBar({
               {managerOptions.map((manager) => (
                 <option key={manager} value={manager}>
                   {manager === 'all' ? t('projects.filters.allManagers') : manager}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {/* Year Dropdown */}
+          <label className="relative w-full sm:w-[140px] md:w-[150px] shrink-0">
+            <Calendar size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)]" />
+            <select
+              value={yearFilter}
+              onChange={(event) => setYearFilter(event.target.value)}
+              aria-label={t('projects.filters.yearAria')}
+              className="h-9 w-full appearance-none rounded-xl border border-[var(--border)] bg-[var(--background)] pl-8 pr-6 text-xs sm:text-sm font-medium outline-none transition focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20 cursor-pointer text-ellipsis overflow-hidden"
+            >
+              <option value="all">{t('projects.filters.allYears')}</option>
+              {yearOptions.map((year) => (
+                <option key={year} value={year}>
+                  {year}
                 </option>
               ))}
             </select>

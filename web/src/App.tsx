@@ -96,13 +96,23 @@ function App() {
 
     setIsLoading(true)
     try {
-      const result = await apiPost<{ message: string }>('/auth/send-code', {
+      await apiPost<{ message: string }>('/auth/send-code', {
         email: normalizedEmail,
       })
-      setMessage(result.message || t('app.auth.codeSent'))
+      setMessage(t('app.auth.codeSent'))
       setScreen('code')
-    } catch (sendError: any) {
-      setError(sendError?.message || t('app.auth.sendFailed'))
+    } catch (sendError) {
+      const errMsg = (sendError as Error).message || ''
+      if (
+        errMsg.includes('does not exist') ||
+        errMsg.includes('nie istnieje') ||
+        errMsg.includes('inactive') ||
+        errMsg.includes('nieaktywny')
+      ) {
+        setError(t('app.auth.userNotFound'))
+      } else {
+        setError(t('app.auth.sendFailed'))
+      }
     } finally {
       setIsLoading(false)
     }
@@ -127,8 +137,18 @@ function App() {
       setProfile(profileFromToken(tokens.accessToken))
       setScreen('projects')
       setCode('')
-    } catch (verifyError: any) {
-      setError(verifyError?.message || t('app.auth.verifyFailed'))
+    } catch (verifyError) {
+      const errMsg = (verifyError as Error).message || ''
+      if (
+        errMsg.includes('Invalid') ||
+        errMsg.includes('expired') ||
+        errMsg.includes('Nieprawidłowy') ||
+        errMsg.includes('wygasły')
+      ) {
+        setError(t('app.auth.verifyFailed'))
+      } else {
+        setError(t('app.auth.verifyFailed'))
+      }
     } finally {
       setIsLoading(false)
     }

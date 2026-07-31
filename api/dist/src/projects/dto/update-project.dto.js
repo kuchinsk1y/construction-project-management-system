@@ -27,6 +27,7 @@ class UpdateProjectDto {
     endDateFact;
     managerId;
     dokumentationUrl;
+    pinUrl;
 }
 exports.UpdateProjectDto = UpdateProjectDto;
 __decorate([
@@ -105,4 +106,10 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], UpdateProjectDto.prototype, "dokumentationUrl", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(512),
+    __metadata("design:type", String)
+], UpdateProjectDto.prototype, "pinUrl", void 0);
 //# sourceMappingURL=update-project.dto.js.map

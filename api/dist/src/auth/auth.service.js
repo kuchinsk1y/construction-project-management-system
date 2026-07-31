@@ -33,7 +33,7 @@ let AuthService = class AuthService {
             where: { email, isActive: true },
         });
         if (!user) {
-            throw new common_1.NotFoundException('User with this email does not exist or is inactive');
+            throw new common_1.NotFoundException('Użytkownik o tym adresie e-mail nie istnieje lub jest nieaktywny');
         }
         const code = this.generateCode();
         const expiresAt = new Date(Date.now() + CODE_TTL_MS);
@@ -52,7 +52,7 @@ let AuthService = class AuthService {
             }),
         ]);
         await this.mail.sendAuthCode(user.email, code, user.firstName);
-        return { message: 'Verification code was sent to email' };
+        return { message: 'Kod weryfikacyjny został wysłany na e-mail' };
     }
     async verifyCode(dto, userAgent) {
         const email = dto.email.trim().toLowerCase();
@@ -60,7 +60,7 @@ let AuthService = class AuthService {
             where: { email, isActive: true },
         });
         if (!user) {
-            throw new common_1.UnauthorizedException('Invalid code or email');
+            throw new common_1.UnauthorizedException('Nieprawidłowy kod lub e-mail');
         }
         const authCode = await this.prisma.authCode.findFirst({
             where: {
@@ -71,7 +71,7 @@ let AuthService = class AuthService {
             },
         });
         if (!authCode) {
-            throw new common_1.UnauthorizedException('Invalid or expired code');
+            throw new common_1.UnauthorizedException('Nieprawidłowy lub wygasły kod');
         }
         await this.prisma.authCode.update({
             where: { id: authCode.id },
@@ -88,7 +88,7 @@ let AuthService = class AuthService {
             record.isRevoked ||
             record.expiresAt < new Date() ||
             !record.user.isActive) {
-            throw new common_1.UnauthorizedException('Refresh token is invalid or revoked');
+            throw new common_1.UnauthorizedException('Token odświeżania jest nieprawidłowy lub wygasł');
         }
         await this.prisma.refreshToken.update({
             where: { id: record.id },

@@ -53,7 +53,7 @@ export class UsersService {
   }
 
   private normalizeRoles(input?: string[]): string[] {
-    const roles = (input ?? ['user'])
+    const roles = (input ?? ['contractor'])
       .map((role) => role.trim())
       .filter((role) => role.length > 0);
 

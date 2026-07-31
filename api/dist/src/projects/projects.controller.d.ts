@@ -37,6 +37,7 @@ export declare class ProjectsController {
             lastName: string;
         } | null;
         dokumentationUrl: string | null;
+        pinUrl: string | null;
     }[]>;
     create(dto: CreateProjectDto): Promise<Record<string, unknown>>;
     update(id: string, dto: UpdateProjectDto): Promise<Record<string, unknown>>;
@@ -86,6 +87,7 @@ export declare class ProjectsController {
         expected_resume_date: Date | null;
         google_drive_folder_id: string | null;
         dokumentation_url: string | null;
+        pin_url: string | null;
         deleted_at: Date | null;
         created_by: number | null;
         updated_by: number | null;

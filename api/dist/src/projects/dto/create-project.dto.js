@@ -27,6 +27,7 @@ class CreateProjectDto {
     endDateFact;
     managerId;
     dokumentationUrl;
+    pinUrl;
 }
 exports.CreateProjectDto = CreateProjectDto;
 __decorate([
@@ -107,4 +108,10 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateProjectDto.prototype, "dokumentationUrl", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(512),
+    __metadata("design:type", String)
+], CreateProjectDto.prototype, "pinUrl", void 0);
 //# sourceMappingURL=create-project.dto.js.map

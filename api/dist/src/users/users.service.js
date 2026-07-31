@@ -38,7 +38,7 @@ let UsersService = class UsersService {
         };
     }
     normalizeRoles(input) {
-        const roles = (input ?? ['user'])
+        const roles = (input ?? ['contractor'])
             .map((role) => role.trim())
             .filter((role) => role.length > 0);
         if (roles.length === 0) {

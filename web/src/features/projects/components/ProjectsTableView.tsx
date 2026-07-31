@@ -1,5 +1,6 @@
 import { ArrowUpDown, BarChart3, Calendar, ChevronRight, LayoutList, MapPin, Plus, User } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { Button } from '@/components/ui/button'
 import type { ProjectItem, ProjectStatus } from '@/features/projects/types'
 
@@ -30,7 +31,7 @@ type ProjectsTableViewProps = {
   onSelectProject: (projectId: string) => void
   formatDate: (val: string, fallback?: string) => string
   statusTone: (status: ProjectStatus) => string
-  statusLabel: (status: ProjectStatus, t: any) => string
+  statusLabel: (status: ProjectStatus, t: TFunction) => string
 }
 
 export function ProjectsTableView({
@@ -182,24 +183,12 @@ export function ProjectsTableView({
                     </div>
                   </div>
 
-                  {/* Progress Bar Footer */}
-                  <div className="pt-2 border-t border-[var(--border)]/50 flex items-center justify-between gap-3">
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between text-[11px] mb-1">
-                        <span className="text-[var(--muted-foreground)]">{t('projects.table.row.completion')}</span>
-                        <span className="font-bold text-[var(--foreground)]">{project.progress}%</span>
-                      </div>
-                      <progress
-                        value={project.progress}
-                        max={100}
-                        aria-label={`${t('projects.table.row.completion')} ${project.name}`}
-                        className="h-1.5 w-full overflow-hidden rounded-full [appearance:none] [&::-webkit-progress-bar]:bg-[var(--muted)] [&::-webkit-progress-value]:bg-[var(--sidebar-primary)] [&::-webkit-progress-value]:transition-all [&::-webkit-progress-value]:duration-500 [&::-moz-progress-bar]:bg-[var(--sidebar-primary)]"
-                      />
-                    </div>
-                    {canEditProject ? (
+                  {/* Card edit link indicator */}
+                  {canEditProject ? (
+                    <div className="pt-2 border-t border-[var(--border)]/50 flex items-center justify-end gap-3">
                       <ChevronRight size={16} className="text-[var(--muted-foreground)] group-hover:text-[var(--sidebar-primary)] group-hover:translate-x-0.5 transition-all shrink-0" />
-                    ) : null}
-                  </div>
+                    </div>
+                  ) : null}
                 </div>
               )
             })}
@@ -248,12 +237,7 @@ export function ProjectsTableView({
                   <ArrowUpDown size={12} className={sortColumn === 'schedule' ? 'text-[var(--foreground)]' : ''} />
                 </button>
               </th>
-              <th className="border-b border-[var(--border)] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
-                <button type="button" onClick={() => onSort('progress')} className="inline-flex items-center gap-1 hover:text-[var(--foreground)] transition cursor-pointer">
-                  {t('projects.table.columns.progress')}
-                  <ArrowUpDown size={12} className={sortColumn === 'progress' ? 'text-[var(--foreground)]' : ''} />
-                </button>
-              </th>
+
             </tr>
           </thead>
 
@@ -292,7 +276,6 @@ export function ProjectsTableView({
 
                   <td className="px-4 py-3.5 align-middle">
                     <p className="font-semibold text-xs text-[var(--foreground)]">{project.owner}</p>
-                    <p className="mt-0.5 text-[11px] text-[var(--muted-foreground)]">{t('projects.table.row.priority')}: {project.priority}</p>
                   </td>
 
                   <td className="px-4 py-3.5 align-middle text-xs font-medium text-[var(--foreground)]">
@@ -319,20 +302,7 @@ export function ProjectsTableView({
                     )}
                   </td>
 
-                  <td className="px-4 py-3.5 align-middle">
-                    <div className="w-36">
-                      <div className="mb-1 flex items-center justify-between text-xs">
-                        <span className="text-[var(--muted-foreground)]">{t('projects.table.row.completion')}</span>
-                        <span className="font-semibold">{project.progress}%</span>
-                      </div>
-                      <progress
-                        value={project.progress}
-                        max={100}
-                        aria-label={`${t('projects.table.row.completion')} ${project.name}`}
-                        className="h-2 w-full overflow-hidden rounded-full [appearance:none] [&::-webkit-progress-bar]:bg-[var(--muted)] [&::-webkit-progress-value]:bg-[var(--sidebar-primary)] [&::-webkit-progress-value]:transition-all [&::-webkit-progress-value]:duration-500 [&::-moz-progress-bar]:bg-[var(--sidebar-primary)]"
-                      />
-                    </div>
-                  </td>
+
                 </tr>
               )
             })}

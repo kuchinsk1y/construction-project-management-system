@@ -3,9 +3,8 @@ export type UserRole =
   | 'operational_director'
   | 'financial_director'
   | 'project_manager'
-  | 'viewer'
   | 'foreman'
-  | 'user'
+  | 'contractor'
 
 export type ApiUser = {
   id: number

@@ -74,4 +74,9 @@ export class CreateProjectDto {
   @IsOptional()
   @IsString()
   dokumentationUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(512)
+  pinUrl?: string;
 }

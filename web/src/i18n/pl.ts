@@ -2,12 +2,13 @@ export const pl = {
   app: {
     validation: {
       emailRequired: 'Wpisz adres e-mail',
-      codeLength: 'Kod musi zawierac 6 znakow',
+      codeLength: 'Kod musi zawierać 6 znaków',
     },
     auth: {
-      codeSent: 'Kod zostal wyslany na e-mail',
-      sendFailed: 'Nie udalo sie wyslac kodu',
-      verifyFailed: 'Nieprawidlowy lub wygasly kod',
+      codeSent: 'Kod został wysłany na e-mail',
+      sendFailed: 'Nie udało się wysłać kodu',
+      verifyFailed: 'Nieprawidłowy lub wygasły kod',
+      userNotFound: 'Użytkownik o tym adresie e-mail nie istnieje lub jest nieaktywny',
     },
   },
   auth: {
@@ -102,7 +103,7 @@ export const pl = {
       columns: {
         project: 'Projekt',
         status: 'Status',
-        manager: 'Menedzer',
+        manager: 'Kierownik',
         contractor: 'Kontrahent',
         location: 'Lokalizacja',
         schedule: 'Harmonogram',
@@ -142,6 +143,7 @@ export const pl = {
         endDate: 'Data zakonczenia',
         manager: 'Kierownik projektu',
         dokumentationUrl: 'Link do dokumentacji',
+        pinUrl: 'Pin Google Maps',
       },
       placeholders: {
         name: 'np. Instalacja PV Poznan',
@@ -152,6 +154,7 @@ export const pl = {
         selectProjectType: 'Wybierz typ projektu...',
         selectManager: 'Wybierz kierownika...',
         dokumentationUrl: 'np. https://drive.google.com/...',
+        pinUrl: 'np. https://maps.google.com/?q=...',
         loading: 'Ladowanie...',
       },
       statuses: {
@@ -169,6 +172,12 @@ export const pl = {
       validation: {
         required: 'Wypelnij pola wymagane: nazwa, kontrahent, typ, kraj i miasto.',
       },
+      errors: {
+        nameRequired: 'Nazwa projektu jest wymagana.',
+        contractorRequired: 'Wybierz kontrahenta.',
+        projectTypeRequired: 'Wybierz typ projektu.',
+        locationRequired: 'Kraj i miasto są wymagane.',
+      },
       error: {
         defaultMessage: 'Nie udalo sie dodac projektu.',
       },
@@ -180,6 +189,8 @@ export const pl = {
       allStatuses: 'Statusy',
       managerAria: 'Filtr menedzera',
       allManagers: 'Kierowniki',
+      yearAria: 'Filtr roku',
+      allYears: 'Lata',
       sortAria: 'Sortowanie projektow',
       sortDueAsc: 'Termin: najblizsze najpierw',
       sortDueDesc: 'Termin: najdalsze najpierw',
@@ -315,8 +326,7 @@ export const pl = {
       financialDirector: 'Dyrektor finansowy',
       projectManager: 'Kierownik projektu',
       foreman: 'Brygadzista',
-      user: 'Uzytkownik',
-      viewer: 'Podglad',
+      contractor: 'Kontrahent',
     },
   },
   contractors: {

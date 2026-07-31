@@ -39,6 +39,7 @@ export declare class ProjectsService {
             lastName: string;
         } | null;
         dokumentationUrl: string | null;
+        pinUrl: string | null;
     }[]>;
     private ensureCurrencyExists;
     private ensureProjectTypeExists;
@@ -81,6 +82,7 @@ export declare class ProjectsService {
         expected_resume_date: Date | null;
         google_drive_folder_id: string | null;
         dokumentation_url: string | null;
+        pin_url: string | null;
         deleted_at: Date | null;
         created_by: number | null;
         updated_by: number | null;

@@ -1,13 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, CheckCircle2, Loader2, PencilLine, Plus, Search, Trash2, UserCheck, UserX, X } from 'lucide-react' /* ShieldCheck */
+import { AlertTriangle, CheckCircle2, Loader2, PencilLine, Plus, Search, UserCheck, UserX, X } from 'lucide-react' /* ShieldCheck */
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
-import { createUser, deleteUser, fetchUsers, updateUser } from '@/features/users/api'
+import { createUser, fetchUsers, updateUser } from '@/features/users/api'
 import type { ApiUser, CreateUserPayload, UpdateUserPayload, UserRole } from '@/features/users/types'
 
 type UsersPageProps = {
+  canView: boolean
   canManage: boolean
 }
 
@@ -38,8 +39,7 @@ const roleOptions: UserRole[] = [
   'financial_director',
   'project_manager',
   'foreman',
-  'viewer',
-  'user',
+  'contractor',
 ]
 
 const emptyForm: UserFormState = {
@@ -50,7 +50,7 @@ const emptyForm: UserFormState = {
   position: '',
   phoneNumber: '',
   telegramId: '',
-  role: 'viewer',
+  role: 'contractor',
   isActive: true,
 }
 
@@ -60,8 +60,8 @@ function roleLabel(role: string, t: (key: string) => string): string {
   if (role === 'financial_director') return t('users.roles.financialDirector')
   if (role === 'project_manager') return t('users.roles.projectManager')
   if (role === 'foreman') return t('users.roles.foreman')
-  if (role === 'user') return t('users.roles.user')
-  return t('users.roles.viewer')
+  if (role === 'contractor') return t('users.roles.contractor')
+  return role
 }
 
 function statusClassName(isActive: boolean): string {
@@ -71,20 +71,19 @@ function statusClassName(isActive: boolean): string {
 }
 
 function primaryRole(user: ApiUser): UserRole {
-  const role = (user.roles[0] ?? 'viewer').toLowerCase()
+  const role = (user.roles[0] ?? 'contractor').toLowerCase()
   if (
     role === 'admin'
     || role === 'operational_director'
     || role === 'financial_director'
     || role === 'project_manager'
-    || role === 'viewer'
     || role === 'foreman'
-    || role === 'user'
+    || role === 'contractor'
   ) {
     return role
   }
 
-  return 'viewer'
+  return 'contractor'
 }
 
 function fullName(user: ApiUser): string {
@@ -122,7 +121,7 @@ function toUpdatePayload(form: UserFormState): UpdateUserPayload {
   }
 }
 
-export function UsersPage({ canManage }: UsersPageProps) {
+export function UsersPage({ canView, canManage }: UsersPageProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [query, setQuery] = useState('')
@@ -133,7 +132,6 @@ export function UsersPage({ canManage }: UsersPageProps) {
   const [formError, setFormError] = useState('')
   const [formState, setFormState] = useState<UserFormState>(emptyForm)
   const [notice, setNotice] = useState<NoticeState>(null)
-  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null)
 
   const showNotice = (tone: NoticeTone, title: string, message: string) => {
     setNotice({ id: Date.now(), tone, title, message })
@@ -203,23 +201,7 @@ export function UsersPage({ canManage }: UsersPageProps) {
     },
   })
 
-  const deleteMutation = useMutation({
-    mutationFn: deleteUser,
-    onSuccess: async (_, deletedId) => {
-      const deletedName = users.find((u) => u.id === deletedId)
-      const nameStr = deletedName ? fullName(deletedName) : ''
-      queryClient.setQueryData<ApiUser[]>(['users'], (oldUsers) => {
-        if (!oldUsers) return []
-        return oldUsers.filter((u) => u.id !== deletedId)
-      })
-      await queryClient.invalidateQueries({ queryKey: ['users'] })
-      showNotice('success', t('users.notices.deletedTitle'), t('users.notices.deletedMessage', { name: nameStr }))
-    },
-    onError: (mutationError) => {
-      const message = mutationError?.message || t('users.notices.deleteErrorMessage')
-      showNotice('error', t('users.notices.deleteErrorTitle'), message)
-    },
-  })
+  // User deletion has been disabled
 
   const filteredUsers = useMemo(() => {
     const normalized = query.trim().toLowerCase()
@@ -296,7 +278,7 @@ export function UsersPage({ canManage }: UsersPageProps) {
     })
   }
 
-  if (!canManage) {
+  if (!canView) {
     return (
       <section className="p-3">
         <article className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
@@ -342,14 +324,16 @@ export function UsersPage({ canManage }: UsersPageProps) {
           </h2>
         </div>
 
-        <Button
-          type="button"
-          onClick={openCreateModal}
-          className="h-9 rounded-xl bg-[var(--sidebar-primary)] px-3 text-[var(--sidebar-primary-foreground)] shadow-[0_4px_14px_color-mix(in_oklch,var(--sidebar-primary),transparent_65%)] hover:bg-[var(--sidebar-primary)]/90"
-        >
-          <Plus size={16} />
-          {t('users.hero.addButton')}
-        </Button>
+        {canManage ? (
+          <Button
+            type="button"
+            onClick={openCreateModal}
+            className="h-9 rounded-xl bg-[var(--sidebar-primary)] px-3 text-[var(--sidebar-primary-foreground)] shadow-[0_4px_14px_color-mix(in_oklch,var(--sidebar-primary),transparent_65%)] hover:bg-[var(--sidebar-primary)]/90"
+          >
+            <Plus size={16} />
+            {t('users.hero.addButton')}
+          </Button>
+        ) : null}
       </div>
 
       <div className="grid grid-cols-1 gap-2 md:grid-cols-6 rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 shadow-sm animate-fade-in mb-3">
@@ -438,37 +422,39 @@ export function UsersPage({ canManage }: UsersPageProps) {
                         <p className="mt-0.5 text-[11px] text-[var(--muted-foreground)]">{user.email}</p>
                       </td>
                       <td className="border-b border-[var(--border)] px-4 py-3 align-top">
-                        <button
-                          type="button"
-                          onClick={() => handleToggleActive(user)}
-                          className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium transition hover:brightness-110 ${statusClassName(user.isActive)}`}
-                        >
-                          {user.isActive ? <UserCheck size={12} /> : <UserX size={12} />}
-                          {user.isActive ? t('users.statuses.active') : t('users.statuses.inactive')}
-                        </button>
+                        {canManage ? (
+                          <button
+                            type="button"
+                            onClick={() => handleToggleActive(user)}
+                            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium transition hover:brightness-110 ${statusClassName(user.isActive)}`}
+                          >
+                            {user.isActive ? <UserCheck size={12} /> : <UserX size={12} />}
+                            {user.isActive ? t('users.statuses.active') : t('users.statuses.inactive')}
+                          </button>
+                        ) : (
+                          <span
+                            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium ${statusClassName(user.isActive)}`}
+                          >
+                            {user.isActive ? <UserCheck size={12} /> : <UserX size={12} />}
+                            {user.isActive ? t('users.statuses.active') : t('users.statuses.inactive')}
+                          </span>
+                        )}
                       </td>
                       <td className="border-b border-[var(--border)] px-4 py-3 align-top text-right">
                         <div className="flex justify-end gap-1.5">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openEditModal(user)}
-                            title={t('users.actions.edit')}
-                          >
-                            <PencilLine size={13} />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="text-rose-500 border-rose-500/20 hover:bg-rose-500/10"
-                            onClick={() => setDeleteConfirmId(user.id)}
-                            disabled={deleteMutation.isPending}
-                            title={t('users.actions.delete')}
-                          >
-                            <Trash2 size={13} />
-                          </Button>
+                          {canManage ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openEditModal(user)}
+                              title={t('users.actions.edit')}
+                            >
+                              <PencilLine size={13} />
+                            </Button>
+                          ) : (
+                            <span className="text-zinc-400">-</span>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -660,49 +646,7 @@ export function UsersPage({ canManage }: UsersPageProps) {
         </div>
       </aside>
 
-      {deleteConfirmId !== null ? (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/45 p-3 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-sm rounded-xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-2xl motion-safe:animate-[auth-rise_320ms_ease-out]">
-            <div className="flex items-start gap-3">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-rose-500/10 text-rose-500">
-                <AlertTriangle size={20} />
-              </div>
-              <div className="space-y-1">
-                <h4 className="text-sm font-bold text-[var(--foreground)]">{t('users.notices.deletedTitle')}</h4>
-                <p className="text-xs text-[var(--muted-foreground)] leading-relaxed">
-                  Czy na pewno chcesz usunąć tego użytkownika? Tej operacji nie można cofnąć.
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-5 flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setDeleteConfirmId(null)}
-                disabled={deleteMutation.isPending}
-              >
-                {t('users.actions.cancel')}
-              </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                disabled={deleteMutation.isPending}
-                onClick={() => {
-                  deleteMutation.mutate(deleteConfirmId, {
-                    onSettled: () => {
-                      setDeleteConfirmId(null)
-                    }
-                  })
-                }}
-              >
-                {deleteMutation.isPending ? <Loader2 size={14} className="animate-spin mr-1.5" /> : null}
-                {t('users.actions.delete')}
-              </Button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      {/* User deletion confirmation modal removed */}
     </section>
   )
 }

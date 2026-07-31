@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import { BriefcaseBusiness, Building2, Settings2, UsersRound, ClipboardList } from 'lucide-react'
+import { BriefcaseBusiness, Building2, Settings2, UsersRound, ClipboardList, LayoutDashboard } from 'lucide-react'
 
 import type { WorkspaceSection } from '@/features/workspace/types'
 
@@ -10,8 +10,9 @@ export type WorkspaceNavItem = {
 }
 
 export const workspaceNavigation: WorkspaceNavItem[] = [
+  { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { key: 'projects', label: 'Projekty', icon: BriefcaseBusiness },
-  { key: 'works', label: 'Zakres prac', icon: ClipboardList },
+  // { key: 'works', label: 'Zakres prac', icon: ClipboardList },
   // { key: 'resources', label: 'Zasoby', icon: CalendarDays },
   { key: 'contractors', label: 'Kontrahenci', icon: Building2 },
   { key: 'users', label: 'Uzytkownicy', icon: UsersRound },

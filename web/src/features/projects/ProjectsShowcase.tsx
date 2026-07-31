@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { AlertCircle, Folder, Loader2, Plus } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -79,7 +80,7 @@ function statusTone(status: string): string {
   }
 }
 
-function statusLabel(status: ProjectStatus, t: any): string {
+function statusLabel(status: ProjectStatus, t: TFunction): string {
   switch (status) {
     case 'active':
       return t('projects.status.active')
@@ -107,6 +108,7 @@ const emptyForm: CreateProjectPayload = {
   endDateFact: '',
   managerId: undefined,
   dokumentationUrl: '',
+  pinUrl: '',
 }
 
 type UserProfile = {
@@ -141,9 +143,17 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
 
   // Filters and sorting
   const [searchQuery, setSearchQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState<'all' | ProjectStatus>('all')
+  const [statusFilter, setStatusFilter] = useState<'all' | ProjectStatus>(() => {
+    const saved = sessionStorage.getItem('projects_statusFilter')
+    return (saved as 'all' | ProjectStatus) ?? 'active'
+  })
+  const handleSetStatusFilter = (val: 'all' | ProjectStatus) => {
+    setStatusFilter(val)
+    sessionStorage.setItem('projects_statusFilter', val)
+  }
   const [managerFilter, setManagerFilter] = useState('all')
   const [dateFilter, setDateFilter] = useState('')
+  const [yearFilter, setYearFilter] = useState('all')
   const [sortColumn, setSortColumn] = useState<SortColumn>('schedule')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
   const [viewMode, setViewMode] = useState<ViewMode>('table')
@@ -230,6 +240,24 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
   // Milestone Mutations
   const createMilestoneMutation = useMutation({
     mutationFn: (payload: CreateMilestonePayload) => createMilestone(editingProject!.id, payload),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['milestones', editingProject?.id] })
+      await queryClient.invalidateQueries({ queryKey: ['projects'] })
+      setMilestoneForm({ milestoneNo: '', description: '', percentage: 0, invoicingPercentage: undefined })
+      setMilestoneError('')
+      setShowMilestoneForm(false)
+    },
+    onError: (err: Error) => {
+      setMilestoneError(err.message)
+    },
+  })
+
+  const createMilestonesBatchMutation = useMutation({
+    mutationFn: async (payloads: CreateMilestonePayload[]) => {
+      for (const payload of payloads) {
+        await createMilestone(editingProject!.id, payload)
+      }
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['milestones', editingProject?.id] })
       await queryClient.invalidateQueries({ queryKey: ['projects'] })
@@ -358,6 +386,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
       endDateFact: raw.end_date_fact || '',
       managerId: raw.manager?.id ?? undefined,
       dokumentationUrl: raw.dokumentationUrl ?? '',
+      pinUrl: raw.pinUrl ?? '',
     })
     setFormError('')
     setIsEditing(false)
@@ -404,6 +433,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
       endDateFact: formState.endDateFact || undefined,
       managerId: formState.managerId || undefined,
       dokumentationUrl: formState.dokumentationUrl || undefined,
+      pinUrl: formState.pinUrl || undefined,
     }
 
     if (editingProject) {
@@ -476,6 +506,25 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
 
   const managerOptions = useMemo(() => ['all', ...new Set(projects.map((project) => project.owner).filter(Boolean))], [projects])
 
+  const yearOptions = useMemo(() => {
+    const yearsSet = new Set<number>()
+    projects.forEach((project) => {
+      const start = parseDateValue(project.startDate)
+      const end = parseDateValue(project.endDate) ?? parseDateValue(project.dueDate)
+      if (start) {
+        const startYear = start.getFullYear()
+        yearsSet.add(startYear)
+        if (end) {
+          const endYear = end.getFullYear()
+          for (let y = startYear; y <= endYear; y++) {
+            yearsSet.add(y)
+          }
+        }
+      }
+    })
+    return Array.from(yearsSet).sort((a, b) => b - a).map(String)
+  }, [projects])
+
   const filteredProjects = useMemo(() => {
     const query = searchQuery.trim().toLowerCase()
     const targetDate = dateFilter ? new Date(`${dateFilter}T00:00:00`) : null
@@ -490,6 +539,24 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
       if (!matchesQuery) return false
       if (statusFilter !== 'all' && project.status !== statusFilter) return false
       if (managerFilter !== 'all' && project.owner !== managerFilter) return false
+
+      if (yearFilter !== 'all') {
+        const targetYear = Number(yearFilter)
+        const start = parseDateValue(project.startDate)
+        const end = parseDateValue(project.endDate) ?? parseDateValue(project.dueDate)
+        
+        if (start && end) {
+          const startYear = start.getFullYear()
+          const endYear = end.getFullYear()
+          if (targetYear < startYear || targetYear > endYear) return false
+        } else if (start) {
+          if (start.getFullYear() !== targetYear) return false
+        } else if (end) {
+          if (end.getFullYear() !== targetYear) return false
+        } else {
+          return false
+        }
+      }
 
       if (targetDate) {
         const start = parseDateValue(project.startDate)
@@ -521,7 +588,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
     })
 
     return sorted
-  }, [projects, searchQuery, statusFilter, managerFilter, dateFilter, sortColumn, sortDirection])
+  }, [projects, searchQuery, statusFilter, managerFilter, dateFilter, yearFilter, sortColumn, sortDirection])
 
   // Timeline bounds calculation for Gantt view
   const timelineBounds = useMemo(() => {
@@ -584,7 +651,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
     }
   }, [filteredProjects])
 
-  if (drawerOpen) {
+  if (drawerOpen && editingProject !== null) {
     return (
       <ProjectDetailsDrawer
         editingProject={editingProject}
@@ -633,6 +700,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
         setMilestoneError={setMilestoneError}
         handleMilestoneSubmit={handleMilestoneSubmit}
         createMilestoneMutation={createMilestoneMutation}
+        createMilestonesBatchMutation={createMilestonesBatchMutation}
         updateMilestoneMutation={updateMilestoneMutation}
         deleteMilestoneMutation={deleteMilestoneMutation}
         formatDate={formatDate}
@@ -645,7 +713,8 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
   }
 
   return (
-    <section className="grid flex-1 items-start gap-2 p-3 md:gap-4 xl:grid-cols-12 animate-page-enter">
+    <>
+      <section className="grid flex-1 items-start gap-2 p-3 md:gap-4 xl:grid-cols-12 animate-page-enter">
       {isLoading ? (
         <article className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 xl:col-span-12">
           <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
@@ -698,17 +767,21 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
             statusFilter={statusFilter}
-            setStatusFilter={setStatusFilter}
+            setStatusFilter={handleSetStatusFilter}
             managerFilter={managerFilter}
             setManagerFilter={setManagerFilter}
             dateFilter={dateFilter}
             setDateFilter={setDateFilter}
+            yearFilter={yearFilter}
+            setYearFilter={setYearFilter}
             managerOptions={managerOptions}
+            yearOptions={yearOptions}
             onReset={() => {
               setSearchQuery('')
-              setStatusFilter('all')
+              handleSetStatusFilter('all')
               setManagerFilter('all')
               setDateFilter('')
+              setYearFilter('all')
             }}
           />
 
@@ -750,5 +823,64 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
         </div>
       ) : null}
     </section>
+
+      <ProjectDetailsDrawer
+        isOpen={drawerOpen && editingProject === null}
+        editingProject={null}
+        isEditing={true}
+        setIsEditing={setIsEditing}
+        formState={formState}
+        setField={setField}
+        setFormState={setFormState}
+        formError={formError}
+        setFormError={setFormError}
+        canEditProject={canEditProject}
+        canDeleteProject={canDeleteProject}
+        handleCloseDrawer={handleCloseDrawer}
+        handleCreate={handleCreate}
+        handleDeleteProject={handleDeleteProject}
+        createMutation={createMutation}
+        updateMutation={updateMutation}
+        deleteMutation={deleteMutation}
+        contractors={contractors}
+        contractorsLoading={contractorsLoading}
+        projectTypes={projectTypes}
+        typesLoading={typesLoading}
+        users={users}
+        managerList={managerList}
+        managerName={managerName}
+        selectedContractor={selectedContractor}
+        selectedProjectType={selectedProjectType}
+        filteredContractors={filteredContractors}
+        contractorSearch={contractorSearch}
+        setContractorSearch={setContractorSearch}
+        showContractorList={showContractorList}
+        setShowContractorList={setShowContractorList}
+        handleSelectContractor={handleSelectContractor}
+        contractorRef={contractorRef}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        milestones={milestones}
+        milestonesLoading={milestonesLoading}
+        showMilestoneForm={showMilestoneForm}
+        setShowMilestoneForm={setShowMilestoneForm}
+        milestoneForm={milestoneForm}
+        setMilestoneForm={setMilestoneForm}
+        editingMilestoneId={editingMilestoneId}
+        setEditingMilestoneId={setEditingMilestoneId}
+        milestoneError={milestoneError}
+        setMilestoneError={setMilestoneError}
+        handleMilestoneSubmit={handleMilestoneSubmit}
+        createMilestoneMutation={createMilestoneMutation}
+        createMilestonesBatchMutation={createMilestonesBatchMutation}
+        updateMilestoneMutation={updateMilestoneMutation}
+        deleteMilestoneMutation={deleteMilestoneMutation}
+        formatDate={formatDate}
+        formatBudget={formatBudget}
+        statusTone={statusTone}
+        showDeleteConfirm={showDeleteConfirm}
+        setShowDeleteConfirm={setShowDeleteConfirm}
+      />
+    </>
   )
 }

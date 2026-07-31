@@ -13,4 +13,5 @@ export declare class CreateProjectDto {
     endDateFact?: string;
     managerId?: number;
     dokumentationUrl?: string;
+    pinUrl?: string;
 }

@@ -92,7 +92,7 @@ export class ProjectsSyncConsumer extends WorkerHost {
       dateFrom,
       dateTo,
       projectType: project.project_types?.name ?? '',
-      pin: '',
+      pin: project.pin_url ?? '',
       manager: managerName,
       power: '',
       dokumentationUrl: project.dokumentation_url ?? '',

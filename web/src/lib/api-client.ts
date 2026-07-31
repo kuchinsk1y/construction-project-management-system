@@ -3,25 +3,26 @@ function resolveBaseUrl(): string {
 }
 
 async function parseResponse<T>(response: Response): Promise<T> {
-  let body: any = {}
+  let body: unknown = {}
   const text = await response.text()
   
   if (text) {
     try {
       body = JSON.parse(text)
-    } catch (e) {
+    } catch {
       body = { message: text }
     }
   }
 
   if (!response.ok) {
     let message = 'Niepowodzenie zadania'
-    if (typeof body.message === 'string') {
-      message = body.message
-    } else if (Array.isArray(body.message)) {
-      message = body.message.join(', ')
-    } else if (typeof body.error === 'string') {
-      message = body.error
+    const errorBody = body as { message?: unknown; error?: unknown }
+    if (typeof errorBody.message === 'string') {
+      message = errorBody.message
+    } else if (Array.isArray(errorBody.message)) {
+      message = errorBody.message.join(', ')
+    } else if (typeof errorBody.error === 'string') {
+      message = errorBody.error
     }
     throw new Error(message)
   }

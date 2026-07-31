@@ -62,6 +62,7 @@ export async function fetchProjectsFromGoogleSheets(): Promise<ProjectItem[]> {
         contractor: row.contractor?.trim() || '-',
         projectType: row.projectType?.trim() || '-',
         dokumentationUrl: row.dokumentationUrl?.trim() || null,
+        pinUrl: null,
       }
     })
     .filter((item) => item.name.length > 0)

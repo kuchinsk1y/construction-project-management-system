@@ -213,18 +213,9 @@ export function WorksPage({ canManage }: WorksPageProps) {
 
   const handleWorkTypeSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!workTypeForm.milestoneId) {
-      setWorkTypeError('Należy wybrać kamień milowy')
-      return
-    }
-    if (!workTypeForm.departmentId) {
-      setWorkTypeError('Należy wybrać dział')
-      return
-    }
-    if (!workTypeForm.name.trim()) {
-      setWorkTypeError('Nazwa wewnętrzna jest wymagana')
-      return
-    }
+    if (!workTypeForm.milestoneId) return setWorkTypeError('Należy wybrać kamień milowy')
+    if (!workTypeForm.departmentId) return setWorkTypeError('Należy wybrać dział')
+    if (!workTypeForm.name.trim()) return setWorkTypeError('Nazwa wewnętrzna jest wymagana')
 
     const payload: CreateWorkTypePayload = {
       milestoneId: workTypeForm.milestoneId,

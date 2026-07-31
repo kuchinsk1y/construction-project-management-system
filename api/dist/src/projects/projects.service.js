@@ -75,6 +75,7 @@ let ProjectsService = class ProjectsService {
                 }
                 : null,
             dokumentationUrl: p.dokumentation_url,
+            pinUrl: p.pin_url,
         }));
     }
     async ensureCurrencyExists(currencyCode) {
@@ -140,12 +141,12 @@ let ProjectsService = class ProjectsService {
         const project = await this.prisma.projects.create({
             data: {
                 name: dto.name,
-                contractor_id: dto.contractorId,
-                project_type_id: projectTypeId,
+                contractors: { connect: { id: dto.contractorId } },
+                project_types: { connect: { id: projectTypeId } },
                 country: dto.country,
                 city: dto.city,
                 status: dto.status ?? 'DRAFT',
-                currency: dto.currency ?? null,
+                currencies: dto.currency ? { connect: { code: dto.currency } } : undefined,
                 contract_net_value: dto.contractNetValue ?? null,
                 start_date_contract: dto.startDateContract
                     ? new Date(dto.startDateContract)
@@ -155,8 +156,11 @@ let ProjectsService = class ProjectsService {
                     : null,
                 start_date_fact: dto.startDateFact ? new Date(dto.startDateFact) : null,
                 end_date_fact: dto.endDateFact ? new Date(dto.endDateFact) : null,
-                manager_id: dto.managerId ?? null,
+                users_projects_manager_idTousers: dto.managerId
+                    ? { connect: { id: dto.managerId } }
+                    : undefined,
                 dokumentation_url: dto.dokumentationUrl ?? null,
+                pin_url: dto.pinUrl ?? null,
             },
             include: {
                 contractors: { select: { id: true, name: true } },
@@ -198,6 +202,7 @@ let ProjectsService = class ProjectsService {
                 }
                 : null,
             dokumentationUrl: project.dokumentation_url,
+            pinUrl: project.pin_url,
         });
     }
     async listContractors() {
@@ -225,12 +230,12 @@ let ProjectsService = class ProjectsService {
             where: { id },
             data: {
                 name: dto.name,
-                contractor_id: dto.contractorId,
-                project_type_id: projectTypeId,
+                contractors: dto.contractorId ? { connect: { id: dto.contractorId } } : undefined,
+                project_types: projectTypeId ? { connect: { id: projectTypeId } } : undefined,
                 country: dto.country,
                 city: dto.city,
                 status: dto.status,
-                currency: dto.currency ?? null,
+                currencies: dto.currency ? { connect: { code: dto.currency } } : { disconnect: true },
                 contract_net_value: dto.contractNetValue ?? null,
                 start_date_contract: dto.startDateContract
                     ? new Date(dto.startDateContract)
@@ -240,8 +245,11 @@ let ProjectsService = class ProjectsService {
                     : null,
                 start_date_fact: dto.startDateFact ? new Date(dto.startDateFact) : null,
                 end_date_fact: dto.endDateFact ? new Date(dto.endDateFact) : null,
-                manager_id: dto.managerId ?? null,
+                users_projects_manager_idTousers: dto.managerId
+                    ? { connect: { id: dto.managerId } }
+                    : { disconnect: true },
                 dokumentation_url: dto.dokumentationUrl,
+                pin_url: dto.pinUrl,
             },
             include: {
                 contractors: { select: { id: true, name: true } },
@@ -283,6 +291,7 @@ let ProjectsService = class ProjectsService {
                 }
                 : null,
             dokumentationUrl: project.dokumentation_url,
+            pinUrl: project.pin_url,
         });
     }
     async delete(id) {

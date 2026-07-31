@@ -35,7 +35,7 @@ export class AuthService {
 
     if (!user) {
       throw new NotFoundException(
-        'User with this email does not exist or is inactive',
+        'Użytkownik o tym adresie e-mail nie istnieje lub jest nieaktywny',
       );
     }
 
@@ -59,7 +59,7 @@ export class AuthService {
 
     await this.mail.sendAuthCode(user.email, code, user.firstName);
 
-    return { message: 'Verification code was sent to email' };
+    return { message: 'Kod weryfikacyjny został wysłany na e-mail' };
   }
 
   async verifyCode(
@@ -72,7 +72,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UnauthorizedException('Invalid code or email');
+      throw new UnauthorizedException('Nieprawidłowy kod lub e-mail');
     }
 
     const authCode = await this.prisma.authCode.findFirst({
@@ -85,7 +85,7 @@ export class AuthService {
     });
 
     if (!authCode) {
-      throw new UnauthorizedException('Invalid or expired code');
+      throw new UnauthorizedException('Nieprawidłowy lub wygasły kod');
     }
 
     await this.prisma.authCode.update({
@@ -118,7 +118,7 @@ export class AuthService {
       record.expiresAt < new Date() ||
       !record.user.isActive
     ) {
-      throw new UnauthorizedException('Refresh token is invalid or revoked');
+      throw new UnauthorizedException('Token odświeżania jest nieprawidłowy lub wygasł');
     }
 
     await this.prisma.refreshToken.update({
