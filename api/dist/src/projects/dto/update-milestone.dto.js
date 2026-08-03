@@ -14,7 +14,9 @@ const class_validator_1 = require("class-validator");
 class UpdateMilestoneDto {
     milestoneNo;
     description;
+    type;
     percentage;
+    netAmount;
     invoicingPercentage;
 }
 exports.UpdateMilestoneDto = UpdateMilestoneDto;
@@ -29,12 +31,24 @@ __decorate([
     __metadata("design:type", String)
 ], UpdateMilestoneDto.prototype, "description", void 0);
 __decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsIn)(['KM', 'roboty_dodatkowe']),
+    __metadata("design:type", String)
+], UpdateMilestoneDto.prototype, "type", void 0);
+__decorate([
     (0, class_validator_1.IsNumber)(),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.Min)(0),
     (0, class_validator_1.Max)(100),
     __metadata("design:type", Number)
 ], UpdateMilestoneDto.prototype, "percentage", void 0);
+__decorate([
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.Min)(0),
+    __metadata("design:type", Number)
+], UpdateMilestoneDto.prototype, "netAmount", void 0);
 __decorate([
     (0, class_validator_1.IsNumber)(),
     (0, class_validator_1.IsOptional)(),

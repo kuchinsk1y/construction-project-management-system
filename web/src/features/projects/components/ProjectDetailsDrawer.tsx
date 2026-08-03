@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { AlertTriangle, ArrowLeft, CalendarRange, Coins, Edit, ExternalLink, FileText, Loader2, MapPin, Trash2, UserRoundCheck, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { UseMutationResult } from '@tanstack/react-query'
@@ -132,6 +133,18 @@ export function ProjectDetailsDrawer({
   setShowDeleteConfirm,
 }: ProjectDetailsDrawerProps) {
   const { t } = useTranslation()
+
+  const [isBulkEditMilestones, setIsBulkEditMilestones] = useState(false)
+
+  const handleOpenBulkEdit = () => {
+    setIsBulkEditMilestones(true)
+    setShowMilestoneForm(true)
+  }
+
+  const handleCloseMilestoneDrawer = () => {
+    setIsBulkEditMilestones(false)
+    setShowMilestoneForm(false)
+  }
 
   const handleCancelEdit = () => {
     if (editingProject) {
@@ -1070,6 +1083,7 @@ export function ProjectDetailsDrawer({
               deleteMilestoneMutation={deleteMilestoneMutation}
               handleCloseDrawer={handleCloseDrawer}
               formatBudget={formatBudget}
+              onBulkEdit={handleOpenBulkEdit}
             />
           )}
         </div>
@@ -1125,9 +1139,9 @@ export function ProjectDetailsDrawer({
       {/* Milestone Form Drawer */}
       <MilestoneFormDrawer
         isOpen={showMilestoneForm}
-        onClose={() => setShowMilestoneForm(false)}
+        onClose={handleCloseMilestoneDrawer}
         milestones={milestones}
-        editingMilestoneId={editingMilestoneId}
+        editingMilestoneId={isBulkEditMilestones ? null : editingMilestoneId}
         setEditingMilestoneId={setEditingMilestoneId}
         milestoneForm={milestoneForm}
         milestoneError={milestoneError}
@@ -1135,6 +1149,8 @@ export function ProjectDetailsDrawer({
         createMilestoneMutation={createMilestoneMutation}
         createMilestonesBatchMutation={createMilestonesBatchMutation}
         updateMilestoneMutation={updateMilestoneMutation}
+        contractNetValue={editingProject?.contract_net_value ? Number(editingProject.contract_net_value) : 0}
+        isBulkEdit={isBulkEditMilestones}
       />
     </>
   )

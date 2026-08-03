@@ -131,10 +131,13 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
     queryFn: fetchContractors,
   })
 
-  const { data: projectTypes = [], isLoading: typesLoading } = useQuery({
+  const { data: rawProjectTypes = [], isLoading: typesLoading } = useQuery({
     queryKey: ['projectTypes'],
     queryFn: fetchProjectTypes,
   })
+  const projectTypes = useMemo(() => {
+    return rawProjectTypes.filter((pt) => ['PV', 'MAGAZYN_ENERGII'].includes(pt.code))
+  }, [rawProjectTypes])
   const { data: users = [] } = useQuery<Array<{ id: number; firstName: string; lastName: string; position?: string; roles?: string[] }>>({
     queryKey: ['users'],
     queryFn: () => apiGet<Array<{ id: number; firstName: string; lastName: string; position?: string; roles?: string[] }>>('/users'),
@@ -144,13 +147,9 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
 
   // Filters and sorting
   const [searchQuery, setSearchQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState<'all' | ProjectStatus>(() => {
-    const saved = sessionStorage.getItem('projects_statusFilter')
-    return (saved as 'all' | ProjectStatus) ?? 'active'
-  })
+  const [statusFilter, setStatusFilter] = useState<'all' | ProjectStatus>('active')
   const handleSetStatusFilter = (val: 'all' | ProjectStatus) => {
     setStatusFilter(val)
-    sessionStorage.setItem('projects_statusFilter', val)
   }
   const [managerFilter, setManagerFilter] = useState('all')
   const [dateFilter, setDateFilter] = useState('')
@@ -176,7 +175,9 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
   const [milestoneForm, setMilestoneForm] = useState<CreateMilestonePayload>({
     milestoneNo: '',
     description: '',
+    type: undefined,
     percentage: 0,
+    netAmount: undefined,
     invoicingPercentage: undefined,
   })
   const [editingMilestoneId, setEditingMilestoneId] = useState<string | null>(null)
@@ -248,7 +249,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['milestones', editingProject?.id] })
       await queryClient.invalidateQueries({ queryKey: ['projects'] })
-      setMilestoneForm({ milestoneNo: '', description: '', percentage: 0, invoicingPercentage: undefined })
+      setMilestoneForm({ milestoneNo: '', description: '', type: undefined, percentage: 0, netAmount: undefined, invoicingPercentage: undefined })
       setMilestoneError('')
       setShowMilestoneForm(false)
     },
@@ -266,7 +267,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['milestones', editingProject?.id] })
       await queryClient.invalidateQueries({ queryKey: ['projects'] })
-      setMilestoneForm({ milestoneNo: '', description: '', percentage: 0, invoicingPercentage: undefined })
+      setMilestoneForm({ milestoneNo: '', description: '', type: undefined, percentage: 0, netAmount: undefined, invoicingPercentage: undefined })
       setMilestoneError('')
       setShowMilestoneForm(false)
     },
@@ -281,7 +282,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['milestones', editingProject?.id] })
       await queryClient.invalidateQueries({ queryKey: ['projects'] })
-      setMilestoneForm({ milestoneNo: '', description: '', percentage: 0, invoicingPercentage: undefined })
+      setMilestoneForm({ milestoneNo: '', description: '', type: undefined, percentage: 0, netAmount: undefined, invoicingPercentage: undefined })
       setEditingMilestoneId(null)
       setMilestoneError('')
       setShowMilestoneForm(false)
@@ -783,7 +784,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
             yearOptions={yearOptions}
             onReset={() => {
               setSearchQuery('')
-              handleSetStatusFilter('all')
+              handleSetStatusFilter('active')
               setManagerFilter('all')
               setDateFilter('')
               setYearFilter('all')

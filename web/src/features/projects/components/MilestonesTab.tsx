@@ -1,4 +1,4 @@
-import { Edit, Layers, Loader2, Plus, Trash2, Wallet } from 'lucide-react'
+import { Layers, Loader2, PencilLine, Plus, Trash2, Wallet } from 'lucide-react'
 import type { UseMutationResult } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import type { ApiMilestone, CreateMilestonePayload, ApiProject } from '@/features/projects/types'
@@ -22,6 +22,8 @@ type MilestonesTabProps = {
   deleteMilestoneMutation: UseMutationResult<void, Error, string, unknown>
   handleCloseDrawer: () => void
   formatBudget: (val: number, currency?: string) => string
+  /** Called when user clicks "Edytuj" to open bulk-edit drawer */
+  onBulkEdit: () => void
 }
 
 export function MilestonesTab({
@@ -36,13 +38,15 @@ export function MilestonesTab({
   deleteMilestoneMutation,
   handleCloseDrawer,
   formatBudget,
+  onBulkEdit,
 }: MilestonesTabProps) {
   const contractVal = editingProject?.contract_net_value ? Number(editingProject.contract_net_value) : 0
   const currency = editingProject?.currency || 'PLN'
 
-  // Calculations rounded to 2 decimal places to prevent float issues
-  const totalPct = milestones.reduce((s, m) => s + (m.percentage || 0), 0)
-  const totalNet = Math.round(milestones.reduce((s, m) => s + (m.netAmount || (contractVal * (m.percentage / 100))), 0) * 100) / 100
+  // Calculations: only KM milestones count toward % total
+  const kmMilestones = milestones.filter((m) => m.type === 'KM')
+  const totalPct = kmMilestones.reduce((s, m) => s + (m.percentage || 0), 0)
+  const totalNet = Math.round(milestones.reduce((s, m) => s + (m.netAmount || (m.type === 'KM' ? contractVal * (m.percentage / 100) : 0)), 0) * 100) / 100
   const diffNet = Math.round((contractVal - totalNet) * 100) / 100
 
   return (
@@ -98,26 +102,44 @@ export function MilestonesTab({
             <Layers size={14} className="text-[var(--sidebar-primary)]" />
             <span>Harmonogram i Tabela Etapów (Kamienie Milowe)</span>
           </div>
+
           {canEditProject && (
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => {
-                setEditingMilestoneId(null)
-                setMilestoneForm({
-                  milestoneNo: `KM ${milestones.length + 1}`,
-                  description: '',
-                  percentage: 0,
-                  invoicingPercentage: undefined,
-                })
-                setMilestoneError('')
-                setShowMilestoneForm(true)
-              }}
-              className="rounded-xl text-xs h-8 bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] hover:bg-[var(--sidebar-primary)]/90 shadow-[0_4px_12px_color-mix(in_oklch,var(--sidebar-primary),transparent_75%)]"
-            >
-              <Plus size={13} className="mr-1" />
-              Dodaj nowy etap
-            </Button>
+            <div className="flex items-center gap-2">
+              {/* Edytuj — bulk edit all milestones */}
+              {milestones.length > 0 && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={onBulkEdit}
+                  className="rounded-xl text-xs h-8 border-[var(--sidebar-primary)]/25 text-[var(--sidebar-primary)] hover:bg-[var(--sidebar-primary)]/8 hover:border-[var(--sidebar-primary)]/50"
+                >
+                  <PencilLine size={13} className="mr-1" />
+                  Edytuj
+                </Button>
+              )}
+
+              {/* Dodaj nowy etap */}
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => {
+                  setEditingMilestoneId(null)
+                  setMilestoneForm({
+                    milestoneNo: `KM ${milestones.length + 1}`,
+                    description: '',
+                    percentage: 0,
+                    invoicingPercentage: undefined,
+                  })
+                  setMilestoneError('')
+                  setShowMilestoneForm(true)
+                }}
+                className="rounded-xl text-xs h-8 bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] hover:bg-[var(--sidebar-primary)]/90 shadow-[0_4px_12px_color-mix(in_oklch,var(--sidebar-primary),transparent_75%)]"
+              >
+                <Plus size={13} className="mr-1" />
+                Dodaj nowy etap
+              </Button>
+            </div>
           )}
         </div>
       </div>
@@ -133,16 +155,18 @@ export function MilestonesTab({
             <table className="w-full border-collapse text-left text-xs">
               <thead className="sticky top-0 z-10 border-b border-zinc-200 dark:border-zinc-800 bg-[var(--background)]/90 backdrop-blur-md text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
                 <tr>
-                  <th className="px-3 py-2.5 text-center w-16 border-r border-zinc-200/70 dark:border-zinc-800/70">KM</th>
+                  <th className="px-3 py-2.5 text-center w-16 border-r border-zinc-200/70 dark:border-zinc-800/70">Nr</th>
+                  <th className="px-3 py-2.5 text-center w-28 border-r border-zinc-200/70 dark:border-zinc-800/70">Typ</th>
                   <th className="px-3.5 py-2.5 border-r border-zinc-200/70 dark:border-zinc-800/70">Etap / Opis prac</th>
                   <th className="px-3 py-2.5 text-center w-24 border-r border-zinc-200/70 dark:border-zinc-800/70">% Udziału</th>
                   <th className="px-3.5 py-2.5 text-right w-40 border-r border-zinc-200/70 dark:border-zinc-800/70">Kwota netto</th>
-                  {canEditProject && <th className="px-3 py-2.5 text-center w-24">Akcje</th>}
+                  {canEditProject && <th className="px-3 py-2.5 text-center w-16">Akcje</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800/80 font-medium">
                 {milestones.map((m, index) => {
                   const netValue = Math.round((m.netAmount ? m.netAmount : (contractVal ? (m.percentage / 100) * contractVal : 0)) * 100) / 100
+                  const isRoboty = m.type === 'roboty_dodatkowe'
 
                   return (
                     <tr
@@ -150,10 +174,17 @@ export function MilestonesTab({
                       style={{ animationDelay: `${index * 25}ms` }}
                       className="group transition-colors hover:bg-[var(--sidebar-primary)]/[0.04] align-middle"
                     >
-                      {/* KM Symbol */}
+                      {/* Nr Symbol */}
                       <td className="px-3 py-2.5 text-center border-r border-zinc-200/60 dark:border-zinc-800/60 font-bold">
-                        <span className="inline-block rounded-md bg-[var(--sidebar-primary)]/10 px-2 py-0.5 text-[11px] text-[var(--sidebar-primary)] shadow-2xs font-extrabold">
+                        <span className={`inline-block rounded-md px-2 py-0.5 text-[11px] shadow-2xs font-extrabold ${isRoboty ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' : 'bg-[var(--sidebar-primary)]/10 text-[var(--sidebar-primary)]'}`}>
                           {m.milestoneNo}
+                        </span>
+                      </td>
+
+                      {/* Typ */}
+                      <td className="px-3 py-2.5 text-center border-r border-zinc-200/60 dark:border-zinc-800/60">
+                        <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold ${isRoboty ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' : 'bg-[var(--sidebar-primary)]/8 text-[var(--sidebar-primary)]'}`}>
+                          {isRoboty ? 'Rob. dod.' : 'KM'}
                         </span>
                       </td>
 
@@ -164,9 +195,13 @@ export function MilestonesTab({
 
                       {/* % Udziału */}
                       <td className="px-3 py-2.5 text-center border-r border-zinc-200/60 dark:border-zinc-800/60 font-bold">
-                        <span className="inline-block rounded-full bg-[var(--background)] px-2 py-0.5 text-[11px] border border-zinc-200 dark:border-zinc-700/60">
-                          {m.percentage.toFixed(1)}%
-                        </span>
+                        {isRoboty ? (
+                          <span className="text-[11px] text-[var(--muted-foreground)] italic">—</span>
+                        ) : (
+                          <span className="inline-block rounded-full bg-[var(--background)] px-2 py-0.5 text-[11px] border border-zinc-200 dark:border-zinc-700/60">
+                            {m.percentage.toFixed(1)}%
+                          </span>
+                        )}
                       </td>
 
                       {/* Kwota netto */}
@@ -174,38 +209,18 @@ export function MilestonesTab({
                         {formatBudget(netValue, currency)}
                       </td>
 
-                      {/* Akcje */}
+                      {/* Akcje — only delete */}
                       {canEditProject && (
                         <td className="px-3 py-2.5 text-center">
-                          <div className="flex items-center justify-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEditingMilestoneId(m.id)
-                                setMilestoneForm({
-                                  milestoneNo: m.milestoneNo,
-                                  description: m.description,
-                                  percentage: m.percentage,
-                                  invoicingPercentage: m.invoicingPercentage ?? undefined,
-                                })
-                                setMilestoneError('')
-                                setShowMilestoneForm(true)
-                              }}
-                              className="rounded-lg p-1.5 text-[var(--sidebar-primary)] hover:bg-[var(--sidebar-primary)]/10 transition cursor-pointer"
-                              title="Edytuj"
-                            >
-                              <Edit size={13} />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => deleteMilestoneMutation.mutate(m.id)}
-                              disabled={deleteMilestoneMutation.isPending}
-                              className="rounded-lg p-1.5 text-rose-500 hover:bg-rose-500/10 transition cursor-pointer disabled:opacity-50"
-                              title="Usuń"
-                            >
-                              {deleteMilestoneMutation.isPending ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
-                            </button>
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() => deleteMilestoneMutation.mutate(m.id)}
+                            disabled={deleteMilestoneMutation.isPending}
+                            className="rounded-lg p-1.5 text-rose-500 hover:bg-rose-500/10 transition cursor-pointer disabled:opacity-50"
+                            title="Usuń"
+                          >
+                            {deleteMilestoneMutation.isPending ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                          </button>
                         </td>
                       )}
                     </tr>
@@ -214,22 +229,23 @@ export function MilestonesTab({
 
                 {milestones.length === 0 && (
                   <tr>
-                    <td colSpan={canEditProject ? 5 : 4} className="text-center py-10 text-xs text-[var(--muted-foreground)]">
+                    <td colSpan={canEditProject ? 6 : 5} className="text-center py-10 text-xs text-[var(--muted-foreground)]">
                       Brak zdefiniowanych kamieni milowych dla tego projektu.
                     </td>
                   </tr>
                 )}
               </tbody>
 
-              {/* Summary Excel-style Footer Row */}
+              {/* Summary Footer Row */}
               {milestones.length > 0 && (
                 <tfoot className="border-t border-zinc-200 dark:border-zinc-800 bg-[var(--background)]/90 font-extrabold text-xs">
                   <tr>
                     <td className="px-3 py-3 text-center border-r border-zinc-200/70 dark:border-zinc-800/70 text-[var(--sidebar-primary)]">
                       RAZEM
                     </td>
+                    <td className="px-3 py-3 text-center border-r border-zinc-200/70 dark:border-zinc-800/70" />
                     <td className="px-3.5 py-3 border-r border-zinc-200/70 dark:border-zinc-800/70 text-[var(--foreground)] uppercase text-[10px] tracking-wider">
-                      Suma całkowita etapu
+                      Suma całkowita
                     </td>
                     <td className="px-3 py-3 text-center border-r border-zinc-200/70 dark:border-zinc-800/70 text-[var(--foreground)]">
                       {totalPct.toFixed(1)}%

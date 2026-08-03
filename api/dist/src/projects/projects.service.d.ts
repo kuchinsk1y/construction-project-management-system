@@ -57,13 +57,11 @@ export declare class ProjectsService {
     delete(id: string): Promise<{
         id: string;
         contractor_id: string;
-        name: string;
-        city: string;
-        country: string;
-        created_at: Date | null;
-        updated_at: Date | null;
         project_type_id: bigint;
         manager_id: number | null;
+        name: string;
+        country: string;
+        city: string;
         latitude: import("@prisma/client-runtime-utils").Decimal | null;
         longitude: import("@prisma/client-runtime-utils").Decimal | null;
         start_date_contract: Date | null;
@@ -86,12 +84,15 @@ export declare class ProjectsService {
         deleted_at: Date | null;
         created_by: number | null;
         updated_by: number | null;
+        created_at: Date | null;
+        updated_at: Date | null;
     }>;
     listMilestones(projectId: string): Promise<{
         id: string;
         projectId: string;
         milestoneNo: string;
         description: string;
+        type: string;
         percentage: number;
         netAmount: number;
         invoicingPercentage: number | null;
@@ -103,6 +104,7 @@ export declare class ProjectsService {
         projectId: string;
         milestoneNo: string;
         description: string;
+        type: string;
         percentage: number;
         netAmount: number;
         invoicingPercentage: number | null;
@@ -112,6 +114,7 @@ export declare class ProjectsService {
         projectId: string;
         milestoneNo: string;
         description: string;
+        type: string;
         percentage: number;
         netAmount: number;
         invoicingPercentage: number | null;

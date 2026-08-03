@@ -1,4 +1,5 @@
 import {
+  IsIn,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -16,10 +17,21 @@ export class CreateMilestoneDto {
   @IsNotEmpty()
   description: string;
 
+  @IsString()
+  @IsOptional()
+  @IsIn(['KM', 'roboty_dodatkowe'])
+  type?: string;
+
   @IsNumber()
+  @IsOptional()
   @Min(0)
   @Max(100)
-  percentage: number;
+  percentage?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
+  netAmount?: number;
 
   @IsNumber()
   @IsOptional()

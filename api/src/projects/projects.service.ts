@@ -110,16 +110,6 @@ export class ProjectsService {
         name: 'Magazyn energii',
         description: 'Systemy magazynowania energii (BESS)',
       },
-      {
-        code: 'HYBRYDA',
-        name: 'Instalacja hybrydowa (PV + Magazyn)',
-        description: 'Połączenie PV i magazynu energii',
-      },
-      {
-        code: 'BUDOWNICTWO',
-        name: 'Budownictwo ogólne',
-        description: 'Inne projekty budowlane',
-      },
     ];
 
     if (projectTypeId) {
@@ -231,6 +221,9 @@ export class ProjectsService {
   async listProjectTypes() {
     await this.ensureProjectTypeExists(null);
     const rows = await this.prisma.project_types.findMany({
+      where: {
+        code: { in: ['PV', 'MAGAZYN_ENERGII'] },
+      },
       select: { id: true, name: true, code: true },
       orderBy: { id: 'asc' },
     });
@@ -339,6 +332,7 @@ export class ProjectsService {
       projectId: m.project_id,
       milestoneNo: m.milestone_no,
       description: m.description,
+      type: m.type ?? 'KM',
       percentage: m.percentage ? Number(m.percentage) : 0,
       netAmount: m.net_amount ? Number(m.net_amount) : 0,
       invoicingPercentage: m.invoicing_percentage
@@ -357,32 +351,43 @@ export class ProjectsService {
       throw new NotFoundException('Project not found');
     }
 
-    // Validate percentage sum
-    const existing = await this.prisma.milestones.findMany({
-      where: { project_id: projectId, deleted_at: null },
-    });
-    const currentSum = existing.reduce(
-      (sum, m) => sum + Number(m.percentage ?? 0),
-      0,
-    );
-    if (currentSum + dto.percentage > 100) {
-      throw new BadRequestException(
-        'Suma procentów kamieni milowych nie może przekraczać 100%',
-      );
-    }
+    const milestoneType = dto.type ?? 'KM';
+    let percentage = 0;
+    let netAmount = 0;
 
-    // Calculate net amount based on project budget
-    const projectBudget = project.contract_net_value
-      ? Number(project.contract_net_value)
-      : 0;
-    const netAmount = (projectBudget * dto.percentage) / 100;
+    if (milestoneType === 'KM') {
+      // Validate percentage sum for KM type
+      const existing = await this.prisma.milestones.findMany({
+        where: { project_id: projectId, deleted_at: null },
+      });
+      const currentSum = existing.reduce(
+        (sum, m) => sum + Number(m.percentage ?? 0),
+        0,
+      );
+      percentage = dto.percentage ?? 0;
+      if (currentSum + percentage > 100) {
+        throw new BadRequestException(
+          'Suma procentów kamieni milowych nie może przekraczać 100%',
+        );
+      }
+      // Calculate net amount based on project budget
+      const projectBudget = project.contract_net_value
+        ? Number(project.contract_net_value)
+        : 0;
+      netAmount = (projectBudget * percentage) / 100;
+    } else {
+      // roboty_dodatkowe: manual net amount, percentage = 0
+      percentage = 0;
+      netAmount = dto.netAmount ?? 0;
+    }
 
     const row = await this.prisma.milestones.create({
       data: {
         project_id: projectId,
         milestone_no: dto.milestoneNo,
         description: dto.description,
-        percentage: dto.percentage,
+        type: milestoneType,
+        percentage,
         net_amount: netAmount,
         invoicing_percentage: dto.invoicingPercentage ?? null,
       },
@@ -393,6 +398,7 @@ export class ProjectsService {
       projectId: row.project_id,
       milestoneNo: row.milestone_no,
       description: row.description,
+      type: row.type,
       percentage: Number(row.percentage),
       netAmount: Number(row.net_amount),
       invoicingPercentage: row.invoicing_percentage
@@ -409,35 +415,42 @@ export class ProjectsService {
       throw new NotFoundException('Milestone not found');
     }
 
+    const milestoneType = dto.type ?? milestone.type ?? 'KM';
     let netAmount: number | undefined = undefined;
+    let percentage: number | undefined = dto.percentage;
 
-    if (dto.percentage !== undefined) {
-      // Validate percentage sum excluding current milestone
-      const existing = await this.prisma.milestones.findMany({
-        where: {
-          project_id: milestone.project_id,
-          deleted_at: null,
-          NOT: { id },
-        },
-      });
-      const currentSum = existing.reduce(
-        (sum, m) => sum + Number(m.percentage ?? 0),
-        0,
-      );
-      if (currentSum + dto.percentage > 100) {
-        throw new BadRequestException(
-          'Suma procentów kamieni milowych nie może przekraczać 100%',
+    if (milestoneType === 'KM') {
+      if (dto.percentage !== undefined) {
+        // Validate percentage sum excluding current milestone
+        const existing = await this.prisma.milestones.findMany({
+          where: {
+            project_id: milestone.project_id,
+            deleted_at: null,
+            NOT: { id },
+          },
+        });
+        const currentSum = existing.reduce(
+          (sum, m) => sum + Number(m.percentage ?? 0),
+          0,
         );
+        if (currentSum + dto.percentage > 100) {
+          throw new BadRequestException(
+            'Suma procentów kamieni milowych nie może przekraczać 100%',
+          );
+        }
+        // Fetch project budget to update net amount
+        const project = await this.prisma.projects.findUnique({
+          where: { id: milestone.project_id },
+        });
+        const projectBudget = project?.contract_net_value
+          ? Number(project.contract_net_value)
+          : 0;
+        netAmount = (projectBudget * dto.percentage) / 100;
       }
-
-      // Fetch project budget to update net amount
-      const project = await this.prisma.projects.findUnique({
-        where: { id: milestone.project_id },
-      });
-      const projectBudget = project?.contract_net_value
-        ? Number(project.contract_net_value)
-        : 0;
-      netAmount = (projectBudget * dto.percentage) / 100;
+    } else {
+      // roboty_dodatkowe: manual net amount, force percentage = 0
+      percentage = 0;
+      netAmount = dto.netAmount;
     }
 
     const row = await this.prisma.milestones.update({
@@ -445,7 +458,8 @@ export class ProjectsService {
       data: {
         milestone_no: dto.milestoneNo,
         description: dto.description,
-        percentage: dto.percentage,
+        type: milestoneType,
+        percentage,
         net_amount: netAmount,
         invoicing_percentage: dto.invoicingPercentage,
       },
@@ -456,6 +470,7 @@ export class ProjectsService {
       projectId: row.project_id,
       milestoneNo: row.milestone_no,
       description: row.description,
+      type: row.type,
       percentage: Number(row.percentage),
       netAmount: Number(row.net_amount),
       invoicingPercentage: row.invoicing_percentage

@@ -5,6 +5,7 @@ export type ApiMilestone = {
   projectId: string
   milestoneNo: string
   description: string
+  type: 'KM' | 'roboty_dodatkowe'
   percentage: number
   netAmount: number
   invoicingPercentage: number | null
@@ -15,7 +16,9 @@ export type ApiMilestone = {
 export type CreateMilestonePayload = {
   milestoneNo: string
   description: string
-  percentage: number
+  type?: 'KM' | 'roboty_dodatkowe'
+  percentage?: number
+  netAmount?: number
   invoicingPercentage?: number
 }
 

@@ -39,7 +39,7 @@ export function ProjectsFilterBar({
 
   const isFiltered = Boolean(
     searchQuery
-      || statusFilter !== 'all'
+      || statusFilter !== 'active'
       || managerFilter !== 'all'
       || dateFilter
       || yearFilter !== 'all'

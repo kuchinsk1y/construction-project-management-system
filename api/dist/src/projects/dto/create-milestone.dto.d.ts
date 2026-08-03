@@ -1,6 +1,8 @@
 export declare class CreateMilestoneDto {
     milestoneNo: string;
     description: string;
-    percentage: number;
+    type?: string;
+    percentage?: number;
+    netAmount?: number;
     invoicingPercentage?: number;
 }
