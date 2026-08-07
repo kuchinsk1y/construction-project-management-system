@@ -38,6 +38,7 @@ export declare class ProjectsController {
         } | null;
         dokumentationUrl: string | null;
         pinUrl: string | null;
+        power: number | null;
     }[]>;
     create(dto: CreateProjectDto): Promise<Record<string, unknown>>;
     update(id: string, dto: UpdateProjectDto): Promise<Record<string, unknown>>;
@@ -60,37 +61,7 @@ export declare class ProjectsController {
         lastName: string;
     }[]>;
     delete(id: string): Promise<{
-        id: string;
-        contractor_id: string;
-        project_type_id: bigint;
-        manager_id: number | null;
-        name: string;
-        country: string;
-        city: string;
-        latitude: import("@prisma/client-runtime-utils").Decimal | null;
-        longitude: import("@prisma/client-runtime-utils").Decimal | null;
-        start_date_contract: Date | null;
-        end_date_contract: Date | null;
-        start_date_fact: Date | null;
-        end_date_fact: Date | null;
-        contract_net_value: import("@prisma/client-runtime-utils").Decimal | null;
-        currency: string | null;
-        vat_rate: import("@prisma/client-runtime-utils").Decimal | null;
-        payment_term_days: number | null;
-        warranty_percent: import("@prisma/client-runtime-utils").Decimal | null;
-        warranty_months: number | null;
-        status: string;
-        hold_reason: string | null;
-        hold_started_at: Date | null;
-        expected_resume_date: Date | null;
-        google_drive_folder_id: string | null;
-        dokumentation_url: string | null;
-        pin_url: string | null;
-        deleted_at: Date | null;
-        created_by: number | null;
-        updated_by: number | null;
-        created_at: Date | null;
-        updated_at: Date | null;
+        success: boolean;
     }>;
     listMilestones(projectId: string): Promise<{
         id: string;

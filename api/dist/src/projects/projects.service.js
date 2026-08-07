@@ -76,6 +76,7 @@ let ProjectsService = class ProjectsService {
                 : null,
             dokumentationUrl: p.dokumentation_url,
             pinUrl: p.pin_url,
+            power: p.power ? Number(p.power) : null,
         }));
     }
     async ensureCurrencyExists(currencyCode) {
@@ -136,7 +137,9 @@ let ProjectsService = class ProjectsService {
                 country: dto.country,
                 city: dto.city,
                 status: dto.status ?? 'DRAFT',
-                currencies: dto.currency ? { connect: { code: dto.currency } } : undefined,
+                currencies: dto.currency
+                    ? { connect: { code: dto.currency } }
+                    : undefined,
                 contract_net_value: dto.contractNetValue ?? null,
                 start_date_contract: dto.startDateContract
                     ? new Date(dto.startDateContract)
@@ -151,6 +154,7 @@ let ProjectsService = class ProjectsService {
                     : undefined,
                 dokumentation_url: dto.dokumentationUrl ?? null,
                 pin_url: dto.pinUrl ?? null,
+                power: dto.power ?? null,
             },
             include: {
                 contractors: { select: { id: true, name: true } },
@@ -193,6 +197,7 @@ let ProjectsService = class ProjectsService {
                 : null,
             dokumentationUrl: project.dokumentation_url,
             pinUrl: project.pin_url,
+            power: project.power ? Number(project.power) : null,
         });
     }
     async listContractors() {
@@ -223,12 +228,18 @@ let ProjectsService = class ProjectsService {
             where: { id },
             data: {
                 name: dto.name,
-                contractors: dto.contractorId ? { connect: { id: dto.contractorId } } : undefined,
-                project_types: projectTypeId ? { connect: { id: projectTypeId } } : undefined,
+                contractors: dto.contractorId
+                    ? { connect: { id: dto.contractorId } }
+                    : undefined,
+                project_types: projectTypeId
+                    ? { connect: { id: projectTypeId } }
+                    : undefined,
                 country: dto.country,
                 city: dto.city,
                 status: dto.status,
-                currencies: dto.currency ? { connect: { code: dto.currency } } : { disconnect: true },
+                currencies: dto.currency
+                    ? { connect: { code: dto.currency } }
+                    : { disconnect: true },
                 contract_net_value: dto.contractNetValue ?? null,
                 start_date_contract: dto.startDateContract
                     ? new Date(dto.startDateContract)
@@ -243,6 +254,7 @@ let ProjectsService = class ProjectsService {
                     : { disconnect: true },
                 dokumentation_url: dto.dokumentationUrl,
                 pin_url: dto.pinUrl,
+                power: dto.power ?? null,
             },
             include: {
                 contractors: { select: { id: true, name: true } },
@@ -285,13 +297,15 @@ let ProjectsService = class ProjectsService {
                 : null,
             dokumentationUrl: project.dokumentation_url,
             pinUrl: project.pin_url,
+            power: project.power ? Number(project.power) : null,
         });
     }
     async delete(id) {
-        return this.prisma.projects.update({
+        await this.prisma.projects.update({
             where: { id },
             data: { deleted_at: new Date() },
         });
+        return { success: true };
     }
     async listMilestones(projectId) {
         const rows = await this.prisma.milestones.findMany({

@@ -1,4 +1,4 @@
-import { Layers, Loader2, PencilLine, Plus, Trash2, Wallet } from 'lucide-react'
+import { Layers, Loader2, Plus, Trash2, Wallet } from 'lucide-react'
 import type { UseMutationResult } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import type { ApiMilestone, CreateMilestonePayload, ApiProject } from '@/features/projects/types'
@@ -8,14 +8,7 @@ type MilestonesTabProps = {
   milestonesLoading: boolean
   editingProject: ApiProject | null
   canEditProject: boolean
-  showMilestoneForm: boolean
-  setShowMilestoneForm: (show: boolean) => void
-  milestoneForm: CreateMilestonePayload
-  setMilestoneForm: React.Dispatch<React.SetStateAction<CreateMilestonePayload>>
   editingMilestoneId: string | null
-  setEditingMilestoneId: (id: string | null) => void
-  milestoneError: string
-  setMilestoneError: (err: string) => void
   handleMilestoneSubmit: (e: React.FormEvent) => void
   createMilestoneMutation: UseMutationResult<ApiMilestone, Error, CreateMilestonePayload, unknown>
   updateMilestoneMutation: UseMutationResult<ApiMilestone, Error, { id: string; payload: Partial<CreateMilestonePayload> }, unknown>
@@ -31,10 +24,6 @@ export function MilestonesTab({
   milestonesLoading,
   editingProject,
   canEditProject,
-  setShowMilestoneForm,
-  setMilestoneForm,
-  setEditingMilestoneId,
-  setMilestoneError,
   deleteMilestoneMutation,
   handleCloseDrawer,
   formatBudget,
@@ -105,39 +94,15 @@ export function MilestonesTab({
 
           {canEditProject && (
             <div className="flex items-center gap-2">
-              {/* Edytuj — bulk edit all milestones */}
-              {milestones.length > 0 && (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={onBulkEdit}
-                  className="rounded-xl text-xs h-8 border-[var(--sidebar-primary)]/25 text-[var(--sidebar-primary)] hover:bg-[var(--sidebar-primary)]/8 hover:border-[var(--sidebar-primary)]/50"
-                >
-                  <PencilLine size={13} className="mr-1" />
-                  Edytuj
-                </Button>
-              )}
-
-              {/* Dodaj nowy etap */}
+              {/* Dodaj / Edytuj etapy */}
               <Button
                 type="button"
                 size="sm"
-                onClick={() => {
-                  setEditingMilestoneId(null)
-                  setMilestoneForm({
-                    milestoneNo: `KM ${milestones.length + 1}`,
-                    description: '',
-                    percentage: 0,
-                    invoicingPercentage: undefined,
-                  })
-                  setMilestoneError('')
-                  setShowMilestoneForm(true)
-                }}
+                onClick={onBulkEdit}
                 className="rounded-xl text-xs h-8 bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] hover:bg-[var(--sidebar-primary)]/90 shadow-[0_4px_12px_color-mix(in_oklch,var(--sidebar-primary),transparent_75%)]"
               >
                 <Plus size={13} className="mr-1" />
-                Dodaj nowy etap
+                Dodaj / Edytuj etapy
               </Button>
             </div>
           )}

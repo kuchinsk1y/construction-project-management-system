@@ -79,4 +79,9 @@ export class CreateProjectDto {
   @IsString()
   @MaxLength(512)
   pinUrl?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  power?: number;
 }

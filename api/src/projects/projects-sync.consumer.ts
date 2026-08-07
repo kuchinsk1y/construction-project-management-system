@@ -94,7 +94,7 @@ export class ProjectsSyncConsumer extends WorkerHost {
       projectType: project.project_types?.name ?? '',
       pin: project.pin_url ?? '',
       manager: managerName,
-      power: '',
+      power: project.power ? project.power.toNumber() : '',
       dokumentationUrl: project.dokumentation_url ?? '',
       country: project.country,
       status: project.status,

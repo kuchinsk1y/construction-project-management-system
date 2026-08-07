@@ -107,6 +107,7 @@ const emptyForm: CreateProjectPayload = {
   startDateFact: '',
   endDateFact: '',
   managerId: undefined,
+  power: undefined,
   dokumentationUrl: '',
   pinUrl: '',
 }
@@ -314,7 +315,8 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
       setMilestoneError('Opis etapu jest wymagany')
       return
     }
-    if (milestoneForm.percentage <= 0 || milestoneForm.percentage > 100) {
+    const pct = milestoneForm.percentage || 0
+    if (pct <= 0 || pct > 100) {
       setMilestoneError('Procent wartości musi być z przedziału od 0.01% do 100%')
       return
     }
@@ -391,6 +393,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
       startDateFact: raw.start_date_fact || '',
       endDateFact: raw.end_date_fact || '',
       managerId: raw.manager?.id ?? undefined,
+      power: raw.power ? Number(raw.power) : undefined,
       dokumentationUrl: raw.dokumentationUrl ?? '',
       pinUrl: raw.pinUrl ?? '',
     })
@@ -438,6 +441,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
       startDateFact: formState.startDateFact || undefined,
       endDateFact: formState.endDateFact || undefined,
       managerId: formState.managerId || undefined,
+      power: formState.power || undefined,
       dokumentationUrl: formState.dokumentationUrl || undefined,
       pinUrl: formState.pinUrl || undefined,
     }
@@ -699,7 +703,6 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
         showMilestoneForm={showMilestoneForm}
         setShowMilestoneForm={setShowMilestoneForm}
         milestoneForm={milestoneForm}
-        setMilestoneForm={setMilestoneForm}
         editingMilestoneId={editingMilestoneId}
         setEditingMilestoneId={setEditingMilestoneId}
         milestoneError={milestoneError}
@@ -821,7 +824,6 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
               onOpenDrawer={handleOpenDrawer}
               onSelectProject={handleEditProject}
               parseDateValue={parseDateValue}
-              formatDate={formatDate}
               statusTone={statusTone}
               statusLabel={statusLabel}
             />
@@ -871,7 +873,6 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
         showMilestoneForm={showMilestoneForm}
         setShowMilestoneForm={setShowMilestoneForm}
         milestoneForm={milestoneForm}
-        setMilestoneForm={setMilestoneForm}
         editingMilestoneId={editingMilestoneId}
         setEditingMilestoneId={setEditingMilestoneId}
         milestoneError={milestoneError}

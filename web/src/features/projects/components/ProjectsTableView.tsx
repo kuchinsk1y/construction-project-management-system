@@ -160,6 +160,12 @@ export function ProjectsTableView({
                     </div>
 
                     <div className="flex items-center justify-between gap-2">
+                      <span className="flex items-center gap-1 font-medium text-[var(--foreground)]">
+                        {project.power ? `${project.power} MW` : ''}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2">
                       <span className="flex items-center gap-1 truncate">
                         <MapPin size={12} className="shrink-0" />
                         <span>{project.location}</span>
@@ -226,6 +232,9 @@ export function ProjectsTableView({
                 </button>
               </th>
               <th className="border-b border-[var(--border)] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+                Moc (MW)
+              </th>
+              <th className="border-b border-[var(--border)] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
                 <button type="button" onClick={() => onSort('location')} className="inline-flex items-center gap-1 hover:text-[var(--foreground)] transition cursor-pointer">
                   {t('projects.table.columns.location')}
                   <ArrowUpDown size={12} className={sortColumn === 'location' ? 'text-[var(--foreground)]' : ''} />
@@ -280,6 +289,10 @@ export function ProjectsTableView({
 
                   <td className="px-4 py-3.5 align-middle text-xs font-medium text-[var(--foreground)]">
                     {project.contractor}
+                  </td>
+
+                  <td className="px-4 py-3.5 align-middle text-xs font-semibold text-[var(--foreground)]">
+                    {project.power ? `${project.power} MW` : '-'}
                   </td>
 
                   <td className="px-4 py-3.5 align-middle text-xs">

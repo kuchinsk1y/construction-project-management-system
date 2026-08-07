@@ -59,7 +59,6 @@ type ProjectDetailsDrawerProps = {
   showMilestoneForm: boolean
   setShowMilestoneForm: (show: boolean) => void
   milestoneForm: CreateMilestonePayload
-  setMilestoneForm: React.Dispatch<React.SetStateAction<CreateMilestonePayload>>
   editingMilestoneId: string | null
   setEditingMilestoneId: (id: string | null) => void
   milestoneError: string
@@ -116,7 +115,6 @@ export function ProjectDetailsDrawer({
   showMilestoneForm,
   setShowMilestoneForm,
   milestoneForm,
-  setMilestoneForm,
   editingMilestoneId,
   setEditingMilestoneId,
   milestoneError,
@@ -162,6 +160,7 @@ export function ProjectDetailsDrawer({
         startDateFact: editingProject.start_date_fact || '',
         endDateFact: editingProject.end_date_fact || '',
         managerId: editingProject.manager?.id ?? undefined,
+        power: editingProject.power ? Number(editingProject.power) : undefined,
         dokumentationUrl: editingProject.dokumentationUrl ?? '',
         pinUrl: editingProject.pinUrl ?? '',
       })
@@ -222,7 +221,7 @@ export function ProjectDetailsDrawer({
                     <span>{t('projects.form.sections.basic')}</span>
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <label className="block sm:col-span-2">
+                    <label className="block sm:col-span-1">
                       <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">
                         {t('projects.form.labels.name')} <span className="text-rose-500">*</span>
                       </span>
@@ -230,6 +229,18 @@ export function ProjectDetailsDrawer({
                         value={formState.name}
                         onChange={(e) => setField('name', e.target.value)}
                         placeholder={t('projects.form.placeholders.name')}
+                        className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50"
+                      />
+                    </label>
+                    <label className="block sm:col-span-1">
+                      <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">Moc (MW)</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={formState.power ?? ''}
+                        onChange={(e) => setField('power', e.target.value ? Number(e.target.value) : undefined)}
+                        placeholder="Np. 1.5"
                         className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50"
                       />
                     </label>
@@ -262,6 +273,7 @@ export function ProjectDetailsDrawer({
                         ))}
                       </select>
                     </label>
+
                     <label className="block sm:col-span-2">
                       <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">{t('projects.form.labels.dokumentationUrl')}</span>
                       <input
@@ -565,6 +577,10 @@ export function ProjectDetailsDrawer({
                             <p className="text-xs font-semibold text-[var(--foreground)]">{managerName}</p>
                           </div>
                         </div>
+                        <div>
+                          <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--muted-foreground)]">Moc (MW)</span>
+                          <p className="text-xs font-bold text-[var(--foreground)] mt-0.5">{formState.power ? `${formState.power} MW` : '-'}</p>
+                        </div>
                         <div className="sm:col-span-2">
                           <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--muted-foreground)]">{t('projects.form.labels.dokumentationUrl')}</span>
                           <div className="mt-0.5">
@@ -768,7 +784,7 @@ export function ProjectDetailsDrawer({
                           <span>{t('projects.form.sections.basic')}</span>
                         </p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <label className="block sm:col-span-2">
+                          <label className="block sm:col-span-1">
                             <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">
                               {t('projects.form.labels.name')} <span className="text-rose-500">*</span>
                             </span>
@@ -776,6 +792,18 @@ export function ProjectDetailsDrawer({
                               value={formState.name}
                               onChange={(e) => setField('name', e.target.value)}
                               placeholder={t('projects.form.placeholders.name')}
+                              className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50"
+                            />
+                          </label>
+                          <label className="block sm:col-span-1">
+                            <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">Moc (MW)</span>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={formState.power ?? ''}
+                              onChange={(e) => setField('power', e.target.value ? Number(e.target.value) : undefined)}
+                              placeholder="Np. 1.5"
                               className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50"
                             />
                           </label>
@@ -1069,14 +1097,7 @@ export function ProjectDetailsDrawer({
               milestonesLoading={milestonesLoading}
               editingProject={editingProject}
               canEditProject={canEditProject}
-              showMilestoneForm={showMilestoneForm}
-              setShowMilestoneForm={setShowMilestoneForm}
-              milestoneForm={milestoneForm}
-              setMilestoneForm={setMilestoneForm}
               editingMilestoneId={editingMilestoneId}
-              setEditingMilestoneId={setEditingMilestoneId}
-              milestoneError={milestoneError}
-              setMilestoneError={setMilestoneError}
               handleMilestoneSubmit={handleMilestoneSubmit}
               createMilestoneMutation={createMilestoneMutation}
               updateMilestoneMutation={updateMilestoneMutation}

@@ -118,7 +118,9 @@ export class AuthService {
       record.expiresAt < new Date() ||
       !record.user.isActive
     ) {
-      throw new UnauthorizedException('Token odświeżania jest nieprawidłowy lub wygasł');
+      throw new UnauthorizedException(
+        'Token odświeżania jest nieprawidłowy lub wygasł',
+      );
     }
 
     await this.prisma.refreshToken.update({

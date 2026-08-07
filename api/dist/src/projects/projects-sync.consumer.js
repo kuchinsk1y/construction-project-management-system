@@ -81,7 +81,7 @@ let ProjectsSyncConsumer = ProjectsSyncConsumer_1 = class ProjectsSyncConsumer e
             projectType: project.project_types?.name ?? '',
             pin: project.pin_url ?? '',
             manager: managerName,
-            power: '',
+            power: project.power ? project.power.toNumber() : '',
             dokumentationUrl: project.dokumentation_url ?? '',
             country: project.country,
             status: project.status,

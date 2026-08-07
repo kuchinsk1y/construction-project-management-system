@@ -54,6 +54,7 @@ export async function fetchProjectsFromGoogleSheets(): Promise<ProjectItem[]> {
         endDate,
         dueDate,
         priority,
+        power: budget, // Using budget as a placeholder for power if needed
         health,
         startDateFact: '',
         endDateFact: '',
