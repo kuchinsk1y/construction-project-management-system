@@ -1,5 +1,4 @@
 <div align="center">
-  <img src="https://img.icons8.com/?size=512&id=51664&format=png" alt="Logo" width="120" height="120">
 
   # 🏢 Construction Project Management ERP
   
@@ -12,6 +11,8 @@
   [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
   [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
   [![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+  [![Redis](https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white)](https://redis.io/)
+  [![BullMQ](https://img.shields.io/badge/BullMQ-FF3366?style=for-the-badge)](https://bullmq.io/)
   [![Docker](https://img.shields.io/badge/Docker-2CA5E0?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 
   *Streamline your workflow from planning to execution with comprehensive financial tracking, timeline views, and milestone management.*
