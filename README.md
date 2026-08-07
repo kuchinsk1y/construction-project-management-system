@@ -105,7 +105,7 @@ docker compose up --build
 
 ---
 
-## 📸 Screenshots
+<!-- ## 📸 Screenshots
 
 > **Note:** Add visual previews here to showcase the premium UI elements such as the Gantt View and Project Editor.
 > 
@@ -115,4 +115,4 @@ docker compose up --build
 
 <div align="center">
   <p>Built with ❤️ for Modern Construction Management.</p>
-</div>
+</div> -->
