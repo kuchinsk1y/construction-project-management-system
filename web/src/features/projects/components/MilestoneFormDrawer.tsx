@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Trash2, X, Loader2, Calendar, Milestone, Wrench } from 'lucide-react'
+import { Plus, Trash2, X, Loader2, Calendar, Milestone, Wrench, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { UseMutationResult } from '@tanstack/react-query'
 import type { ApiMilestone, CreateMilestonePayload } from '@/features/projects/types'
@@ -16,6 +16,7 @@ type MilestoneFormDrawerProps = {
   createMilestoneMutation: UseMutationResult<ApiMilestone, Error, CreateMilestonePayload, unknown>
   createMilestonesBatchMutation: UseMutationResult<void, Error, CreateMilestonePayload[], unknown>
   updateMilestoneMutation: UseMutationResult<ApiMilestone, Error, { id: string; payload: Partial<CreateMilestonePayload> }, unknown>
+  deleteMilestoneMutation: UseMutationResult<void, Error, string, unknown>
   contractNetValue?: number
   isBulkEdit?: boolean
 }
@@ -42,11 +43,14 @@ export function MilestoneFormDrawer({
   createMilestoneMutation,
   createMilestonesBatchMutation,
   updateMilestoneMutation,
+  deleteMilestoneMutation,
   contractNetValue = 0,
 }: MilestoneFormDrawerProps) {
   const [rows, setRows] = useState<FormRow[]>([])
+  const [deletedIds, setDeletedIds] = useState<string[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const [prevIsOpen, setPrevIsOpen] = useState(isOpen)
+  const [rowToDelete, setRowToDelete] = useState<number | null>(null)
 
   if (isOpen !== prevIsOpen) {
     setPrevIsOpen(isOpen)
@@ -68,6 +72,7 @@ export function MilestoneFormDrawer({
   const handleClose = () => {
     setMilestoneError('')
     setEditingMilestoneId(null)
+    setDeletedIds([])
     onClose()
   }
 
@@ -75,8 +80,14 @@ export function MilestoneFormDrawer({
     setRows((prev) => prev.map((row, i) => (i === index ? { ...row, [key]: value } : row)))
   }
 
-  const handleRemoveRow = (index: number) => {
-    setRows((prev) => prev.filter((_, i) => i !== index))
+  const confirmDeleteRow = () => {
+    if (rowToDelete === null) return
+    const row = rows[rowToDelete]
+    if (row.id && !row.isNew) {
+      setDeletedIds((prev) => [...prev, row.id!])
+    }
+    setRows((prev) => prev.filter((_, i) => i !== rowToDelete))
+    setRowToDelete(null)
   }
 
   const handleAddKM = () => {
@@ -117,9 +128,10 @@ export function MilestoneFormDrawer({
     let kmPctSum = 0
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i]
-      if (!row.milestoneNo.trim()) return setMilestoneError(`Wiersz ${i + 1}: Symbol/Nr jest wymagany.`)
+      const numberPart = row.milestoneNo.replace(/^(KM|RD)\s*/i, '').trim()
+      if (!numberPart) return setMilestoneError(`Wiersz ${i + 1}: Numer jest wymagany.`)
       if (!row.description.trim()) return setMilestoneError(`Wiersz ${i + 1}: Opis jest wymagany.`)
-      
+
       if (row.type === 'KM') {
         if (row.percentage <= 0 || row.percentage > 100) {
           return setMilestoneError(`Wiersz ${row.milestoneNo}: Udział % musi być z przedziału 0.01% - 100%.`)
@@ -142,9 +154,16 @@ export function MilestoneFormDrawer({
 
     setIsSaving(true)
     try {
+      // First, handle deletions
+      for (const id of deletedIds) {
+        await new Promise<void>((resolve, reject) => {
+          deleteMilestoneMutation.mutate(id, { onSuccess: () => resolve(), onError: (err) => reject(err) })
+        })
+      }
+
       const newKMs: CreateMilestonePayload[] = []
       const newRDs: CreateMilestonePayload[] = []
-      
+
       for (const row of rows) {
         if (row.id && !row.isNew) {
           await new Promise<void>((resolve, reject) => {
@@ -176,7 +195,8 @@ export function MilestoneFormDrawer({
           createMilestonesBatchMutation.mutate(allNew, { onSuccess: () => resolve(), onError: (err) => reject(err) })
         })
       }
-      
+
+      setDeletedIds([])
       handleClose()
     } catch (err: unknown) {
       setMilestoneError(err instanceof Error ? err.message : 'Błąd zapisu')
@@ -185,7 +205,7 @@ export function MilestoneFormDrawer({
     }
   }
 
-  const isPending = createMilestoneMutation.isPending || createMilestonesBatchMutation.isPending || updateMilestoneMutation.isPending || isSaving
+  const isPending = createMilestoneMutation.isPending || createMilestonesBatchMutation.isPending || updateMilestoneMutation.isPending || deleteMilestoneMutation.isPending || isSaving
 
   const inputCls =
     'h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-2.5 text-xs outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 disabled:opacity-50 disabled:cursor-not-allowed'
@@ -244,18 +264,34 @@ export function MilestoneFormDrawer({
                 <Milestone size={14} className="text-[var(--sidebar-primary)]" />
                 <span className="text-xs font-bold uppercase tracking-widest text-[var(--sidebar-primary)]">Kamienie Milowe (KM)</span>
               </div>
-              
+
               {rows.filter((r) => r.type === 'KM').length === 0 && <p className="text-xs text-[var(--muted-foreground)] italic">Brak kamieni milowych.</p>}
 
-              {rows.map((row, index) => {
-                if (row.type !== 'KM') return null
-                const computedNet = kmNetAmount(row.percentage)
-                return (
-                  <div key={row.id || `new-${index}`} className="relative rounded-xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-2xs group hover:border-[var(--sidebar-primary)]/30 transition-colors">
+              {(() => {
+                const firstKmIndex = rows.findIndex((r) => r.type === 'KM')
+                return rows.map((row, index) => {
+                  if (row.type !== 'KM') return null
+                  const computedNet = kmNetAmount(row.percentage)
+                  return (
+                    <div key={row.id || `new-${index}`} className="relative rounded-xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-2xs group hover:border-[var(--sidebar-primary)]/30 transition-colors">
                     <div className="grid grid-cols-12 gap-2.5 items-end">
                       <div className="col-span-2 space-y-1">
                         <label className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Nr</label>
-                        <input value={row.milestoneNo} onChange={(e) => handleUpdateRow(index, 'milestoneNo', e.target.value)} placeholder="KM 1" required className={inputCls} />
+                        <div className="flex h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] focus-within:border-[var(--sidebar-primary)] focus-within:ring-2 focus-within:ring-[var(--sidebar-primary)]/15 transition duration-150 ease-in-out overflow-hidden">
+                          <span className="flex shrink-0 items-center justify-center bg-[var(--sidebar-primary)]/10 px-2.5 text-[11px] font-extrabold text-[var(--sidebar-primary)] border-r border-[var(--border)] select-none">
+                            KM
+                          </span>
+                          <input 
+                            value={row.milestoneNo.replace(/^KM\s*/i, '')} 
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/[^0-9.]/g, '')
+                              handleUpdateRow(index, 'milestoneNo', `KM ${val}`)
+                            }} 
+                            placeholder="1" 
+                            required 
+                            className="flex-1 w-full min-w-0 bg-transparent px-2.5 text-xs outline-none placeholder:text-zinc-500/70"
+                          />
+                        </div>
                       </div>
                       <div className="col-span-2 space-y-1">
                         <label className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Udział %</label>
@@ -270,16 +306,17 @@ export function MilestoneFormDrawer({
                         <input value={row.description} onChange={(e) => handleUpdateRow(index, 'description', e.target.value)} placeholder="Opis..." required className={inputCls} />
                       </div>
                       <div className="col-span-1 pb-1 flex justify-end">
-                        {row.isNew && (
-                          <button type="button" onClick={() => handleRemoveRow(index)} className="text-rose-500 hover:bg-rose-500/10 p-1.5 rounded-lg transition" title="Usuń nowy wiersz">
+                        {index !== firstKmIndex && (
+                          <button type="button" onClick={() => setRowToDelete(index)} className="text-rose-500 hover:bg-rose-500/10 p-1.5 rounded-lg transition" title="Usuń wiersz">
                             <Trash2 size={14} />
                           </button>
                         )}
                       </div>
                     </div>
                   </div>
-                )
-              })}
+                  )
+                })
+              })()}
             </div>
 
             {/* Roboty dodatkowe (RD) */}
@@ -298,7 +335,21 @@ export function MilestoneFormDrawer({
                     <div className="grid grid-cols-12 gap-2.5 items-end">
                       <div className="col-span-2 space-y-1">
                         <label className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Nr</label>
-                        <input value={row.milestoneNo} onChange={(e) => handleUpdateRow(index, 'milestoneNo', e.target.value)} placeholder="RD 1" required className={inputCls} />
+                        <div className="flex h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] focus-within:border-amber-500/50 focus-within:ring-2 focus-within:ring-amber-500/15 transition duration-150 ease-in-out overflow-hidden">
+                          <span className="flex shrink-0 items-center justify-center bg-amber-500/10 px-2.5 text-[11px] font-extrabold text-amber-600 dark:text-amber-400 border-r border-[var(--border)] select-none">
+                            RD
+                          </span>
+                          <input 
+                            value={row.milestoneNo.replace(/^RD\s*/i, '')} 
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/[^0-9.]/g, '')
+                              handleUpdateRow(index, 'milestoneNo', `RD ${val}`)
+                            }} 
+                            placeholder="1" 
+                            required 
+                            className="flex-1 w-full min-w-0 bg-transparent px-2.5 text-xs outline-none placeholder:text-zinc-500/70"
+                          />
+                        </div>
                       </div>
                       <div className="col-span-3 space-y-1">
                         <label className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Kwota netto</label>
@@ -309,11 +360,9 @@ export function MilestoneFormDrawer({
                         <input value={row.description} onChange={(e) => handleUpdateRow(index, 'description', e.target.value)} placeholder="Opis robót..." required className={inputCls} />
                       </div>
                       <div className="col-span-1 pb-1 flex justify-end">
-                        {row.isNew && (
-                          <button type="button" onClick={() => handleRemoveRow(index)} className="text-rose-500 hover:bg-rose-500/10 p-1.5 rounded-lg transition" title="Usuń nowy wiersz">
-                            <Trash2 size={14} />
-                          </button>
-                        )}
+                        <button type="button" onClick={() => setRowToDelete(index)} className="text-rose-500 hover:bg-rose-500/10 p-1.5 rounded-lg transition" title="Usuń wiersz">
+                          <Trash2 size={14} />
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -351,6 +400,47 @@ export function MilestoneFormDrawer({
           </Button>
         </footer>
       </aside>
+
+      {/* Delete Confirmation Modal */}
+      {rowToDelete !== null && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in px-4">
+          <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-2xl max-w-md w-full p-6 relative animate-in zoom-in-95 duration-200">
+            <button
+              onClick={() => setRowToDelete(null)}
+              className="absolute top-4 right-4 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors p-1 rounded-md hover:bg-[var(--muted)]/50"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="flex flex-col items-center text-center mt-2 mb-6">
+              <div className="w-14 h-14 bg-rose-500/10 text-rose-500 rounded-full flex items-center justify-center mb-4">
+                <AlertTriangle size={28} strokeWidth={2.5} />
+              </div>
+              <h3 className="text-xl font-bold text-[var(--foreground)] mb-2">Potwierdź usunięcie</h3>
+              <p className="text-[var(--muted-foreground)] text-sm">
+                Czy na pewno chcesz usunąć wybrany etap <span className="font-bold text-[var(--foreground)]">"{rows[rowToDelete]?.milestoneNo}"</span>?
+                <br /> {rows[rowToDelete]?.id && !rows[rowToDelete]?.isNew ? 'Ta akcja usunie etap po zapisaniu zmian.' : 'Usuniesz nowo dodany wiersz.'}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 w-full">
+              <Button
+                variant="outline"
+                onClick={() => setRowToDelete(null)}
+                className="flex-1 rounded-xl font-semibold bg-transparent"
+              >
+                Anuluj
+              </Button>
+              <Button
+                onClick={confirmDeleteRow}
+                className="flex-1 rounded-xl bg-rose-500 text-white hover:bg-rose-600 font-semibold shadow-lg shadow-rose-500/20"
+              >
+                Tak, usuń
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

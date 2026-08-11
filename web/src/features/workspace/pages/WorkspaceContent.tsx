@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 
 import type { WorkspaceSection } from '@/features/workspace/types'
 import { ContractorsPage } from './ContractorsPage'
+import { DepartmentsPage } from './DepartmentsPage'
 import { DashboardPage } from './DashboardPage'
 import { ProjectsPage } from '@/features/workspace/pages/ProjectsPage'
 import { SettingsPage } from '@/features/workspace/pages/SettingsPage'
@@ -58,6 +59,7 @@ export function WorkspaceContent({ section, isAdmin, profile, theme, themePreset
   if (section === 'dashboard') return <DashboardPage />
   if (section === 'users') return <UsersPage canView={canViewUsers} canManage={isAdmin} />
   if (section === 'contractors') return <ContractorsPage canManage={isAdminOrDirector} />
+  if (section === 'departments') return <DepartmentsPage canManage={isAdminOrDirector} />
   if (section === 'works') return <WorksPage canManage={canEditWorks} />
   if (section === 'resources') return <ResourcesPage canManage={canEditWorks} />
   if (section === 'settings') return <SettingsPage theme={theme} themePreset={themePreset} onThemePresetChange={onThemePresetChange} />

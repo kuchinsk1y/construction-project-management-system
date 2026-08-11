@@ -119,15 +119,14 @@ export class ProjectsController {
     return this.projectsService.listForemenAssignments(projectId);
   }
 
-  @Post(':projectId/foremen')
-  assignForeman(
+  @Put(':projectId/foremen')
+  bulkAssignForemen(
     @Param('projectId') projectId: string,
-    @Body() body: { departmentId: number; foremanId: number },
+    @Body() body: { assignments: { departmentId: number; foremanIds: number[] }[] },
   ) {
-    return this.projectsService.assignForeman(
+    return this.projectsService.bulkAssignForemen(
       projectId,
-      body.departmentId,
-      body.foremanId,
+      body.assignments,
     );
   }
 

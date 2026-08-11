@@ -15,6 +15,7 @@ import type {
 } from '@/features/projects/types'
 import { MilestonesTab } from './MilestonesTab'
 import { MilestoneFormDrawer } from './MilestoneFormDrawer'
+import { WorksTab } from './WorksTab'
 
 type ProjectDetailsDrawerProps = {
   isOpen?: boolean
@@ -51,9 +52,9 @@ type ProjectDetailsDrawerProps = {
   handleSelectContractor: (contractorId: string) => void
   contractorRef: React.RefObject<HTMLDivElement | null>
 
-  // Milestones props
-  activeTab: 'details' | 'milestones'
-  setActiveTab: (tab: 'details' | 'milestones') => void
+  // Milestones & Works props
+  activeTab: 'details' | 'milestones' | 'works'
+  setActiveTab: (tab: 'details' | 'milestones' | 'works') => void
   milestones: ApiMilestone[]
   milestonesLoading: boolean
   showMilestoneForm: boolean
@@ -69,7 +70,7 @@ type ProjectDetailsDrawerProps = {
   updateMilestoneMutation: UseMutationResult<ApiMilestone, Error, { id: string; payload: Partial<CreateMilestonePayload> }, unknown>
   deleteMilestoneMutation: UseMutationResult<void, Error, string, unknown>
 
-  formatDate: (val: string, fallback?: string) => string
+  formatDate: (val: string | undefined | null, fallback?: string) => string
   formatBudget: (val: number, currency?: string) => string
   statusTone: (status: string) => string
   showDeleteConfirm: boolean
@@ -163,6 +164,13 @@ export function ProjectDetailsDrawer({
         power: editingProject.power ? Number(editingProject.power) : undefined,
         dokumentationUrl: editingProject.dokumentationUrl ?? '',
         pinUrl: editingProject.pinUrl ?? '',
+        vatRate: editingProject.vatRate ? Number(editingProject.vatRate) : undefined,
+        warrantyPercent: editingProject.warrantyPercent ? Number(editingProject.warrantyPercent) : undefined,
+        warrantyMonths: editingProject.warrantyMonths ?? undefined,
+        paymentTermDays: editingProject.paymentTermDays ?? undefined,
+        holdReason: editingProject.holdReason ?? '',
+        holdStartedAt: editingProject.holdStartedAt ?? '',
+        expectedResumeDate: editingProject.expectedResumeDate ?? '',
       })
       setFormError('')
     }
@@ -515,7 +523,7 @@ export function ProjectDetailsDrawer({
 
         {/* Tab navigation */}
         {editingProject && (
-          <div className="flex border-b border-[var(--border)] mb-3">
+          <div className="flex border-b border-[var(--border)] mb-1">
             <button
               type="button"
               onClick={() => {
@@ -523,8 +531,8 @@ export function ProjectDetailsDrawer({
                 setMilestoneError('')
               }}
               className={`pb-2 px-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${activeTab === 'details'
-                  ? 'border-[var(--sidebar-primary)] text-[var(--sidebar-primary)]'
-                  : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                ? 'border-[var(--sidebar-primary)] text-[var(--sidebar-primary)]'
+                : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
                 }`}
             >
               Ogólne
@@ -536,11 +544,24 @@ export function ProjectDetailsDrawer({
                 setMilestoneError('')
               }}
               className={`pb-2 px-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${activeTab === 'milestones'
-                  ? 'border-[var(--sidebar-primary)] text-[var(--sidebar-primary)]'
-                  : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                ? 'border-[var(--sidebar-primary)] text-[var(--sidebar-primary)]'
+                : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
                 }`}
             >
               Kamienie milowe
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('works')
+                setMilestoneError('')
+              }}
+              className={`pb-2 px-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${activeTab === 'works'
+                ? 'border-[var(--sidebar-primary)] text-[var(--sidebar-primary)]'
+                : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                }`}
+            >
+              Roboty
             </button>
           </div>
         )}
@@ -1091,6 +1112,11 @@ export function ProjectDetailsDrawer({
               </aside>
             </>
           ) : (
+            <></>
+          )}
+
+
+          {activeTab === 'milestones' && (
             /* Milestones View */
             <MilestonesTab
               milestones={milestones}
@@ -1105,6 +1131,15 @@ export function ProjectDetailsDrawer({
               handleCloseDrawer={handleCloseDrawer}
               formatBudget={formatBudget}
               onBulkEdit={handleOpenBulkEdit}
+            />
+          )}
+
+          {activeTab === 'works' && editingProject && (
+            <WorksTab
+              projectId={editingProject.id}
+              milestones={milestones}
+              formatBudget={formatBudget}
+              canEditProject={canEditProject}
             />
           )}
         </div>
@@ -1170,6 +1205,7 @@ export function ProjectDetailsDrawer({
         createMilestoneMutation={createMilestoneMutation}
         createMilestonesBatchMutation={createMilestonesBatchMutation}
         updateMilestoneMutation={updateMilestoneMutation}
+        deleteMilestoneMutation={deleteMilestoneMutation}
         contractNetValue={editingProject?.contract_net_value ? Number(editingProject.contract_net_value) : 0}
         isBulkEdit={isBulkEditMilestones}
       />

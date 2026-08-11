@@ -137,17 +137,13 @@ export declare class ProjectsController {
         foremanId: number;
         foremanName: string;
     }[]>;
-    assignForeman(projectId: string, body: {
-        departmentId: number;
-        foremanId: number;
+    bulkAssignForemen(projectId: string, body: {
+        assignments: {
+            departmentId: number;
+            foremanIds: number[];
+        }[];
     }): Promise<{
-        id: string;
-        updated: boolean;
-        created?: undefined;
-    } | {
-        id: string;
-        created: boolean;
-        updated?: undefined;
+        success: boolean;
     }>;
     listResourcePlans(workTypeId: string): Promise<{
         id: string;

@@ -32,7 +32,7 @@ import { ProjectsGanttView } from './components/ProjectsGanttView'
 import { ProjectDetailsDrawer } from './components/ProjectDetailsDrawer'
 
 // Helper formatters
-function formatDate(value: string, fallback = ''): string {
+function formatDate(value: string | undefined | null, fallback = ''): string {
   if (!value || value === 'No deadline' || value === 'Brak terminu') return fallback
   const date = parseDateValue(value)
   if (!date) return value
@@ -55,7 +55,7 @@ function parseDateValue(value: string): Date | null {
 }
 
 function formatBudget(value: number, currencyCode = 'PLN'): string {
-  return new Intl.NumberFormat('pl-PL', {
+  return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
     currency: currencyCode || 'PLN',
     maximumFractionDigits: 0,
@@ -110,6 +110,13 @@ const emptyForm: CreateProjectPayload = {
   power: undefined,
   dokumentationUrl: '',
   pinUrl: '',
+  vatRate: undefined,
+  warrantyPercent: undefined,
+  warrantyMonths: undefined,
+  paymentTermDays: undefined,
+  holdReason: '',
+  holdStartedAt: '',
+  expectedResumeDate: '',
 }
 
 type UserProfile = {
@@ -171,7 +178,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
   const contractorRef = useRef<HTMLDivElement>(null)
 
   // Milestones State & Mutations
-  const [activeTab, setActiveTab] = useState<'details' | 'milestones'>('details')
+  const [activeTab, setActiveTab] = useState<'details' | 'milestones' | 'works'>('details')
   const [showMilestoneForm, setShowMilestoneForm] = useState(false)
   const [milestoneForm, setMilestoneForm] = useState<CreateMilestonePayload>({
     milestoneNo: '',
@@ -202,7 +209,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
   const { data: milestones = [], isLoading: milestonesLoading } = useQuery({
     queryKey: ['milestones', editingProject?.id],
     queryFn: () => fetchMilestones(editingProject!.id),
-    enabled: !!editingProject && activeTab === 'milestones',
+    enabled: !!editingProject && (activeTab === 'milestones' || activeTab === 'works'),
   })
 
   // Project Mutations
@@ -339,8 +346,8 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
   const normalizedRoles = (profile?.roles ?? []).map((entry) => entry.toLowerCase())
   const hasRole = (role: string) => normalizedRole === role || normalizedRoles.includes(role)
 
-  const canCreateProject = hasRole('admin') || hasRole('manager')
-  const canEditProject = hasRole('admin') || hasRole('manager')
+  const canCreateProject = hasRole('admin') || hasRole('administrator') || hasRole('project_manager') || hasRole('operational_director')
+  const canEditProject = hasRole('admin') || hasRole('administrator') || hasRole('project_manager') || hasRole('operational_director')
   const canDeleteProject = hasRole('admin')
 
   const managerList = useMemo(() => {

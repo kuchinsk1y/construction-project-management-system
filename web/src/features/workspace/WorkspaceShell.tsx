@@ -59,6 +59,7 @@ export function WorkspaceShell({ onLogout, theme, themePreset, onThemePresetChan
       workspaceNavigation.filter((item) => {
         if (item.key === 'users') return canViewUsers
         if (item.key === 'contractors') return isAdminOrDirector
+        if (item.key === 'departments') return isAdminOrDirector
         return true
       }),
     [canViewUsers, isAdminOrDirector],
@@ -69,6 +70,8 @@ export function WorkspaceShell({ onLogout, theme, themePreset, onThemePresetChan
   if (!canViewUsers && activeSection === 'users') {
     currentSection = 'projects'
   } else if (!isAdminOrDirector && activeSection === 'contractors') {
+    currentSection = 'projects'
+  } else if (!isAdminOrDirector && activeSection === 'departments') {
     currentSection = 'projects'
   }
   if (currentSection !== activeSection) {

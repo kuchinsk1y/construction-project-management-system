@@ -106,14 +106,12 @@ export function fetchForemenAssignments(projectId: string): Promise<ApiForemanAs
   return apiGet<ApiForemanAssignment[]>(`/projects/${projectId}/foremen`)
 }
 
-export function assignForeman(
+export function bulkAssignForemen(
   projectId: string,
-  departmentId: number,
-  foremanId: number,
-): Promise<{ id: string }> {
-  return apiPost<{ id: string }>(`/projects/${projectId}/foremen`, {
-    departmentId,
-    foremanId,
+  assignments: { departmentId: number; foremanIds: number[] }[],
+): Promise<{ success: boolean }> {
+  return apiPut<{ success: boolean }>(`/projects/${projectId}/foremen`, {
+    assignments,
   })
 }
 

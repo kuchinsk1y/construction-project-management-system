@@ -111,6 +111,13 @@ export type ApiProject = {
   dokumentationUrl?: string | null
   pinUrl?: string | null
   power?: number | null
+  vatRate?: string | null
+  warrantyPercent?: string | null
+  warrantyMonths?: number | null
+  paymentTermDays?: number | null
+  holdReason?: string | null
+  holdStartedAt?: string | null
+  expectedResumeDate?: string | null
 }
 
 export type CreateProjectPayload = {
@@ -130,6 +137,13 @@ export type CreateProjectPayload = {
   dokumentationUrl?: string
   pinUrl?: string
   power?: number
+  vatRate?: number
+  warrantyPercent?: number
+  warrantyMonths?: number
+  paymentTermDays?: number
+  holdReason?: string
+  holdStartedAt?: string
+  expectedResumeDate?: string
 }
 
 // ---- UI display type ----

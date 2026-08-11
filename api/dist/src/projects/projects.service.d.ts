@@ -141,14 +141,11 @@ export declare class ProjectsService {
         foremanId: number;
         foremanName: string;
     }[]>;
-    assignForeman(projectId: string, departmentId: number, foremanId: number): Promise<{
-        id: string;
-        updated: boolean;
-        created?: undefined;
-    } | {
-        id: string;
-        created: boolean;
-        updated?: undefined;
+    bulkAssignForemen(projectId: string, assignments: {
+        departmentId: number;
+        foremanIds: number[];
+    }[]): Promise<{
+        success: boolean;
     }>;
     listResourcePlans(workTypeId: string): Promise<{
         id: string;

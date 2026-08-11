@@ -109,6 +109,8 @@ model daily_reports {
 model departments {
   id                         BigInt                       @id @default(autoincrement())
   name                       String                       @unique @db.VarChar(100)
+  description                String?
+  is_active                  Boolean                      @default(true)
   project_department_foremen project_department_foremen[]
   project_work_types         project_work_types[]
 }

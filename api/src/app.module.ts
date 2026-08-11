@@ -9,6 +9,7 @@ import { GoogleSheetsModule } from './google-sheets/google-sheets.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProjectsModule } from './projects/projects.module';
 import { UsersModule } from './users/users.module';
+import { DepartmentsModule } from './departments/departments.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { UsersModule } from './users/users.module';
     ProjectsModule,
     ContractorsModule,
     GoogleSheetsModule,
+    DepartmentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -454,6 +454,7 @@ let ProjectsService = class ProjectsService {
     }
     async listDepartments() {
         let list = await this.prisma.departments.findMany({
+            where: { is_active: true },
             orderBy: { id: 'asc' },
         });
         if (list.length === 0) {
@@ -468,6 +469,7 @@ let ProjectsService = class ProjectsService {
                 data: defaultDeps.map((name) => ({ name })),
             });
             list = await this.prisma.departments.findMany({
+                where: { is_active: true },
                 orderBy: { id: 'asc' },
             });
         }
@@ -585,27 +587,28 @@ let ProjectsService = class ProjectsService {
                 : '',
         }));
     }
-    async assignForeman(projectId, departmentId, foremanId) {
-        const existing = await this.prisma.project_department_foremen.findFirst({
-            where: { project_id: projectId, department_id: BigInt(departmentId) },
+    async bulkAssignForemen(projectId, assignments) {
+        await this.prisma.$transaction(async (tx) => {
+            await tx.project_department_foremen.deleteMany({
+                where: { project_id: projectId },
+            });
+            const dataToInsert = [];
+            for (const group of assignments) {
+                for (const fId of group.foremanIds) {
+                    dataToInsert.push({
+                        project_id: projectId,
+                        department_id: BigInt(group.departmentId),
+                        foreman_id: fId,
+                    });
+                }
+            }
+            if (dataToInsert.length > 0) {
+                await tx.project_department_foremen.createMany({
+                    data: dataToInsert,
+                });
+            }
         });
-        if (existing) {
-            const row = await this.prisma.project_department_foremen.update({
-                where: { id: existing.id },
-                data: { foreman_id: foremanId },
-            });
-            return { id: row.id, updated: true };
-        }
-        else {
-            const row = await this.prisma.project_department_foremen.create({
-                data: {
-                    project_id: projectId,
-                    department_id: BigInt(departmentId),
-                    foreman_id: foremanId,
-                },
-            });
-            return { id: row.id, created: true };
-        }
+        return { success: true };
     }
     async listResourcePlans(workTypeId) {
         const rows = await this.prisma.resource_plans.findMany({

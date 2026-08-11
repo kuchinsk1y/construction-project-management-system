@@ -30,7 +30,7 @@ import {
   updateWorkType,
   deleteWorkType,
   fetchForemenAssignments,
-  assignForeman,
+  bulkAssignForemen,
 } from '@/features/projects/api'
 import type {
   ApiProject,
@@ -65,7 +65,7 @@ function formatDate(value: string, noDeadlineLabel: string): string {
 }
 
 function formatBudget(value: number, currencyCode = 'PLN'): string {
-  return new Intl.NumberFormat('pl-PL', {
+  return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
     currency: currencyCode || 'PLN',
     maximumFractionDigits: 0,
@@ -204,8 +204,23 @@ export function WorksPage({ canManage }: WorksPageProps) {
   })
 
   const assignForemanMutation = useMutation({
-    mutationFn: ({ departmentId, foremanId }: { departmentId: number; foremanId: number }) =>
-      assignForeman(selectedProjectId, departmentId, foremanId),
+    mutationFn: ({ departmentId, foremanId }: { departmentId: number; foremanId: number }) => {
+      const assignmentsMap: Record<number, number[]> = {}
+      foremenAssignments.forEach(a => {
+        if (!assignmentsMap[a.departmentId]) {
+          assignmentsMap[a.departmentId] = []
+        }
+        assignmentsMap[a.departmentId].push(a.foremanId)
+      })
+      assignmentsMap[departmentId] = [foremanId]
+      
+      const payload = Object.entries(assignmentsMap).map(([depId, fIds]) => ({
+        departmentId: Number(depId),
+        foremanIds: fIds,
+      }))
+      
+      return bulkAssignForemen(selectedProjectId, payload)
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['foremen-assignments', selectedProjectId] })
     },
