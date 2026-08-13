@@ -259,13 +259,13 @@ export function MilestoneFormDrawer({
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Kamienie Milowe (KM) */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 mb-1">
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2 mb-4">
                 <Milestone size={14} className="text-[var(--sidebar-primary)]" />
                 <span className="text-xs font-bold uppercase tracking-widest text-[var(--sidebar-primary)]">Kamienie Milowe (KM)</span>
               </div>
 
-              {rows.filter((r) => r.type === 'KM').length === 0 && <p className="text-xs text-[var(--muted-foreground)] italic">Brak kamieni milowych.</p>}
+              {rows.filter((r) => r.type === 'KM').length === 0 && <p className="text-xs text-[var(--muted-foreground)] italic mb-4">Brak kamieni milowych.</p>}
 
               {(() => {
                 const firstKmIndex = rows.findIndex((r) => r.type === 'KM')
@@ -273,65 +273,65 @@ export function MilestoneFormDrawer({
                   if (row.type !== 'KM') return null
                   const computedNet = kmNetAmount(row.percentage)
                   return (
-                    <div key={row.id || `new-${index}`} className="relative rounded-xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-2xs group hover:border-[var(--sidebar-primary)]/30 transition-colors">
-                    <div className="grid grid-cols-12 gap-2.5 items-end">
-                      <div className="col-span-2 space-y-1">
-                        <label className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Nr</label>
-                        <div className="flex h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] focus-within:border-[var(--sidebar-primary)] focus-within:ring-2 focus-within:ring-[var(--sidebar-primary)]/15 transition duration-150 ease-in-out overflow-hidden">
-                          <span className="flex shrink-0 items-center justify-center bg-[var(--sidebar-primary)]/10 px-2.5 text-[11px] font-extrabold text-[var(--sidebar-primary)] border-r border-[var(--border)] select-none">
-                            KM
-                          </span>
-                          <input 
-                            value={row.milestoneNo.replace(/^KM\s*/i, '')} 
-                            onChange={(e) => {
-                              const val = e.target.value.replace(/[^0-9.]/g, '')
-                              handleUpdateRow(index, 'milestoneNo', `KM ${val}`)
-                            }} 
-                            placeholder="1" 
-                            required 
-                            className="flex-1 w-full min-w-0 bg-transparent px-2.5 text-xs outline-none placeholder:text-zinc-500/70"
-                          />
+                    <div key={row.id || `new-${index}`} className="relative py-3 border-b border-zinc-200 dark:border-zinc-400/60 last:border-0 group">
+                      <div className="grid grid-cols-12 gap-2.5 items-end">
+                        <div className="col-span-2 space-y-1">
+                          <label className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Nr</label>
+                          <div className="flex h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] focus-within:border-[var(--sidebar-primary)] focus-within:ring-2 focus-within:ring-[var(--sidebar-primary)]/15 transition duration-150 ease-in-out overflow-hidden">
+                            <span className="flex shrink-0 items-center justify-center bg-[var(--sidebar-primary)]/10 px-2.5 text-[11px] font-extrabold text-[var(--sidebar-primary)] border-r border-[var(--border)] select-none">
+                              KM
+                            </span>
+                            <input
+                              value={row.milestoneNo.replace(/^KM\s*/i, '')}
+                              onChange={(e) => {
+                                const val = e.target.value.replace(/[^0-9.]/g, '')
+                                handleUpdateRow(index, 'milestoneNo', `KM ${val}`)
+                              }}
+                              placeholder="1"
+                              required
+                              className="flex-1 w-full min-w-0 bg-transparent px-2.5 text-xs outline-none placeholder:text-zinc-500/70"
+                            />
+                          </div>
+                        </div>
+                        <div className="col-span-2 space-y-1">
+                          <label className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Udział %</label>
+                          <input type="number" min="0.01" max="100" step="0.01" value={row.percentage || ''} onChange={(e) => handleUpdateRow(index, 'percentage', e.target.value ? Number(e.target.value) : 0)} placeholder="10.0" required className={inputCls} />
+                        </div>
+                        <div className="col-span-2 space-y-1">
+                          <label className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Kwota (auto)</label>
+                          <div className={inputLockedCls}>{computedNet > 0 ? computedNet.toLocaleString('pl-PL', { minimumFractionDigits: 2 }) : '—'}</div>
+                        </div>
+                        <div className="col-span-5 space-y-1">
+                          <label className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Opis etapu</label>
+                          <input value={row.description} onChange={(e) => handleUpdateRow(index, 'description', e.target.value)} placeholder="Opis..." required className={inputCls} />
+                        </div>
+                        <div className="col-span-1 pb-1 flex justify-end">
+                          {index !== firstKmIndex && (
+                            <button type="button" onClick={() => setRowToDelete(index)} className="text-rose-500 hover:bg-rose-500/10 p-1.5 rounded-lg transition" title="Usuń wiersz">
+                              <Trash2 size={14} />
+                            </button>
+                          )}
                         </div>
                       </div>
-                      <div className="col-span-2 space-y-1">
-                        <label className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Udział %</label>
-                        <input type="number" min="0.01" max="100" step="0.01" value={row.percentage || ''} onChange={(e) => handleUpdateRow(index, 'percentage', e.target.value ? Number(e.target.value) : 0)} placeholder="10.0" required className={inputCls} />
-                      </div>
-                      <div className="col-span-2 space-y-1">
-                        <label className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Kwota (auto)</label>
-                        <div className={inputLockedCls}>{computedNet > 0 ? computedNet.toLocaleString('pl-PL', { minimumFractionDigits: 2 }) : '—'}</div>
-                      </div>
-                      <div className="col-span-5 space-y-1">
-                        <label className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Opis etapu</label>
-                        <input value={row.description} onChange={(e) => handleUpdateRow(index, 'description', e.target.value)} placeholder="Opis..." required className={inputCls} />
-                      </div>
-                      <div className="col-span-1 pb-1 flex justify-end">
-                        {index !== firstKmIndex && (
-                          <button type="button" onClick={() => setRowToDelete(index)} className="text-rose-500 hover:bg-rose-500/10 p-1.5 rounded-lg transition" title="Usuń wiersz">
-                            <Trash2 size={14} />
-                          </button>
-                        )}
-                      </div>
                     </div>
-                  </div>
                   )
                 })
               })()}
             </div>
 
             {/* Roboty dodatkowe (RD) */}
-            <div className="space-y-3 pt-2">
-              <div className="flex items-center gap-2 mb-1">
+            <div className="flex flex-col mt-6">
+              <div className="flex items-center gap-2 mb-4">
                 <Wrench size={14} className="text-amber-500" />
                 <span className="text-xs font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400">Roboty dodatkowe (RD)</span>
               </div>
 
-              {rows.filter((r) => r.type === 'roboty_dodatkowe').length === 0 && <p className="text-xs text-[var(--muted-foreground)] italic">Brak robót dodatkowych.</p>}
+              {rows.filter((r) => r.type === 'roboty_dodatkowe').length === 0 && <p className="text-xs text-[var(--muted-foreground)] italic mb-4">Brak robót dodatkowych.</p>}
 
               {rows.map((row, index) => {
                 if (row.type !== 'roboty_dodatkowe') return null
                 return (
-                  <div key={row.id || `new-${index}`} className="relative rounded-xl border border-amber-500/25 bg-amber-500/[0.03] p-3 shadow-2xs group hover:border-amber-500/40 transition-colors">
+                  <div key={row.id || `new-${index}`} className="relative py-3 border-b border-zinc-200 dark:border-zinc-800/60 last:border-0 group">
                     <div className="grid grid-cols-12 gap-2.5 items-end">
                       <div className="col-span-2 space-y-1">
                         <label className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Nr</label>
@@ -339,14 +339,14 @@ export function MilestoneFormDrawer({
                           <span className="flex shrink-0 items-center justify-center bg-amber-500/10 px-2.5 text-[11px] font-extrabold text-amber-600 dark:text-amber-400 border-r border-[var(--border)] select-none">
                             RD
                           </span>
-                          <input 
-                            value={row.milestoneNo.replace(/^RD\s*/i, '')} 
+                          <input
+                            value={row.milestoneNo.replace(/^RD\s*/i, '')}
                             onChange={(e) => {
                               const val = e.target.value.replace(/[^0-9.]/g, '')
                               handleUpdateRow(index, 'milestoneNo', `RD ${val}`)
-                            }} 
-                            placeholder="1" 
-                            required 
+                            }}
+                            placeholder="1"
+                            required
                             className="flex-1 w-full min-w-0 bg-transparent px-2.5 text-xs outline-none placeholder:text-zinc-500/70"
                           />
                         </div>

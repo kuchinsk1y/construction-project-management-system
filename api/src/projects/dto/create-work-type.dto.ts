@@ -5,13 +5,15 @@ import {
   IsString,
   IsUUID,
   MaxLength,
+  Max,
+  Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateWorkTypeDto {
   @IsUUID()
-  @IsNotEmpty()
-  milestoneId!: string;
+  @IsOptional()
+  milestoneId?: string;
 
   @IsNumber()
   @IsNotEmpty()
@@ -27,6 +29,13 @@ export class CreateWorkTypeDto {
   @IsOptional()
   @MaxLength(20)
   unit?: string;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
+  @Max(100)
+  @Type(() => Number)
+  percentage?: number;
 
   @IsNumber()
   @IsOptional()

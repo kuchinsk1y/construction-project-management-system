@@ -110,8 +110,10 @@ model departments {
   id                         BigInt                       @id @default(autoincrement())
   name                       String                       @unique @db.VarChar(100)
   description                String?
+  icon                       String                       @default("Folder") @db.VarChar(50)
   is_active                  Boolean                      @default(true)
   project_department_foremen project_department_foremen[]
+  project_departments        project_departments[]
   project_work_types         project_work_types[]
 }
 
@@ -164,6 +166,16 @@ model project_budget_items {
   projects         projects        @relation(fields: [project_id], references: [id], onDelete: Cascade)
 }
 
+model project_departments {
+  project_id    String      @db.Uuid
+  department_id BigInt
+  created_at    DateTime?   @default(now()) @db.Timestamptz(0)
+  departments   departments @relation(fields: [department_id], references: [id])
+  projects      projects    @relation(fields: [project_id], references: [id], onDelete: Cascade)
+
+  @@id([project_id, department_id])
+}
+
 model project_department_foremen {
   id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   project_id    String      @db.Uuid
@@ -206,10 +218,11 @@ model project_types {
 model project_work_types {
   id                           String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   project_id                   String                         @db.Uuid
-  milestone_id                 String                         @db.Uuid
+  milestone_id                 String?                        @db.Uuid
   department_id                BigInt
   name                         String                         @db.VarChar(255)
   unit                         String?                        @db.VarChar(20)
+  percentage                   Decimal?                       @db.Decimal(5, 2)
   total_quantity               Decimal?                       @db.Decimal(15, 2)
   planned_start                DateTime?                      @db.Date
   planned_end                  DateTime?                      @db.Date
@@ -218,7 +231,7 @@ model project_work_types {
   updated_at                   DateTime?                      @default(now()) @db.Timestamptz(0)
   daily_reports                daily_reports[]
   departments                  departments                    @relation(fields: [department_id], references: [id])
-  milestones                   milestones                     @relation(fields: [milestone_id], references: [id], onDelete: Cascade)
+  milestones                   milestones?                    @relation(fields: [milestone_id], references: [id], onDelete: Cascade)
   projects                     projects                       @relation(fields: [project_id], references: [id], onDelete: Cascade)
   resource_plans               resource_plans[]
   work_type_hours_distribution work_type_hours_distribution[]
@@ -262,6 +275,7 @@ model projects {
   planned_expenses                 planned_expenses[]
   project_budget_items             project_budget_items[]
   project_department_foremen       project_department_foremen[]
+  project_departments              project_departments[]
   project_hours_plan               project_hours_plan?
   project_status_history           project_status_history[]
   project_work_types               project_work_types[]

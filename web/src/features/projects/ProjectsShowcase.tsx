@@ -178,7 +178,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
   const contractorRef = useRef<HTMLDivElement>(null)
 
   // Milestones State & Mutations
-  const [activeTab, setActiveTab] = useState<'details' | 'milestones' | 'works'>('details')
+  const [activeTab, setActiveTab] = useState<'details' | 'milestones' | 'departments' | 'works'>('details')
   const [showMilestoneForm, setShowMilestoneForm] = useState(false)
   const [milestoneForm, setMilestoneForm] = useState<CreateMilestonePayload>({
     milestoneNo: '',
@@ -209,7 +209,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
   const { data: milestones = [], isLoading: milestonesLoading } = useQuery({
     queryKey: ['milestones', editingProject?.id],
     queryFn: () => fetchMilestones(editingProject!.id),
-    enabled: !!editingProject && (activeTab === 'milestones' || activeTab === 'works'),
+    enabled: !!editingProject,
   })
 
   // Project Mutations

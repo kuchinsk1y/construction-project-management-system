@@ -3,12 +3,11 @@ import { createPortal } from 'react-dom'
 import { X, Loader2, Layers } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
-import type { ApiMilestone, ApiDepartment, CreateWorkTypePayload } from '@/features/projects/types'
+import type { ApiDepartment, CreateWorkTypePayload } from '@/features/projects/types'
 
 type WorkTypeFormDrawerProps = {
   isOpen: boolean
   onClose: () => void
-  milestones: ApiMilestone[]
   departments: ApiDepartment[]
   workTypeForm: CreateWorkTypePayload
   setWorkTypeForm: React.Dispatch<React.SetStateAction<CreateWorkTypePayload>>
@@ -22,7 +21,6 @@ type WorkTypeFormDrawerProps = {
 export function WorkTypeFormDrawer({
   isOpen,
   onClose,
-  milestones,
   departments,
   workTypeForm,
   setWorkTypeForm,
@@ -79,21 +77,7 @@ export function WorkTypeFormDrawer({
           )}
 
           <form id="workTypeForm" onSubmit={handleWorkTypeSubmit} className="space-y-4">
-            <label className="block space-y-1">
-              <span className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase">
-                KM / Etap <span className="text-rose-500">*</span>
-              </span>
-              <select
-                value={workTypeForm.milestoneId}
-                onChange={(e) => setWorkTypeForm((f) => ({ ...f, milestoneId: e.target.value }))}
-                className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition focus:border-[var(--sidebar-primary)] cursor-pointer"
-              >
-                <option value="">-- Wybierz KM --</option>
-                {milestones.map((m) => (
-                  <option key={m.id} value={m.id}>{m.milestoneNo} – {m.description}</option>
-                ))}
-              </select>
-            </label>
+
             
             <label className="block space-y-1">
               <span className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase">

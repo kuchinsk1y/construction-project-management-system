@@ -7,6 +7,7 @@ import type {
   ApiMilestone,
   CreateMilestonePayload,
   ApiDepartment,
+  ApiProjectDepartment,
   ApiForemanUser,
   ApiWorkType,
   CreateWorkTypePayload,
@@ -100,6 +101,20 @@ export function deleteWorkType(id: string): Promise<void> {
   return apiDelete<void>(`/projects/work-types/${id}`)
 }
 
+// --- Project Departments ---
+
+export function fetchProjectDepartments(projectId: string): Promise<ApiProjectDepartment[]> {
+  return apiGet<ApiProjectDepartment[]>(`/projects/${projectId}/departments`)
+}
+
+export function addProjectDepartment(projectId: string, departmentId: number): Promise<ApiProjectDepartment> {
+  return apiPost<ApiProjectDepartment>(`/projects/${projectId}/departments`, { departmentId })
+}
+
+export function removeProjectDepartment(projectId: string, departmentId: number): Promise<void> {
+  return apiDelete<void>(`/projects/${projectId}/departments/${departmentId}`)
+}
+
 // --- Foremen Assignments ---
 
 export function fetchForemenAssignments(projectId: string): Promise<ApiForemanAssignment[]> {
@@ -113,6 +128,13 @@ export function bulkAssignForemen(
   return apiPut<{ success: boolean }>(`/projects/${projectId}/foremen`, {
     assignments,
   })
+}
+
+export function batchSyncDepartments(
+  projectId: string,
+  payload: import('./types').BatchSyncDepartmentsPayload
+): Promise<{ success: boolean }> {
+  return apiPut<{ success: boolean }>(`/projects/${projectId}/departments/batch-sync`, payload)
 }
 
 // --- Resource Plans ---

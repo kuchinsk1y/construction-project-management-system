@@ -17,6 +17,7 @@ class CreateWorkTypeDto {
     departmentId;
     name;
     unit;
+    percentage;
     totalQuantity;
     plannedStart;
     plannedEnd;
@@ -24,7 +25,7 @@ class CreateWorkTypeDto {
 exports.CreateWorkTypeDto = CreateWorkTypeDto;
 __decorate([
     (0, class_validator_1.IsUUID)(),
-    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
 ], CreateWorkTypeDto.prototype, "milestoneId", void 0);
 __decorate([
@@ -45,6 +46,14 @@ __decorate([
     (0, class_validator_1.MaxLength)(20),
     __metadata("design:type", String)
 ], CreateWorkTypeDto.prototype, "unit", void 0);
+__decorate([
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.Min)(0),
+    (0, class_validator_1.Max)(100),
+    (0, class_transformer_1.Type)(() => Number),
+    __metadata("design:type", Number)
+], CreateWorkTypeDto.prototype, "percentage", void 0);
 __decorate([
     (0, class_validator_1.IsNumber)(),
     (0, class_validator_1.IsOptional)(),

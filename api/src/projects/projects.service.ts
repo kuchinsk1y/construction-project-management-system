@@ -29,7 +29,7 @@ export class ProjectsService {
   constructor(
     private readonly prisma: PrismaService,
     @InjectQueue('projects-sync') private readonly syncQueue: Queue,
-  ) {}
+  ) { }
 
   async list() {
     const rows = await this.prisma.projects.findMany({
@@ -65,17 +65,17 @@ export class ProjectsService {
         : null,
       project_types: p.project_types
         ? {
-            id: Number(p.project_types.id),
-            name: p.project_types.name,
-            code: p.project_types.code,
-          }
+          id: Number(p.project_types.id),
+          name: p.project_types.name,
+          code: p.project_types.code,
+        }
         : null,
       manager: p.users_projects_manager_idTousers
         ? {
-            id: p.users_projects_manager_idTousers.id,
-            firstName: p.users_projects_manager_idTousers.firstName,
-            lastName: p.users_projects_manager_idTousers.lastName,
-          }
+          id: p.users_projects_manager_idTousers.id,
+          firstName: p.users_projects_manager_idTousers.firstName,
+          lastName: p.users_projects_manager_idTousers.lastName,
+        }
         : null,
       dokumentationUrl: p.dokumentation_url,
       pinUrl: p.pin_url,
@@ -198,17 +198,17 @@ export class ProjectsService {
       contractors: project.contractors,
       project_types: project.project_types
         ? {
-            id: Number(project.project_types.id),
-            name: project.project_types.name,
-            code: project.project_types.code,
-          }
+          id: Number(project.project_types.id),
+          name: project.project_types.name,
+          code: project.project_types.code,
+        }
         : null,
       manager: project.users_projects_manager_idTousers
         ? {
-            id: project.users_projects_manager_idTousers.id,
-            firstName: project.users_projects_manager_idTousers.firstName,
-            lastName: project.users_projects_manager_idTousers.lastName,
-          }
+          id: project.users_projects_manager_idTousers.id,
+          firstName: project.users_projects_manager_idTousers.firstName,
+          lastName: project.users_projects_manager_idTousers.lastName,
+        }
         : null,
       dokumentationUrl: project.dokumentation_url,
       pinUrl: project.pin_url,
@@ -307,17 +307,17 @@ export class ProjectsService {
       contractors: project.contractors,
       project_types: project.project_types
         ? {
-            id: Number(project.project_types.id),
-            name: project.project_types.name,
-            code: project.project_types.code,
-          }
+          id: Number(project.project_types.id),
+          name: project.project_types.name,
+          code: project.project_types.code,
+        }
         : null,
       manager: project.users_projects_manager_idTousers
         ? {
-            id: project.users_projects_manager_idTousers.id,
-            firstName: project.users_projects_manager_idTousers.firstName,
-            lastName: project.users_projects_manager_idTousers.lastName,
-          }
+          id: project.users_projects_manager_idTousers.id,
+          firstName: project.users_projects_manager_idTousers.firstName,
+          lastName: project.users_projects_manager_idTousers.lastName,
+        }
         : null,
       dokumentationUrl: project.dokumentation_url,
       pinUrl: project.pin_url,
@@ -575,6 +575,7 @@ export class ProjectsService {
       departmentName: w.departments?.name ?? '',
       name: w.name,
       unit: w.unit,
+      percentage: w.percentage ? Number(w.percentage) : null,
       totalQuantity: w.total_quantity ? Number(w.total_quantity) : 0,
       plannedStart: w.planned_start
         ? w.planned_start.toISOString().split('T')[0]
@@ -589,10 +590,11 @@ export class ProjectsService {
     const row = await this.prisma.project_work_types.create({
       data: {
         project_id: projectId,
-        milestone_id: dto.milestoneId,
+        milestone_id: dto.milestoneId ?? null,
         department_id: BigInt(dto.departmentId),
         name: dto.name,
         unit: dto.unit ?? null,
+        percentage: dto.percentage ?? null,
         total_quantity: dto.totalQuantity ?? null,
         planned_start: dto.plannedStart ? new Date(dto.plannedStart) : null,
         planned_end: dto.plannedEnd ? new Date(dto.plannedEnd) : null,
@@ -606,6 +608,7 @@ export class ProjectsService {
       departmentId: Number(row.department_id),
       name: row.name,
       unit: row.unit,
+      percentage: row.percentage ? Number(row.percentage) : null,
       totalQuantity: row.total_quantity ? Number(row.total_quantity) : 0,
     };
   }
@@ -618,6 +621,7 @@ export class ProjectsService {
         department_id: dto.departmentId ? BigInt(dto.departmentId) : undefined,
         name: dto.name,
         unit: dto.unit,
+        percentage: dto.percentage !== undefined ? dto.percentage : undefined,
         total_quantity: dto.totalQuantity,
         planned_start: dto.plannedStart
           ? new Date(dto.plannedStart)
@@ -630,6 +634,7 @@ export class ProjectsService {
       id: row.id,
       name: row.name,
       unit: row.unit,
+      percentage: row.percentage ? Number(row.percentage) : null,
       totalQuantity: row.total_quantity ? Number(row.total_quantity) : 0,
     };
   }
@@ -639,6 +644,86 @@ export class ProjectsService {
       where: { id },
       data: { deleted_at: new Date() },
     });
+    return { success: true };
+  }
+
+  // --- Project Departments ---
+
+  async listProjectDepartments(projectId: string) {
+    const rows = await this.prisma.project_departments.findMany({
+      where: { project_id: projectId },
+      include: {
+        departments: { select: { id: true, name: true, icon: true, is_active: true } },
+      },
+      orderBy: { created_at: 'asc' },
+    });
+
+    return rows.map((r) => ({
+      projectId: r.project_id,
+      departmentId: Number(r.department_id),
+      departmentName: r.departments?.name ?? '',
+      departmentIcon: r.departments?.icon ?? 'Folder',
+      departmentIsActive: r.departments?.is_active ?? true,
+      createdAt: r.created_at ? r.created_at.toISOString() : null,
+    }));
+  }
+
+  async addProjectDepartment(projectId: string, departmentId: number) {
+    const exists = await this.prisma.project_departments.findUnique({
+      where: {
+        project_id_department_id: {
+          project_id: projectId,
+          department_id: BigInt(departmentId),
+        },
+      },
+    });
+
+    if (exists) {
+      throw new Error('Department is already added to this project');
+    }
+
+    const row = await this.prisma.project_departments.create({
+      data: {
+        project_id: projectId,
+        department_id: BigInt(departmentId),
+      },
+      include: {
+        departments: { select: { id: true, name: true, icon: true, is_active: true } },
+      },
+    });
+
+    return {
+      projectId: row.project_id,
+      departmentId: Number(row.department_id),
+      departmentName: row.departments?.name ?? '',
+      departmentIcon: row.departments?.icon ?? 'Folder',
+      departmentIsActive: row.departments?.is_active ?? true,
+      createdAt: row.created_at ? row.created_at.toISOString() : null,
+    };
+  }
+
+  async removeProjectDepartment(projectId: string, departmentId: number) {
+    // Delete the project department. Foremen assignments for this department and works could be cascading?
+    // Wait, project_department_foremen doesn't cascade by default unless we set it.
+    // Let's delete foremen assignments explicitly just in case.
+    await this.prisma.$transaction(async (tx) => {
+      await tx.project_department_foremen.deleteMany({
+        where: {
+          project_id: projectId,
+          department_id: BigInt(departmentId),
+        },
+      });
+
+      await tx.project_departments.delete({
+        where: {
+          project_id_department_id: {
+            project_id: projectId,
+            department_id: BigInt(departmentId),
+          },
+        },
+      });
+    });
+
     return { success: true };
   }
 
@@ -673,7 +758,7 @@ export class ProjectsService {
     // We execute this in a transaction: 
     // Delete all existing assignments for this project
     // Insert all new assignments
-    
+
     await this.prisma.$transaction(async (tx) => {
       await tx.project_department_foremen.deleteMany({
         where: { project_id: projectId },
@@ -694,6 +779,110 @@ export class ProjectsService {
         await tx.project_department_foremen.createMany({
           data: dataToInsert,
         });
+      }
+    });
+
+    return { success: true };
+  }
+
+  async batchSyncDepartments(
+    projectId: string,
+    assignments: { departmentId: number; foremanIds: number[]; works: { id?: string; name: string }[] }[],
+  ) {
+    await this.prisma.$transaction(async (tx) => {
+      const activeDepartmentIds = assignments.map((a) => BigInt(a.departmentId));
+
+      // 1. Sync Project Departments
+      if (activeDepartmentIds.length > 0) {
+        await tx.project_departments.deleteMany({
+          where: {
+            project_id: projectId,
+            department_id: { notIn: activeDepartmentIds },
+          },
+        });
+      } else {
+        await tx.project_departments.deleteMany({
+          where: { project_id: projectId },
+        });
+      }
+
+      for (const a of assignments) {
+        await tx.project_departments.upsert({
+          where: {
+            project_id_department_id: {
+              project_id: projectId,
+              department_id: BigInt(a.departmentId),
+            },
+          },
+          update: {},
+          create: {
+            project_id: projectId,
+            department_id: BigInt(a.departmentId),
+          },
+        });
+      }
+
+      // 2. Sync Foremen
+      await tx.project_department_foremen.deleteMany({
+        where: { project_id: projectId },
+      });
+      const foremenToInsert: any[] = [];
+      for (const a of assignments) {
+        for (const fId of a.foremanIds) {
+          foremenToInsert.push({
+            project_id: projectId,
+            department_id: BigInt(a.departmentId),
+            foreman_id: fId,
+          });
+        }
+      }
+      if (foremenToInsert.length > 0) {
+        await tx.project_department_foremen.createMany({ data: foremenToInsert });
+      }
+
+      // 3. Sync Works
+      const incomingWorkIds = assignments
+        .flatMap((a) => a.works.filter((w) => w.id).map((w) => w.id as string));
+
+      if (incomingWorkIds.length > 0) {
+        await tx.project_work_types.updateMany({
+          where: {
+            project_id: projectId,
+            id: { notIn: incomingWorkIds },
+            deleted_at: null,
+          },
+          data: { deleted_at: new Date() },
+        });
+      } else {
+        await tx.project_work_types.updateMany({
+          where: {
+            project_id: projectId,
+            deleted_at: null,
+          },
+          data: { deleted_at: new Date() },
+        });
+      }
+
+      for (const a of assignments) {
+        for (const w of a.works) {
+          if (w.id) {
+            await tx.project_work_types.update({
+              where: { id: w.id },
+              data: {
+                name: w.name,
+                department_id: BigInt(a.departmentId),
+              },
+            });
+          } else {
+            await tx.project_work_types.create({
+              data: {
+                project_id: projectId,
+                department_id: BigInt(a.departmentId),
+                name: w.name,
+              },
+            });
+          }
+        }
       }
     });
 

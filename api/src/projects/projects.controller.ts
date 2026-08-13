@@ -112,6 +112,29 @@ export class ProjectsController {
     return this.projectsService.deleteWorkType(id);
   }
 
+  // --- Project Departments ---
+
+  @Get(':projectId/departments')
+  listProjectDepartments(@Param('projectId') projectId: string) {
+    return this.projectsService.listProjectDepartments(projectId);
+  }
+
+  @Post(':projectId/departments')
+  addProjectDepartment(
+    @Param('projectId') projectId: string,
+    @Body() body: { departmentId: number },
+  ) {
+    return this.projectsService.addProjectDepartment(projectId, body.departmentId);
+  }
+
+  @Delete(':projectId/departments/:departmentId')
+  removeProjectDepartment(
+    @Param('projectId') projectId: string,
+    @Param('departmentId') departmentId: string,
+  ) {
+    return this.projectsService.removeProjectDepartment(projectId, Number(departmentId));
+  }
+
   // --- Foremen Assignments ---
 
   @Get(':projectId/foremen')
@@ -128,6 +151,14 @@ export class ProjectsController {
       projectId,
       body.assignments,
     );
+  }
+
+  @Put(':projectId/departments/batch-sync')
+  batchSyncDepartments(
+    @Param('projectId') projectId: string,
+    @Body() body: { assignments: { departmentId: number; foremanIds: number[]; works: { id?: string; name: string }[] }[] },
+  ) {
+    return this.projectsService.batchSyncDepartments(projectId, body.assignments);
   }
 
   // --- Resource Plans ---

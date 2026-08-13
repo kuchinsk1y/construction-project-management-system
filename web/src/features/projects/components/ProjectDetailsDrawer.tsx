@@ -16,6 +16,7 @@ import type {
 import { MilestonesTab } from './MilestonesTab'
 import { MilestoneFormDrawer } from './MilestoneFormDrawer'
 import { WorksTab } from './WorksTab'
+import { ProjectDepartmentsTab } from './ProjectDepartmentsTab'
 
 type ProjectDetailsDrawerProps = {
   isOpen?: boolean
@@ -53,8 +54,8 @@ type ProjectDetailsDrawerProps = {
   contractorRef: React.RefObject<HTMLDivElement | null>
 
   // Milestones & Works props
-  activeTab: 'details' | 'milestones' | 'works'
-  setActiveTab: (tab: 'details' | 'milestones' | 'works') => void
+  activeTab: 'details' | 'milestones' | 'departments' | 'works'
+  setActiveTab: (tab: 'details' | 'milestones' | 'departments' | 'works') => void
   milestones: ApiMilestone[]
   milestonesLoading: boolean
   showMilestoneForm: boolean
@@ -550,19 +551,36 @@ export function ProjectDetailsDrawer({
             >
               Kamienie milowe
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('works')
-                setMilestoneError('')
-              }}
-              className={`pb-2 px-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${activeTab === 'works'
-                ? 'border-[var(--sidebar-primary)] text-[var(--sidebar-primary)]'
-                : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
-                }`}
-            >
-              Roboty
-            </button>
+            { (milestones.length > 0 || milestonesLoading) && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('departments')
+                    setMilestoneError('')
+                  }}
+                  className={`pb-2 px-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${activeTab === 'departments'
+                    ? 'border-[var(--sidebar-primary)] text-[var(--sidebar-primary)]'
+                    : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                    }`}
+                >
+                  Działy
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('works')
+                    setMilestoneError('')
+                  }}
+                  className={`pb-2 px-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${activeTab === 'works'
+                    ? 'border-[var(--sidebar-primary)] text-[var(--sidebar-primary)]'
+                    : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                    }`}
+                >
+                  Roboty
+                </button>
+              </>
+            )}
           </div>
         )}
 
@@ -1131,6 +1149,14 @@ export function ProjectDetailsDrawer({
               handleCloseDrawer={handleCloseDrawer}
               formatBudget={formatBudget}
               onBulkEdit={handleOpenBulkEdit}
+            />
+          )}
+
+          {activeTab === 'departments' && editingProject && (
+            <ProjectDepartmentsTab
+              projectId={editingProject.id}
+              milestones={milestones}
+              canEditProject={canEditProject}
             />
           )}
 

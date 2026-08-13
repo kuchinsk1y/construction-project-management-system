@@ -2,10 +2,12 @@ import { useEffect } from 'react' // useState
 import { X, Loader2, Network } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
+import { IconPicker } from '@/components/IconPicker'
 
 type DepartmentFormState = {
   name: string
   description: string
+  icon: string
   is_active: boolean
 }
 
@@ -89,18 +91,24 @@ export function DepartmentFormDrawer({
             )}
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-[var(--foreground)]">Nazwa działu *</label>
-              <input
-                type="text"
-                value={formState.name}
-                onChange={(e) => {
-                  setFormState({ ...formState, name: e.target.value })
-                  setError('')
-                }}
-                className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm outline-none transition focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20"
-                placeholder="Np. Elektryka, Kafar..."
-                required
-              />
+              <label className="text-sm font-medium text-[var(--foreground)]">Nazwa działu i ikona *</label>
+              <div className="flex gap-2">
+                <IconPicker 
+                  value={formState.icon} 
+                  onChange={(icon) => setFormState({ ...formState, icon })} 
+                />
+                <input
+                  type="text"
+                  value={formState.name}
+                  onChange={(e) => {
+                    setFormState({ ...formState, name: e.target.value })
+                    setError('')
+                  }}
+                  className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm outline-none transition focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20"
+                  placeholder="Np. Elektryka, Kafar..."
+                  required
+                />
+              </div>
             </div>
 
             <div className="space-y-1.5">

@@ -6,26 +6,31 @@ export declare class DepartmentsService {
         id: number;
         name: string;
         description: string | null;
+        icon: string;
         is_active: boolean;
     }[]>;
     create(data: {
         name: string;
         description?: string;
+        icon?: string;
         is_active?: boolean;
     }): Promise<{
         id: number;
         name: string;
         description: string | null;
+        icon: string;
         is_active: boolean;
     }>;
     update(id: bigint, data: {
         name?: string;
         description?: string;
+        icon?: string;
         is_active?: boolean;
     }): Promise<{
         id: number;
         name: string;
         description: string | null;
+        icon: string;
         is_active: boolean;
     }>;
     remove(id: bigint): Promise<{

@@ -25,6 +25,17 @@ export type CreateMilestonePayload = {
 export type ApiDepartment = {
   id: number
   name: string
+  icon?: string
+  is_active?: boolean
+}
+
+export type ApiProjectDepartment = {
+  projectId: string
+  departmentId: number
+  departmentName: string
+  departmentIcon: string
+  departmentIsActive: boolean
+  createdAt: string | null
 }
 
 export type ApiForemanUser = {
@@ -36,22 +47,24 @@ export type ApiForemanUser = {
 export type ApiWorkType = {
   id: string
   projectId: string
-  milestoneId: string
-  milestoneNo: string
+  milestoneId: string | null
+  milestoneNo: string | null
   departmentId: number
   departmentName: string
   name: string
   unit: string | null
+  percentage: number | null
   totalQuantity: number
   plannedStart: string | null
   plannedEnd: string | null
 }
 
 export type CreateWorkTypePayload = {
-  milestoneId: string
+  milestoneId?: string
   departmentId: number
   name: string
   unit?: string
+  percentage?: number
   totalQuantity?: number
   plannedStart?: string
   plannedEnd?: string
@@ -232,4 +245,12 @@ export type ApiProjectRow = {
   status: string | null
   dateFromFact: string | null
   dateToFact: string | null
+}
+
+export type BatchSyncDepartmentsPayload = {
+  assignments: {
+    departmentId: number
+    foremanIds: number[]
+    works: { id?: string; name: string }[]
+  }[]
 }

@@ -85,7 +85,7 @@ export function WorkspaceShell({ onLogout, theme, themePreset, onThemePresetChan
 
   const SidebarContent = (
     <>
-      <div className="h-14 border-b border-[var(--sidebar-border)] px-4 py-2.5">
+      <div className="shrink-0 h-14 border-b border-[var(--sidebar-border)] px-4 py-2.5">
         <p className="text-xs font-medium uppercase tracking-widest text-[var(--muted-foreground)]">ERP</p>
         <h1 className="text-lg font-semibold leading-tight">{t('workspace.brand')}</h1>
       </div>
@@ -170,7 +170,7 @@ export function WorkspaceShell({ onLogout, theme, themePreset, onThemePresetChan
         </aside>
 
         <main className="flex min-h-screen flex-col">
-          <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-[var(--border)] bg-[var(--card)] px-3 backdrop-blur md:px-4">
+          <header className="sticky top-0 z-10 flex shrink-0 h-14 items-center justify-between border-b border-[var(--border)] bg-[var(--card)] px-3 backdrop-blur md:px-4">
             <div className="flex items-center gap-3">
               <Button size="icon-sm" variant="outline" className="md:hidden" onClick={() => setIsMobileSidebarOpen(true)}>
                 <Menu size={16} />

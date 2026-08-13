@@ -24,6 +24,7 @@ export class DepartmentsController {
     createDepartmentDto: {
       name: string;
       description?: string;
+      icon?: string;
       is_active?: boolean;
     },
   ) {
@@ -37,6 +38,7 @@ export class DepartmentsController {
     updateDepartmentDto: {
       name?: string;
       description?: string;
+      icon?: string;
       is_active?: boolean;
     },
   ) {

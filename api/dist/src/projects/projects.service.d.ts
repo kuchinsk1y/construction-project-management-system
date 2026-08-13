@@ -105,12 +105,13 @@ export declare class ProjectsService {
     listWorkTypes(projectId: string): Promise<{
         id: string;
         projectId: string;
-        milestoneId: string;
+        milestoneId: string | null;
         milestoneNo: string;
         departmentId: number;
         departmentName: string;
         name: string;
         unit: string | null;
+        percentage: number | null;
         totalQuantity: number;
         plannedStart: string | null;
         plannedEnd: string | null;
@@ -118,19 +119,40 @@ export declare class ProjectsService {
     createWorkType(projectId: string, dto: CreateWorkTypeDto): Promise<{
         id: string;
         projectId: string;
-        milestoneId: string;
+        milestoneId: string | null;
         departmentId: number;
         name: string;
         unit: string | null;
+        percentage: number | null;
         totalQuantity: number;
     }>;
     updateWorkType(id: string, dto: Partial<CreateWorkTypeDto>): Promise<{
         id: string;
         name: string;
         unit: string | null;
+        percentage: number | null;
         totalQuantity: number;
     }>;
     deleteWorkType(id: string): Promise<{
+        success: boolean;
+    }>;
+    listProjectDepartments(projectId: string): Promise<{
+        projectId: string;
+        departmentId: number;
+        departmentName: string;
+        departmentIcon: string;
+        departmentIsActive: boolean;
+        createdAt: string | null;
+    }[]>;
+    addProjectDepartment(projectId: string, departmentId: number): Promise<{
+        projectId: string;
+        departmentId: number;
+        departmentName: string;
+        departmentIcon: string;
+        departmentIsActive: boolean;
+        createdAt: string | null;
+    }>;
+    removeProjectDepartment(projectId: string, departmentId: number): Promise<{
         success: boolean;
     }>;
     listForemenAssignments(projectId: string): Promise<{
@@ -144,6 +166,16 @@ export declare class ProjectsService {
     bulkAssignForemen(projectId: string, assignments: {
         departmentId: number;
         foremanIds: number[];
+    }[]): Promise<{
+        success: boolean;
+    }>;
+    batchSyncDepartments(projectId: string, assignments: {
+        departmentId: number;
+        foremanIds: number[];
+        works: {
+            id?: string;
+            name: string;
+        }[];
     }[]): Promise<{
         success: boolean;
     }>;

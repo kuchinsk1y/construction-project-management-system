@@ -74,11 +74,23 @@ let ProjectsController = class ProjectsController {
     deleteWorkType(id) {
         return this.projectsService.deleteWorkType(id);
     }
+    listProjectDepartments(projectId) {
+        return this.projectsService.listProjectDepartments(projectId);
+    }
+    addProjectDepartment(projectId, body) {
+        return this.projectsService.addProjectDepartment(projectId, body.departmentId);
+    }
+    removeProjectDepartment(projectId, departmentId) {
+        return this.projectsService.removeProjectDepartment(projectId, Number(departmentId));
+    }
     listForemenAssignments(projectId) {
         return this.projectsService.listForemenAssignments(projectId);
     }
     bulkAssignForemen(projectId, body) {
         return this.projectsService.bulkAssignForemen(projectId, body.assignments);
+    }
+    batchSyncDepartments(projectId, body) {
+        return this.projectsService.batchSyncDepartments(projectId, body.assignments);
     }
     listResourcePlans(workTypeId) {
         return this.projectsService.listResourcePlans(workTypeId);
@@ -204,6 +216,29 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], ProjectsController.prototype, "deleteWorkType", null);
 __decorate([
+    (0, common_1.Get)(':projectId/departments'),
+    __param(0, (0, common_1.Param)('projectId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], ProjectsController.prototype, "listProjectDepartments", null);
+__decorate([
+    (0, common_1.Post)(':projectId/departments'),
+    __param(0, (0, common_1.Param)('projectId')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], ProjectsController.prototype, "addProjectDepartment", null);
+__decorate([
+    (0, common_1.Delete)(':projectId/departments/:departmentId'),
+    __param(0, (0, common_1.Param)('projectId')),
+    __param(1, (0, common_1.Param)('departmentId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", void 0)
+], ProjectsController.prototype, "removeProjectDepartment", null);
+__decorate([
     (0, common_1.Get)(':projectId/foremen'),
     __param(0, (0, common_1.Param)('projectId')),
     __metadata("design:type", Function),
@@ -218,6 +253,14 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
 ], ProjectsController.prototype, "bulkAssignForemen", null);
+__decorate([
+    (0, common_1.Put)(':projectId/departments/batch-sync'),
+    __param(0, (0, common_1.Param)('projectId')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], ProjectsController.prototype, "batchSyncDepartments", null);
 __decorate([
     (0, common_1.Get)('work-types/:workTypeId/resource-plans'),
     __param(0, (0, common_1.Param)('workTypeId')),

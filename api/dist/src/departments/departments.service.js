@@ -32,6 +32,7 @@ let DepartmentsService = class DepartmentsService {
             data: {
                 name: data.name,
                 description: data.description,
+                icon: data.icon ?? 'Folder',
                 is_active: data.is_active ?? true,
             },
         });
@@ -52,12 +53,15 @@ let DepartmentsService = class DepartmentsService {
     }
     async remove(id) {
         try {
-            await this.prisma.project_work_types.deleteMany({
+            const workTypesCount = await this.prisma.project_work_types.count({
                 where: { department_id: id },
             });
-            await this.prisma.project_department_foremen.deleteMany({
+            const foremenCount = await this.prisma.project_department_foremen.count({
                 where: { department_id: id },
             });
+            if (workTypesCount > 0 || foremenCount > 0) {
+                throw new common_1.BadRequestException('Nie można usunąć działu, ponieważ jest on przypisany do projektów.');
+            }
             await this.prisma.departments.delete({
                 where: { id },
             });
