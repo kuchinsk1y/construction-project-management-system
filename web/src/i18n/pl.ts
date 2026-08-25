@@ -325,7 +325,7 @@ export const pl = {
       operationalDirector: 'Dyrektor operacyjny',
       financialDirector: 'Dyrektor finansowy',
       projectManager: 'Kierownik projektu',
-      foreman: 'Brygadzista',
+      foreman: 'St. Brygadzista',
       contractor: 'Kontrahent',
     },
   },

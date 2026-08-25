@@ -156,7 +156,7 @@ export class ProjectsController {
   @Put(':projectId/departments/batch-sync')
   batchSyncDepartments(
     @Param('projectId') projectId: string,
-    @Body() body: { assignments: { departmentId: number; foremanIds: number[]; works: { id?: string; name: string }[] }[] },
+    @Body() body: { assignments: { departmentId: number; foremanIds: number[]; works?: { id?: string; name: string }[] }[] },
   ) {
     return this.projectsService.batchSyncDepartments(projectId, body.assignments);
   }

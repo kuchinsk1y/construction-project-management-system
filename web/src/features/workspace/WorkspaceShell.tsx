@@ -115,30 +115,28 @@ export function WorkspaceShell({ onLogout, theme, themePreset, onThemePresetChan
         })}
       </nav>
 
-      <div className="shrink-0 border-t border-[var(--sidebar-border)] p-2.5">
-        <div className="p-1 space-y-1">
-          <div className="flex items-center gap-2 rounded-lg px-1 py-0.5">
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)]">
+      <div className="shrink-0 border-t border-[var(--sidebar-border)] p-3">
+        <div className="flex items-center justify-between gap-2 rounded-xl p-1.5 transition-colors hover:bg-[var(--sidebar-accent)]/50 group">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1" title={profile?.email || profileName}>
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] shadow-sm">
               <CircleUserRound size={16} />
             </div>
-            <div className="min-w-0 leading-tight">
-              <p className="truncate text-sm font-medium text-[var(--sidebar-foreground)]">{profileName}</p>
+            <div className="min-w-0 leading-tight flex-1">
+              <p className="truncate text-sm font-bold text-[var(--sidebar-foreground)]">{profileName}</p>
               <p className="truncate text-xs text-[var(--muted-foreground)]">{profile?.email || t('workspace.signedIn')}</p>
             </div>
           </div>
 
-          <Button
-            size="sm"
-            variant="ghost"
-            className="mt-1.5 w-full justify-start border border-[var(--sidebar-border)] text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-primary)] hover:text-[var(--sidebar-primary-foreground)]"
+          <button
             onClick={() => {
               setIsMobileSidebarOpen(false)
               onLogout()
             }}
+            title={t('workspace.logout')}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[var(--muted-foreground)] transition-all hover:bg-rose-500/10 hover:text-rose-500"
           >
-            <LogOut size={15} />
-            {t('workspace.logout')}
-          </Button>
+            <LogOut size={16} />
+          </button>
         </div>
       </div>
     </>

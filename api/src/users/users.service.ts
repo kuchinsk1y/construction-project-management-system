@@ -206,7 +206,7 @@ export class UsersService {
 
     if (existing.project_department_foremen.length > 0) {
       throw new BadRequestException(
-        'Nie można usunąć użytkownika, ponieważ jest przypisany jako brygadzista w projektach',
+        'Nie można usunąć użytkownika, ponieważ jest przypisany jako st. brygadzista w projektach',
       );
     }
 

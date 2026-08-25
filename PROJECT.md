@@ -24,7 +24,7 @@ W systemie zdefiniowano następujące role użytkowników:
 | `admin` | **Administrator** | Pełny dostęp do systemu, zarządza użytkownikami (`/users`), kontrahentami i ustawieniami. |
 | `operational_director` | **Dyrektor Operacyjny** | Tworzy projekty, konfiguruje budżety, warunki finansowe, kamienie milowe. |
 | `project_manager` | **Kierownik Projektu** | Zarządza przydzielonymi projektami, definiuje zakres prac (Works), planuje obsadę (Resources). |
-| `foreman` / `brygadzista` | **Starszy Brygadzista** | Odpowiada za realizację prac w terenie, raportuje postępy (w trakcie wdrażania). |
+| `foreman` / `st. brygadzista` | **Starszy Brygadzista** | Odpowiada za realizację prac w terenie, raportuje postępy (w trakcie wdrażania). |
 | `financial_director` | **Dyrektor Finansowy** | Kontroluje finanse, faktury i rentowność (w trakcie wdrażania). |
 
 ---
@@ -48,7 +48,7 @@ W systemie zdefiniowano następujące role użytkowników:
 *   **Funkcjonalność**:
     *   Dodawanie rodzajów robót powiązanych z kamieniami milowymi (KM) wraz z jednostką miary i planowaną ilością całkowitą.
     *   Przypisanie robót do działów budowy: *Kafar / Montaż / Elektryka / Kable AC / Maszyny*.
-    *   Wyznaczenie Starszego Brygadzisty dla każdego działu zaangażowanego w projekt (lista opcji pobiera użytkowników z rolami `foreman` lub `brygadzista`).
+    *   Wyznaczenie Starszego Brygadzisty dla każdego działu zaangażowanego w projekt (lista opcji pobiera użytkowników z rolami `foreman` lub `st. brygadzista`).
 *   **Plik UI**: [WorksPage.tsx](file:///d:/PROGRAMMING/ERP/web/src/features/workspace/pages/WorksPage.tsx)
 
 ### Krok 4: Planowanie zasobów ludzkich 🟢 (Wdrożono)

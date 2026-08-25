@@ -82,4 +82,9 @@ export class UpdateProjectDto {
   @IsNumber()
   @Type(() => Number)
   power?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  warrantyPercent?: number;
 }

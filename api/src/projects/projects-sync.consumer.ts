@@ -100,6 +100,7 @@ export class ProjectsSyncConsumer extends WorkerHost {
       status: project.status,
       dateFromFact,
       dateToFact,
+      warrantyPercent: project.warranty_percent ? project.warranty_percent.toNumber() : '',
     };
 
     // Find the row number

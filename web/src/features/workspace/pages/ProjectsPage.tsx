@@ -1,4 +1,4 @@
-import { ProjectsShowcase } from '@/features/projects/ProjectsShowcase'
+import { ProjectsShowcase } from '@/features/projects/pages/ProjectsShowcase/ProjectsShowcase'
 import type { UserProfile } from '@/types/auth'
 
 type ProjectsPageProps = {

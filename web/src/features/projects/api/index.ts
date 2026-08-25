@@ -1,0 +1,183 @@
+import { apiDelete, apiGet, apiPost, apiPut } from '@/lib/api-client'
+import type {
+  ApiContractor,
+  ApiProject,
+  ApiProjectType,
+  CreateProjectPayload,
+  ApiMilestone,
+  CreateMilestonePayload,
+  ApiDepartment,
+  ApiProjectDepartment,
+  ApiForemanUser,
+  ApiWorkType,
+  CreateWorkTypePayload,
+  ApiForemanAssignment,
+  ApiResourcePlan,
+  CreateResourcePlanPayload,
+} from '@/features/projects/types'
+
+export function fetchProjects(): Promise<ApiProject[]> {
+  return apiGet<ApiProject[]>('/projects')
+}
+
+export function createProject(payload: CreateProjectPayload): Promise<ApiProject> {
+  return apiPost<ApiProject>('/projects', payload)
+}
+
+export function updateProject(
+  id: string,
+  payload: Partial<CreateProjectPayload>,
+): Promise<ApiProject> {
+  return apiPut<ApiProject>(`/projects/${id}`, payload)
+}
+
+export function deleteProject(id: string): Promise<void> {
+  return apiDelete<void>(`/projects/${id}`)
+}
+
+export function fetchContractors(): Promise<ApiContractor[]> {
+  return apiGet<ApiContractor[]>('/projects/reference/contractors')
+}
+
+export function fetchProjectTypes(): Promise<ApiProjectType[]> {
+  return apiGet<ApiProjectType[]>('/projects/reference/project-types')
+}
+
+// --- Milestones ---
+
+export function fetchMilestones(projectId: string): Promise<ApiMilestone[]> {
+  return apiGet<ApiMilestone[]>(`/projects/${projectId}/milestones`)
+}
+
+export function createMilestone(
+  projectId: string,
+  payload: CreateMilestonePayload,
+): Promise<ApiMilestone> {
+  return apiPost<ApiMilestone>(`/projects/${projectId}/milestones`, payload)
+}
+
+export function updateMilestone(
+  id: string,
+  payload: Partial<CreateMilestonePayload>,
+): Promise<ApiMilestone> {
+  return apiPut<ApiMilestone>(`/projects/milestones/${id}`, payload)
+}
+
+export function deleteMilestone(id: string): Promise<void> {
+  return apiDelete<void>(`/projects/milestones/${id}`)
+}
+
+// --- Departments & Foremen Reference ---
+
+export function fetchDepartments(): Promise<ApiDepartment[]> {
+  return apiGet<ApiDepartment[]>('/projects/reference/departments')
+}
+
+export function fetchForemen(): Promise<ApiForemanUser[]> {
+  return apiGet<ApiForemanUser[]>('/projects/reference/foremen')
+}
+
+// --- Work Types ---
+
+export function fetchWorkTypes(projectId: string): Promise<ApiWorkType[]> {
+  return apiGet<ApiWorkType[]>(`/projects/${projectId}/work-types`)
+}
+
+export function createWorkType(
+  projectId: string,
+  payload: CreateWorkTypePayload,
+): Promise<ApiWorkType> {
+  return apiPost<ApiWorkType>(`/projects/${projectId}/work-types`, payload)
+}
+
+export function updateWorkType(
+  id: string,
+  payload: Partial<CreateWorkTypePayload>,
+): Promise<ApiWorkType> {
+  return apiPut<ApiWorkType>(`/projects/work-types/${id}`, payload)
+}
+
+export function deleteWorkType(id: string): Promise<void> {
+  return apiDelete<void>(`/projects/work-types/${id}`)
+}
+
+// --- Project Departments ---
+
+export function fetchProjectDepartments(projectId: string): Promise<ApiProjectDepartment[]> {
+  return apiGet<ApiProjectDepartment[]>(`/projects/${projectId}/departments`)
+}
+
+export function addProjectDepartment(projectId: string, departmentId: number): Promise<ApiProjectDepartment> {
+  return apiPost<ApiProjectDepartment>(`/projects/${projectId}/departments`, { departmentId })
+}
+
+export function removeProjectDepartment(projectId: string, departmentId: number): Promise<void> {
+  return apiDelete<void>(`/projects/${projectId}/departments/${departmentId}`)
+}
+
+// --- Foremen Assignments ---
+
+export function fetchForemenAssignments(projectId: string): Promise<ApiForemanAssignment[]> {
+  return apiGet<ApiForemanAssignment[]>(`/projects/${projectId}/foremen`)
+}
+
+export function bulkAssignForemen(
+  projectId: string,
+  assignments: { departmentId: number; foremanIds: number[] }[],
+): Promise<{ success: boolean }> {
+  return apiPut<{ success: boolean }>(`/projects/${projectId}/foremen`, {
+    assignments,
+  })
+}
+
+export function batchSyncDepartments(
+  projectId: string,
+  payload: import('@/features/projects/types').BatchSyncDepartmentsPayload
+): Promise<{ success: boolean }> {
+  return apiPut<{ success: boolean }>(`/projects/${projectId}/departments/batch-sync`, payload)
+}
+
+// --- Resource Plans ---
+
+export function fetchResourcePlans(workTypeId: string): Promise<ApiResourcePlan[]> {
+  return apiGet<ApiResourcePlan[]>(`/projects/work-types/${workTypeId}/resource-plans`)
+}
+
+export function createResourcePlan(
+  workTypeId: string,
+  payload: CreateResourcePlanPayload,
+): Promise<ApiResourcePlan> {
+  return apiPost<ApiResourcePlan>(`/projects/work-types/${workTypeId}/resource-plans`, payload)
+}
+
+export function deleteResourcePlan(id: string): Promise<void> {
+  return apiDelete<void>(`/projects/resource-plans/${id}`)
+}
+
+// ---- Cost Categories & Planned Expenses ----
+
+import type { ApiCostCategory, CreateCostCategoryPayload, ApiPlannedExpense, CreatePlannedExpensePayload } from '@/features/projects/types'
+
+export function getCostCategories(): Promise<ApiCostCategory[]> {
+  return apiGet<ApiCostCategory[]>('/cost-categories')
+}
+
+export function createCostCategory(payload: CreateCostCategoryPayload): Promise<ApiCostCategory> {
+  return apiPost<ApiCostCategory>('/cost-categories', payload)
+}
+
+export function getPlannedExpenses(projectId: string): Promise<ApiPlannedExpense[]> {
+  return apiGet<ApiPlannedExpense[]>(`/projects/${projectId}/planned-expenses`)
+}
+
+export function createPlannedExpense(projectId: string, payload: CreatePlannedExpensePayload): Promise<ApiPlannedExpense> {
+  return apiPost<ApiPlannedExpense>(`/projects/${projectId}/planned-expenses`, payload)
+}
+
+export function updatePlannedExpense(projectId: string, id: string, payload: Partial<CreatePlannedExpensePayload>): Promise<ApiPlannedExpense> {
+  return apiPut<ApiPlannedExpense>(`/projects/${projectId}/planned-expenses/${id}`, payload)
+}
+
+export function deletePlannedExpense(projectId: string, id: string): Promise<void> {
+  return apiDelete<void>(`/projects/${projectId}/planned-expenses/${id}`)
+}

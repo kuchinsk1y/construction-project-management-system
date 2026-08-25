@@ -255,7 +255,7 @@ export function WorksPage({ canManage }: WorksPageProps) {
         <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="text-xl font-extrabold tracking-tight bg-gradient-to-r from-[var(--foreground)] to-[var(--muted-foreground)] bg-clip-text text-transparent">
-              Zakres prac i Brygadziści
+              Zakres prac i St. Brygadziści
             </h2>
           </div>
         </div>
@@ -371,17 +371,17 @@ export function WorksPage({ canManage }: WorksPageProps) {
                 <div>
                   <h3 className="font-bold text-sm tracking-tight text-[var(--foreground)] flex items-center gap-2">
                     <UserCheck size={16} className="text-[var(--sidebar-primary)]" />
-                    Starsi Brygadziści (Działy)
+                    St. Brygadziści (Działy)
                   </h3>
                   <p className="text-[11px] text-[var(--muted-foreground)] font-medium mt-1">
-                    Przypisz starszego brygadzistę odpowiedzialnego za dany dział w tym projekcie.
+                    Przypisz st. brygadzistę odpowiedzialnego za dany dział w tym projekcie.
                   </p>
                 </div>
 
                 {foremenLoading ? (
                   <div className="flex flex-col items-center justify-center py-10 gap-2">
                     <Loader2 className="animate-spin text-[var(--sidebar-primary)]" size={24} />
-                    <span className="text-[11px] text-[var(--muted-foreground)]">Wczytywanie brygadzistów...</span>
+                    <span className="text-[11px] text-[var(--muted-foreground)]">Wczytywanie st. brygadzistów...</span>
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -424,7 +424,7 @@ export function WorksPage({ canManage }: WorksPageProps) {
                               : 'border-[var(--border)] bg-[var(--background)] text-[var(--muted-foreground)] hover:border-[var(--muted-foreground)]/30'
                               } disabled:opacity-50`}
                           >
-                            <option value="">-- Przypisz brygadzistę --</option>
+                            <option value="">-- Przypisz st. brygadzistę --</option>
                             {foremenUsers.map((user) => (
                               <option key={user.id} value={user.id}>
                                 {user.firstName} {user.lastName}

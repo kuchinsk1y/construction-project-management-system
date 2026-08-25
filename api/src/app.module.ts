@@ -10,6 +10,8 @@ import { PrismaModule } from './prisma/prisma.module';
 import { ProjectsModule } from './projects/projects.module';
 import { UsersModule } from './users/users.module';
 import { DepartmentsModule } from './departments/departments.module';
+import { CostCategoriesModule } from './cost-categories/cost-categories.module';
+import { PlannedExpensesModule } from './planned-expenses/planned-expenses.module';
 
 @Module({
   imports: [
@@ -30,6 +32,8 @@ import { DepartmentsModule } from './departments/departments.module';
     ContractorsModule,
     GoogleSheetsModule,
     DepartmentsModule,
+    CostCategoriesModule,
+    PlannedExpensesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

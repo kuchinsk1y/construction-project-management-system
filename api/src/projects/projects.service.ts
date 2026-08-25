@@ -80,6 +80,7 @@ export class ProjectsService {
       dokumentationUrl: p.dokumentation_url,
       pinUrl: p.pin_url,
       power: p.power ? Number(p.power) : null,
+      warrantyPercent: p.warranty_percent ? Number(p.warranty_percent) : null,
     }));
   }
 
@@ -165,6 +166,7 @@ export class ProjectsService {
         dokumentation_url: dto.dokumentationUrl ?? null,
         pin_url: dto.pinUrl ?? null,
         power: dto.power ?? null,
+        warranty_percent: dto.warrantyPercent ?? null,
       },
       include: {
         contractors: { select: { id: true, name: true } },
@@ -213,6 +215,7 @@ export class ProjectsService {
       dokumentationUrl: project.dokumentation_url,
       pinUrl: project.pin_url,
       power: project.power ? Number(project.power) : null,
+      warrantyPercent: project.warranty_percent ? Number(project.warranty_percent) : null,
     });
   }
 
@@ -274,6 +277,7 @@ export class ProjectsService {
         dokumentation_url: dto.dokumentationUrl,
         pin_url: dto.pinUrl,
         power: dto.power ?? null,
+        warranty_percent: dto.warrantyPercent ?? null,
       },
       include: {
         contractors: { select: { id: true, name: true } },
@@ -322,6 +326,7 @@ export class ProjectsService {
       dokumentationUrl: project.dokumentation_url,
       pinUrl: project.pin_url,
       power: project.power ? Number(project.power) : null,
+      warrantyPercent: project.warranty_percent ? Number(project.warranty_percent) : null,
     });
   }
 
@@ -544,7 +549,7 @@ export class ProjectsService {
       .filter((u) =>
         u.roles.some(
           (r) =>
-            r.toLowerCase() === 'foreman' || r.toLowerCase() === 'brygadzista',
+            r.toLowerCase() === 'foreman' || r.toLowerCase() === 'st. brygadzista',
         ),
       )
       .map((u) => ({
@@ -787,7 +792,7 @@ export class ProjectsService {
 
   async batchSyncDepartments(
     projectId: string,
-    assignments: { departmentId: number; foremanIds: number[]; works: { id?: string; name: string }[] }[],
+    assignments: { departmentId: number; foremanIds: number[]; works?: { id?: string; name: string }[] }[],
   ) {
     await this.prisma.$transaction(async (tx) => {
       const activeDepartmentIds = assignments.map((a) => BigInt(a.departmentId));
@@ -840,50 +845,7 @@ export class ProjectsService {
         await tx.project_department_foremen.createMany({ data: foremenToInsert });
       }
 
-      // 3. Sync Works
-      const incomingWorkIds = assignments
-        .flatMap((a) => a.works.filter((w) => w.id).map((w) => w.id as string));
 
-      if (incomingWorkIds.length > 0) {
-        await tx.project_work_types.updateMany({
-          where: {
-            project_id: projectId,
-            id: { notIn: incomingWorkIds },
-            deleted_at: null,
-          },
-          data: { deleted_at: new Date() },
-        });
-      } else {
-        await tx.project_work_types.updateMany({
-          where: {
-            project_id: projectId,
-            deleted_at: null,
-          },
-          data: { deleted_at: new Date() },
-        });
-      }
-
-      for (const a of assignments) {
-        for (const w of a.works) {
-          if (w.id) {
-            await tx.project_work_types.update({
-              where: { id: w.id },
-              data: {
-                name: w.name,
-                department_id: BigInt(a.departmentId),
-              },
-            });
-          } else {
-            await tx.project_work_types.create({
-              data: {
-                project_id: projectId,
-                department_id: BigInt(a.departmentId),
-                name: w.name,
-              },
-            });
-          }
-        }
-      }
     });
 
     return { success: true };
