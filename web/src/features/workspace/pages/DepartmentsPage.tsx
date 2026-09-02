@@ -242,67 +242,112 @@ export function DepartmentsPage({ canManage }: DepartmentsPageProps) {
               return (
                 <div
                   key={dept.id}
-                  className={`group relative bg-[var(--card)] rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm hover:shadow-md transition-all duration-300 ${viewMode === 'grid' ? 'flex flex-col p-3.5' : 'flex flex-row items-center p-3 gap-3 md:gap-4'}`}
+                  className={`group relative bg-[var(--card)] rounded-xl border border-[var(--border)] shadow-sm hover:shadow-md hover:border-[var(--sidebar-primary)]/20 transition-all duration-300 overflow-hidden flex ${viewMode === 'grid' ? 'flex-col' : 'flex-row items-center p-2.5 gap-4'}`}
                 >
-                  {/* Icon */}
-                  <div className={`p-2 bg-[var(--sidebar-primary)]/10 text-[var(--sidebar-primary)] rounded-xl group-hover:scale-105 transition-transform ${viewMode === 'list' ? 'shrink-0' : 'mb-2 self-start'}`}>
-                    <DeptIcon size={18} strokeWidth={2.5} />
-                  </div>
-
-                  {/* Content */}
-                  <div className={`flex-1 min-w-0 ${viewMode === 'grid' ? 'mb-3' : ''}`}>
-                    <div className="flex items-center justify-between gap-4">
-                      <h3 className="font-semibold text-sm text-[var(--foreground)] truncate" title={dept.name}>
-                        {dept.name}
-                      </h3>
-                      {viewMode === 'list' && (
-                        <span className={`shrink-0 hidden sm:inline-flex text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full ${dept.is_active ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-zinc-500/10 text-zinc-500'}`}>
-                          {dept.is_active ? 'Aktywny' : 'Nieaktywny'}
-                        </span>
-                      )}
-                    </div>
-                    <p className={`text-xs text-[var(--muted-foreground)] mt-0.5 ${viewMode === 'grid' ? 'line-clamp-2 min-h-[32px]' : 'truncate'}`} title={dept.description || ''}>
-                      {dept.description || 'Brak opisu'}
-                    </p>
-                  </div>
-
-                  {/* Actions & Status */}
-                  <div className={`flex items-center ${viewMode === 'grid' ? 'justify-between pt-3 border-t border-zinc-100 dark:border-zinc-800/50 mt-auto' : 'gap-2 shrink-0 ml-auto border-l border-[var(--border)] pl-3 md:pl-4'}`}>
-                    {viewMode === 'grid' && (
-                      <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full ${dept.is_active ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-zinc-500/10 text-zinc-500'}`}>
-                        {dept.is_active ? 'Aktywny' : 'Nieaktywny'}
-                      </span>
-                    )}
-
-                    <div className="flex items-center gap-1">
-                      {canManage && (
-                        <>
-                          <div className={viewMode === 'grid' ? '' : 'mr-2 hidden sm:block'} title="Zmień status aktywności">
-                            <Switch
-                              checked={dept.is_active}
-                              onCheckedChange={(checked) => handleToggleActive(dept, checked)}
-                              disabled={updateMutation.isPending && updateMutation.variables?.id === dept.id}
-                            />
+                  {viewMode === 'grid' ? (
+                    <>
+                      <div className="p-3.5 flex flex-col gap-2 flex-1">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="p-2 bg-[var(--sidebar-primary)]/10 text-[var(--sidebar-primary)] rounded-lg shrink-0">
+                              <DeptIcon size={16} strokeWidth={2.5} />
+                            </div>
+                            <h3 className="font-semibold text-sm text-[var(--foreground)] truncate" title={dept.name}>
+                              {dept.name}
+                            </h3>
                           </div>
-                          <button
-                            onClick={() => handleOpenEdit(dept)}
-                            className="p-1.5 text-zinc-400 hover:text-[var(--sidebar-primary)] hover:bg-[var(--sidebar-primary)]/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                            title="Edytuj dział"
-                          >
-                            <Edit2 size={16} />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteClick(dept)}
-                            disabled={deleteMutation.isPending && departmentToDelete?.id === dept.id}
-                            className="p-1.5 text-zinc-400 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-50"
-                            title="Usuń dział"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </>
+                          <div title="Zmień status aktywności" className="shrink-0 pt-0.5">
+                             <Switch
+                               checked={dept.is_active}
+                               onCheckedChange={(checked) => handleToggleActive(dept, checked)}
+                               disabled={!canManage || (updateMutation.isPending && updateMutation.variables?.id === dept.id)}
+                               className="scale-75 origin-right"
+                             />
+                          </div>
+                        </div>
+                        <p className="text-xs text-[var(--muted-foreground)] line-clamp-2 leading-relaxed" title={dept.description || ''}>
+                          {dept.description || 'Brak opisu'}
+                        </p>
+                      </div>
+                      {canManage && (
+                        <div className="flex items-center justify-between px-3.5 py-2 bg-[var(--muted)]/30 border-t border-[var(--border)]">
+                          <span className={`text-[10px] uppercase font-bold tracking-wider flex items-center gap-1.5 ${dept.is_active ? 'text-emerald-500' : 'text-zinc-500'}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${dept.is_active ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-500'}`} />
+                            {dept.is_active ? 'Aktywny' : 'Nieaktywny'}
+                          </span>
+                          <div className="flex items-center gap-1 -mr-1">
+                            <button
+                              onClick={() => handleOpenEdit(dept)}
+                              className="p-1.5 text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)] rounded-md transition-colors"
+                              title="Edytuj dział"
+                            >
+                              <Edit2 size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteClick(dept)}
+                              disabled={deleteMutation.isPending && departmentToDelete?.id === dept.id}
+                              className="p-1.5 text-[var(--muted-foreground)] hover:text-rose-500 hover:bg-rose-500/10 rounded-md transition-colors disabled:opacity-50"
+                              title="Usuń dział"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </div>
                       )}
-                    </div>
-                  </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="p-2 bg-[var(--sidebar-primary)]/10 text-[var(--sidebar-primary)] rounded-lg shrink-0 ml-1">
+                        <DeptIcon size={16} strokeWidth={2.5} />
+                      </div>
+                      <div className="flex-1 min-w-0 flex items-center gap-4">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-sm text-[var(--foreground)] truncate" title={dept.name}>
+                            {dept.name}
+                          </h3>
+                          <p className="text-xs text-[var(--muted-foreground)] truncate mt-0.5" title={dept.description || ''}>
+                            {dept.description || 'Brak opisu'}
+                          </p>
+                        </div>
+                        
+                        <div className="shrink-0 flex items-center gap-6 pr-2">
+                           <span className={`hidden sm:flex text-[10px] uppercase font-bold tracking-wider items-center gap-1.5 w-24 ${dept.is_active ? 'text-emerald-500' : 'text-zinc-500'}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${dept.is_active ? 'bg-emerald-500' : 'bg-zinc-500'}`} />
+                              {dept.is_active ? 'Aktywny' : 'Nieaktywny'}
+                            </span>
+                          {canManage && (
+                            <div className="flex items-center gap-2">
+                              <div title="Zmień status aktywności" className="mr-2 hidden sm:block">
+                                <Switch
+                                  checked={dept.is_active}
+                                  onCheckedChange={(checked) => handleToggleActive(dept, checked)}
+                                  disabled={updateMutation.isPending && updateMutation.variables?.id === dept.id}
+                                  className="scale-75 origin-center"
+                                />
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => handleOpenEdit(dept)}
+                                  className="p-1.5 text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)] rounded-md transition-colors"
+                                  title="Edytuj dział"
+                                >
+                                  <Edit2 size={14} />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteClick(dept)}
+                                  disabled={deleteMutation.isPending && departmentToDelete?.id === dept.id}
+                                  className="p-1.5 text-[var(--muted-foreground)] hover:text-rose-500 hover:bg-rose-500/10 rounded-md transition-colors disabled:opacity-50"
+                                  title="Usuń dział"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               )
             })}

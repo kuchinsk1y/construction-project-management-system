@@ -40,29 +40,24 @@ export function WorkspaceShell({ onLogout, theme, themePreset, onThemePresetChan
     return isAdmin || isDirector
   }, [profile?.role, profile?.roles, isAdmin])
 
-  const canViewUsers = useMemo(() => {
+  const isProjectManager = useMemo(() => {
     const role = (profile?.role ?? '').toLowerCase()
     const roles = (profile?.roles ?? []).map((entry) => entry.toLowerCase())
-    const allowed = [
-      'admin',
-      'administrator',
-      'operational_director',
-      'financial_director',
-      'project_manager',
-      'foreman',
-    ]
-    return allowed.includes(role) || roles.some((r) => allowed.includes(r))
+    return role === 'project_manager' || roles.includes('project_manager')
   }, [profile?.role, profile?.roles])
+
+  const canViewUsers = isAdminOrDirector
+  const canViewDepartments = isAdminOrDirector || isProjectManager
 
   const navigationItems = useMemo(
     () =>
       workspaceNavigation.filter((item) => {
         if (item.key === 'users') return canViewUsers
         if (item.key === 'contractors') return isAdminOrDirector
-        if (item.key === 'departments') return isAdminOrDirector
+        if (item.key === 'departments') return canViewDepartments
         return true
       }),
-    [canViewUsers, isAdminOrDirector],
+    [canViewUsers, isAdminOrDirector, canViewDepartments],
   )
 
   // Adjust active section state during render if user permissions have changed and they can no longer access the current section
@@ -71,7 +66,7 @@ export function WorkspaceShell({ onLogout, theme, themePreset, onThemePresetChan
     currentSection = 'projects'
   } else if (!isAdminOrDirector && activeSection === 'contractors') {
     currentSection = 'projects'
-  } else if (!isAdminOrDirector && activeSection === 'departments') {
+  } else if (!canViewDepartments && activeSection === 'departments') {
     currentSection = 'projects'
   }
   if (currentSection !== activeSection) {

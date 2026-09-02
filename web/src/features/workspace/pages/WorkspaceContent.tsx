@@ -40,26 +40,14 @@ export function WorkspaceContent({ section, isAdmin, profile, theme, themePreset
     return role === 'project_manager' || roles.includes('project_manager')
   }, [profile?.role, profile?.roles])
 
-  const canViewUsers = useMemo(() => {
-    const role = (profile?.role ?? '').toLowerCase()
-    const roles = (profile?.roles ?? []).map((entry) => entry.toLowerCase())
-    const allowed = [
-      'admin',
-      'administrator',
-      'operational_director',
-      'financial_director',
-      'project_manager',
-      'foreman',
-    ]
-    return allowed.includes(role) || roles.some((r) => allowed.includes(r))
-  }, [profile?.role, profile?.roles])
+  const canViewUsers = isAdminOrDirector
 
   const canEditWorks = isAdminOrDirector || isProjectManager
 
   if (section === 'dashboard') return <DashboardPage />
-  if (section === 'users') return <UsersPage canView={canViewUsers} canManage={isAdmin} />
+  if (section === 'users') return <UsersPage canView={canViewUsers} canAdd={isAdmin} canEdit={isAdminOrDirector} />
   if (section === 'contractors') return <ContractorsPage canManage={isAdminOrDirector} />
-  if (section === 'departments') return <DepartmentsPage canManage={isAdminOrDirector} />
+  if (section === 'departments') return <DepartmentsPage canManage={isAdminOrDirector || isProjectManager} />
   if (section === 'works') return <WorksPage canManage={canEditWorks} />
   if (section === 'resources') return <ResourcesPage canManage={canEditWorks} />
   if (section === 'settings') return <SettingsPage theme={theme} themePreset={themePreset} onThemePresetChange={onThemePresetChange} />

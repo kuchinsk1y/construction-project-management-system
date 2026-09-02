@@ -297,6 +297,8 @@ export const pl = {
         telegramId: 'Telegram ID',
         role: 'Rola',
         activeAccount: 'Konto aktywne',
+        status: 'Status konta',
+        activeAccountDesc: 'Czy to konto ma dostęp do systemu?',
       },
     },
     validation: {

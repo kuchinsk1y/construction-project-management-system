@@ -43,46 +43,38 @@ export function MilestonesTab({
     <div className="w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-sm space-y-4 animate-tab-content">
       {/* Header Action Bar & Summary Stats */}
       <div className="flex flex-col gap-3">
-        {/* Overall Allocation Progress Bar */}
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/30 p-3 space-y-2 shadow-2xs">
-          <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
-            <span className="flex items-center gap-1.5">
-              <Wallet size={14} className="text-[var(--sidebar-primary)]" />
-              Suma udziałów etapów w budżecie
-            </span>
-            <span className={`font-extrabold ${totalPct === 100 ? 'text-emerald-500' : totalPct > 100 ? 'text-rose-500' : 'text-amber-500'}`}>
-              {totalPct.toFixed(1)}% / 100%
-            </span>
-          </div>
-          <div className="relative h-3.5 w-full bg-[var(--muted)]/50 rounded-full overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-500 ${totalPct === 100 ? 'bg-emerald-500' : totalPct > 100 ? 'bg-rose-500' : 'bg-amber-500'}`}
-              style={{ width: `${Math.min(totalPct, 100)}%` }}
-            />
-          </div>
-          <div className="flex items-center justify-between text-[11px] font-semibold text-[var(--muted-foreground)]">
-            <span>Suma przypisana: {formatBudget(totalNet, currency)}</span>
-            <span>Wartość kontraktu: {formatBudget(contractVal, currency)}</span>
-          </div>
-        </div>
-
         {/* Top KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/35 p-2.5 space-y-1 shadow-xs">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">Wartość kontraktu netto</span>
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/35 p-2.5 flex flex-col justify-center shadow-xs">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] mb-1">Wartość kontraktu netto</span>
             <p className="text-sm font-extrabold text-[var(--foreground)]">{formatBudget(contractVal, currency)}</p>
           </div>
 
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/35 p-2.5 space-y-1 shadow-xs">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">Suma kwot netto etapów</span>
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/35 p-2.5 flex flex-col justify-center shadow-xs">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] mb-1">Suma kwot etapów</span>
             <p className="text-sm font-extrabold text-[var(--foreground)]">{formatBudget(totalNet, currency)}</p>
           </div>
 
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/35 p-2.5 space-y-1 shadow-xs">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">Pozostało do przypisania</span>
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/35 p-2.5 flex flex-col justify-center shadow-xs">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] mb-1">Pozostało do przypisania</span>
             <p className={`text-sm font-extrabold ${diffNet === 0 ? 'text-emerald-500' : diffNet < 0 ? 'text-rose-500' : 'text-amber-500'}`}>
               {formatBudget(diffNet, currency)}
             </p>
+          </div>
+
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/35 p-2.5 flex flex-col justify-center shadow-xs">
+            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] mb-1.5">
+              <span>Przypisano %</span>
+              <span className={`${totalPct === 100 ? 'text-emerald-500' : totalPct > 100 ? 'text-rose-500' : 'text-amber-500'}`}>
+                {totalPct.toFixed(1)}%
+              </span>
+            </div>
+            <div className="relative h-1.5 w-full bg-[var(--muted)]/50 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${totalPct === 100 ? 'bg-emerald-500' : totalPct > 100 ? 'bg-rose-500' : 'bg-amber-500'}`}
+                style={{ width: `${Math.min(totalPct, 100)}%` }}
+              />
+            </div>
           </div>
         </div>
 

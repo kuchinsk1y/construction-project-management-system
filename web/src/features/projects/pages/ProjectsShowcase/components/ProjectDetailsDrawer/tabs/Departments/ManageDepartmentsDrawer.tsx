@@ -128,11 +128,15 @@ export function ManageDepartmentsDrawer({
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
           <div className="flex-1 overflow-y-auto custom-scrollbar px-5 py-4 space-y-4 bg-[var(--card)]">
 
-            {rows.map((row) => (
-              <div key={row.uid} className="p-3 rounded-xl border border-[var(--border)] bg-[var(--background)]/35 shadow-sm flex flex-col sm:flex-row sm:items-end gap-3">
+            {rows.map((row, index) => (
+              <div key={row.uid} className={`flex flex-col sm:flex-row sm:items-start gap-3 relative group ${index > 0 ? 'pt-3 mt-3 border-t border-[var(--border)]/50' : ''}`}>
                   <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[10px] font-bold text-[var(--muted-foreground)] uppercase mb-1">Dział <span className="text-rose-500">*</span></label>
+                      {index === 0 && (
+                        <label className="block text-[10px] font-bold text-[var(--muted-foreground)] uppercase mb-1.5">
+                          Dział <span className="text-rose-500">*</span>
+                        </label>
+                      )}
                       <select
                         value={row.departmentId}
                         onChange={(e) => handleUpdateRow(row.uid, 'departmentId', e.target.value === '' ? '' : Number(e.target.value))}
@@ -150,7 +154,11 @@ export function ManageDepartmentsDrawer({
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-bold text-[var(--muted-foreground)] uppercase mb-1">St. Brygadzista</label>
+                      {index === 0 && (
+                        <label className="block text-[10px] font-bold text-[var(--muted-foreground)] uppercase mb-1.5">
+                          St. Brygadzista
+                        </label>
+                      )}
                       <div className="relative">
                         <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)]">
                           <Users size={14} />
@@ -170,20 +178,23 @@ export function ManageDepartmentsDrawer({
                       </div>
                     </div>
                   </div>
-                  {rows.length > 1 ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleRemoveRow(row.uid)}
-                      className="h-9 w-9 border-rose-500/50 text-rose-500 hover:bg-rose-500/10 rounded-lg shrink-0"
-                      title="Usuń ten dział"
-                    >
-                      <Trash2 size={14} />
-                    </Button>
-                  ) : (
-                    <div className="h-9 w-9 shrink-0 hidden sm:block" />
-                  )}
+                  
+                  <div className={index === 0 ? 'sm:pt-[22px]' : ''}>
+                    {rows.length > 1 ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemoveRow(row.uid)}
+                        className="h-9 w-9 text-rose-500 hover:bg-rose-500/10 hover:text-rose-600 rounded-lg opacity-40 group-hover:opacity-100 transition-opacity shrink-0"
+                        title="Usuń ten dział"
+                      >
+                        <Trash2 size={16} />
+                      </Button>
+                    ) : (
+                      <div className="h-9 w-9 shrink-0 hidden sm:block" />
+                    )}
+                  </div>
               </div>
             ))}
 
@@ -191,9 +202,9 @@ export function ManageDepartmentsDrawer({
               type="button"
               variant="outline"
               onClick={handleAddRow}
-              className="w-full h-12 border-dashed border-[var(--sidebar-primary)]/40 text-[var(--sidebar-primary)] hover:bg-[var(--sidebar-primary)]/5 hover:border-[var(--sidebar-primary)] font-semibold rounded-xl mt-4"
+              className="w-full rounded-xl border-dashed border-[var(--sidebar-primary)]/40 text-[var(--sidebar-primary)] hover:bg-[var(--sidebar-primary)]/5 hover:border-[var(--sidebar-primary)] mt-4"
             >
-              <Plus size={16} className="mr-2" />
+              <Plus size={14} className="mr-2" />
               Dodaj kolejny dział do projektu
             </Button>
           </div>

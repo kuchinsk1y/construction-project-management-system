@@ -1,5 +1,7 @@
 import { Queue } from 'bullmq';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
+import { GoogleSheetsService } from '../google-sheets/google-sheets.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { CreateMilestoneDto } from './dto/create-milestone.dto';
@@ -9,7 +11,9 @@ import { CreateResourcePlanDto } from './dto/create-resource-plan.dto';
 export declare class ProjectsService {
     private readonly prisma;
     private readonly syncQueue;
-    constructor(prisma: PrismaService, syncQueue: Queue);
+    private readonly config;
+    private readonly sheetsService;
+    constructor(prisma: PrismaService, syncQueue: Queue, config: ConfigService, sheetsService: GoogleSheetsService);
     list(): Promise<{
         id: string;
         name: string;
@@ -47,8 +51,8 @@ export declare class ProjectsService {
     private ensureProjectTypeExists;
     create(dto: CreateProjectDto): Promise<Record<string, unknown>>;
     listContractors(): Promise<{
-        name: string;
         id: string;
+        name: string;
     }[]>;
     listProjectTypes(): Promise<{
         id: number;

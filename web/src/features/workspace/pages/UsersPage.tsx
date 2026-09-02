@@ -4,12 +4,14 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import { createUser, fetchUsers, updateUser } from '@/features/users/api'
 import type { ApiUser, CreateUserPayload, UpdateUserPayload, UserRole } from '@/features/users/types'
 
 type UsersPageProps = {
   canView: boolean
-  canManage: boolean
+  canAdd: boolean
+  canEdit: boolean
 }
 
 type NoticeTone = 'success' | 'error'
@@ -121,7 +123,7 @@ function toUpdatePayload(form: UserFormState): UpdateUserPayload {
   }
 }
 
-export function UsersPage({ canView, canManage }: UsersPageProps) {
+export function UsersPage({ canView, canAdd, canEdit }: UsersPageProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [query, setQuery] = useState('')
@@ -324,7 +326,7 @@ export function UsersPage({ canView, canManage }: UsersPageProps) {
           </h2>
         </div>
 
-        {canManage ? (
+        {canAdd ? (
           <Button
             type="button"
             onClick={openCreateModal}
@@ -364,14 +366,6 @@ export function UsersPage({ canView, canManage }: UsersPageProps) {
       </div>
 
       <article className="w-full overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-sm animate-fade-in mb-3">
-        <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
-          <div>
-            <p className="text-sm font-semibold">Lista użytkowników systemu</p>
-            <p className="text-xs text-[var(--muted-foreground)]">
-              Pokazano {filteredUsers.length} z {users.length} użytkowników
-            </p>
-          </div>
-        </div>
 
         <div className="overflow-x-auto hide-scrollbar">
           {isLoading ? (
@@ -422,7 +416,7 @@ export function UsersPage({ canView, canManage }: UsersPageProps) {
                         <p className="mt-0.5 text-[11px] text-[var(--muted-foreground)]">{user.email}</p>
                       </td>
                       <td className="border-b border-[var(--border)] px-4 py-3 align-top">
-                        {canManage ? (
+                        {canEdit ? (
                           <button
                             type="button"
                             onClick={() => handleToggleActive(user)}
@@ -442,7 +436,7 @@ export function UsersPage({ canView, canManage }: UsersPageProps) {
                       </td>
                       <td className="border-b border-[var(--border)] px-4 py-3 align-top text-right">
                         <div className="flex justify-end gap-1.5">
-                          {canManage ? (
+                          {canEdit ? (
                             <Button
                               type="button"
                               variant="outline"
@@ -510,37 +504,39 @@ export function UsersPage({ canView, canManage }: UsersPageProps) {
           {/* Section: Personal */}
           <div>
             <p className="mb-3 border-b border-[var(--border)] pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
-              {t('users.modal.labels.firstName')} / {t('users.modal.labels.lastName')}
+              Dane osobiste
             </p>
-            <div className="space-y-3">
-              <label className="block space-y-1">
-                <span className="text-xs text-[var(--muted-foreground)]">
-                  {t('users.modal.labels.firstName')} <span className="text-rose-500">*</span>
-                </span>
-                <input
-                  value={formState.firstName}
-                  onChange={(event) => setFormState((prev) => ({ ...prev, firstName: event.target.value }))}
-                  className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20"
-                />
-              </label>
+            <div className="space-y-3.5">
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block">
+                  <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 transition-colors block mb-1">
+                    {t('users.modal.labels.firstName')} <span className="text-rose-500">*</span>
+                  </span>
+                  <input
+                    value={formState.firstName}
+                    onChange={(event) => setFormState((prev) => ({ ...prev, firstName: event.target.value }))}
+                    className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60"
+                  />
+                </label>
 
-              <label className="block space-y-1">
-                <span className="text-xs text-[var(--muted-foreground)]">
-                  {t('users.modal.labels.lastName')} <span className="text-rose-500">*</span>
-                </span>
-                <input
-                  value={formState.lastName}
-                  onChange={(event) => setFormState((prev) => ({ ...prev, lastName: event.target.value }))}
-                  className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20"
-                />
-              </label>
+                <label className="block">
+                  <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 transition-colors block mb-1">
+                    {t('users.modal.labels.lastName')} <span className="text-rose-500">*</span>
+                  </span>
+                  <input
+                    value={formState.lastName}
+                    onChange={(event) => setFormState((prev) => ({ ...prev, lastName: event.target.value }))}
+                    className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60"
+                  />
+                </label>
+              </div>
 
-              <label className="block space-y-1">
-                <span className="text-xs text-[var(--muted-foreground)]">{t('users.modal.labels.middleNames')}</span>
+              <label className="block">
+                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 transition-colors block mb-1">{t('users.modal.labels.middleNames')}</span>
                 <input
                   value={formState.middleNames}
                   onChange={(event) => setFormState((prev) => ({ ...prev, middleNames: event.target.value }))}
-                  className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20"
+                  className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60"
                 />
               </label>
             </div>
@@ -549,69 +545,68 @@ export function UsersPage({ canView, canManage }: UsersPageProps) {
           {/* Section: Contact */}
           <div>
             <p className="mb-3 border-b border-[var(--border)] pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
-              {t('users.modal.labels.email')} / {t('users.modal.labels.phone')}
+              Dane kontaktowe
             </p>
-            <div className="space-y-3">
-              <label className="block space-y-1">
-                <span className="text-xs text-[var(--muted-foreground)]">
+            <div className="space-y-3.5">
+              <label className="block">
+                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 transition-colors block mb-1">
                   {t('users.modal.labels.email')} <span className="text-rose-500">*</span>
                 </span>
                 <input
                   type="email"
                   value={formState.email}
                   onChange={(event) => setFormState((prev) => ({ ...prev, email: event.target.value }))}
-                  className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20"
+                  className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60"
                 />
               </label>
 
-              <label className="block space-y-1">
-                <span className="text-xs text-[var(--muted-foreground)]">
+              <label className="block">
+                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 transition-colors block mb-1">
                   {t('users.modal.labels.phone')} <span className="text-rose-500">*</span>
                 </span>
                 <input
                   value={formState.phoneNumber}
                   onChange={(event) => setFormState((prev) => ({ ...prev, phoneNumber: event.target.value }))}
-                  className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20"
+                  className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60"
                 />
               </label>
 
               {isEditMode ? (
-                <label className="block space-y-1">
-                  <span className="text-xs text-[var(--muted-foreground)]">{t('users.modal.labels.telegramId')}</span>
+                <label className="block">
+                  <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 transition-colors block mb-1">{t('users.modal.labels.telegramId')}</span>
                   <input
                     value={formState.telegramId}
                     onChange={(event) => setFormState((prev) => ({ ...prev, telegramId: event.target.value }))}
-                    className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20"
+                    className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60"
                   />
                 </label>
               ) : null}
             </div>
-          </div>
-
-          {/* Section: Role & Status */}
+          </div>          {/* Section: Role & Status */}
           <div>
             <p className="mb-3 border-b border-[var(--border)] pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
-              {t('users.modal.labels.role')} / {t('users.modal.labels.position')}
+              Rola i stanowisko
             </p>
-            <div className="space-y-3">
-              <label className="block space-y-1">
-                <span className="text-xs text-[var(--muted-foreground)]">
+            <div className="space-y-3.5">
+              <label className="block">
+                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 transition-colors block mb-1">
                   {t('users.modal.labels.position')} <span className="text-rose-500">*</span>
                 </span>
                 <input
                   value={formState.position}
                   onChange={(event) => setFormState((prev) => ({ ...prev, position: event.target.value }))}
-                  className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20"
+                  className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60"
                 />
               </label>
 
-              <label className="block space-y-1">
-                <span className="text-xs text-[var(--muted-foreground)]">{t('users.modal.labels.role')}</span>
+              <label className="block">
+                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 transition-colors block mb-1">
+                  {t('users.modal.labels.role')} <span className="text-rose-500">*</span>
+                </span>
                 <select
                   value={formState.role}
                   onChange={(event) => setFormState((prev) => ({ ...prev, role: event.target.value as UserRole }))}
-                  aria-label={t('users.modal.labels.role')}
-                  className="h-9 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20"
+                  className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60"
                 >
                   {roleOptions.map((role) => (
                     <option key={role} value={role}>{roleLabel(role, t)}</option>
@@ -619,14 +614,18 @@ export function UsersPage({ canView, canManage }: UsersPageProps) {
                 </select>
               </label>
 
-              <label className="flex h-9 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--background)] px-3">
-                <input
-                  type="checkbox"
+              <div className="flex items-center justify-between p-4 mt-2 rounded-xl border border-[var(--border)] bg-[var(--card)]">
+                <div className="space-y-0.5">
+                  <label className="text-sm font-medium text-[var(--foreground)]">{t('users.modal.labels.status')}</label>
+                  <p className="text-xs text-[var(--muted-foreground)]">
+                    {t('users.modal.labels.activeAccountDesc')}
+                  </p>
+                </div>
+                <Switch
                   checked={formState.isActive}
-                  onChange={(event) => setFormState((prev) => ({ ...prev, isActive: event.target.checked }))}
+                  onCheckedChange={(checked) => setFormState((prev) => ({ ...prev, isActive: checked }))}
                 />
-                <span className="text-sm">{t('users.modal.labels.activeAccount')}</span>
-              </label>
+              </div>
             </div>
           </div>
 

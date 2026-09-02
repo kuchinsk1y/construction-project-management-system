@@ -1,4 +1,6 @@
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
+import { GoogleSheetsService } from '../google-sheets/google-sheets.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 type DbUserRecord = {
@@ -20,7 +22,9 @@ type UserView = Omit<DbUserRecord, 'telegramId'> & {
 };
 export declare class UsersService {
     private readonly prisma;
-    constructor(prisma: PrismaService);
+    private readonly config;
+    private readonly sheetsService;
+    constructor(prisma: PrismaService, config: ConfigService, sheetsService: GoogleSheetsService);
     private selectFields;
     private toView;
     private normalizeRoles;

@@ -2,10 +2,14 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+import { randomUUID } from 'crypto';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
+import { GoogleSheetsService } from '../google-sheets/google-sheets.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { CreateMilestoneDto } from './dto/create-milestone.dto';
@@ -29,6 +33,8 @@ export class ProjectsService {
   constructor(
     private readonly prisma: PrismaService,
     @InjectQueue('projects-sync') private readonly syncQueue: Queue,
+    private readonly config: ConfigService,
+    private readonly sheetsService: GoogleSheetsService,
   ) { }
 
   async list() {
@@ -140,8 +146,57 @@ export class ProjectsService {
     }
     const projectTypeId = await this.ensureProjectTypeExists(dto.projectTypeId);
 
+    const projectId = randomUUID();
+
+    const contractor = await this.prisma.contractors.findUnique({ where: { id: dto.contractorId } });
+    const pType = await this.prisma.project_types.findUnique({ where: { id: projectTypeId } });
+    let managerName = '';
+    if (dto.managerId) {
+      const manager = await this.prisma.user.findUnique({ where: { id: dto.managerId } });
+      if (manager) managerName = `${manager.firstName} ${manager.lastName}`;
+    }
+
+    const spreadsheetId = this.config.getOrThrow<string>('PROJECTS_SPREADSHEET_ID');
+    const sheetName = this.config.getOrThrow<string>('PROJECTS_SHEET_NAME');
+
+    const syncData = {
+      id: projectId,
+      contractor: contractor?.name ?? '',
+      project: dto.name,
+      location: dto.city ? `${dto.city}, ${dto.country}` : (dto.country ?? ''),
+      dateFrom: dto.startDateContract ? dto.startDateContract.split('T')[0] : '',
+      dateTo: dto.endDateContract ? dto.endDateContract.split('T')[0] : '',
+      projectType: pType?.name ?? '',
+      pin: dto.pinUrl ?? '',
+      manager: managerName,
+      power: dto.power ?? '',
+      dokumentationUrl: dto.dokumentationUrl ?? '',
+      country: dto.country ?? '',
+      status: dto.status ?? 'DRAFT',
+      dateFromFact: dto.startDateFact ? dto.startDateFact.split('T')[0] : '',
+      dateToFact: dto.endDateFact ? dto.endDateFact.split('T')[0] : '',
+      warrantyPercent: dto.warrantyPercent ?? '',
+    };
+
+    try {
+      await this.sheetsService.appendRow(spreadsheetId, sheetName, syncData);
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      const errorsSheet = this.config.get<string>('SYNC_ERRORS_SHEET_NAME', 'SyncErrors');
+      try {
+        await this.sheetsService.appendRow(spreadsheetId, errorsSheet, {
+          timestamp: new Date().toISOString(),
+          action: 'CREATE_PROJECT',
+          error_message: errMsg,
+          payload: JSON.stringify(syncData),
+        });
+      } catch (logErr) { }
+      throw new InternalServerErrorException('Nie udało się zapisać projektu w Google Sheets');
+    }
+
     const project = await this.prisma.projects.create({
       data: {
+        id: projectId,
         name: dto.name,
         contractors: { connect: { id: dto.contractorId } },
         project_types: { connect: { id: projectTypeId } },
@@ -177,9 +232,22 @@ export class ProjectsService {
       },
     });
 
-    await this.syncQueue.add('sync-project', {
-      projectId: project.id,
-      action: 'create',
+    let defaultCostCategory = await this.prisma.cost_categories.findFirst({
+      where: { name: 'Wypłata' },
+    });
+
+    if (!defaultCostCategory) {
+      defaultCostCategory = await this.prisma.cost_categories.create({
+        data: { name: 'Wypłata', is_salary: true },
+      });
+    }
+
+    await this.prisma.planned_expenses.create({
+      data: {
+        project_id: project.id,
+        cost_category_id: defaultCostCategory.id,
+        planned_percent: 100,
+      }
     });
 
     return sanitizeDecimals({
@@ -246,6 +314,78 @@ export class ProjectsService {
       ? await this.ensureProjectTypeExists(dto.projectTypeId)
       : undefined;
 
+    const existing = await this.prisma.projects.findUnique({
+      where: { id },
+      include: {
+        contractors: true,
+        project_types: true,
+        users_projects_manager_idTousers: true,
+      }
+    });
+    if (!existing) throw new NotFoundException('Project not found');
+
+    const contractorName = dto.contractorId
+      ? (await this.prisma.contractors.findUnique({ where: { id: dto.contractorId } }))?.name
+      : existing.contractors?.name;
+
+    const pTypeName = projectTypeId
+      ? (await this.prisma.project_types.findUnique({ where: { id: projectTypeId } }))?.name
+      : existing.project_types?.name;
+
+    let managerName = existing.users_projects_manager_idTousers
+      ? `${existing.users_projects_manager_idTousers.firstName} ${existing.users_projects_manager_idTousers.lastName}`
+      : '';
+    if (dto.managerId !== undefined) {
+      if (dto.managerId === null) managerName = '';
+      else {
+        const manager = await this.prisma.user.findUnique({ where: { id: dto.managerId } });
+        if (manager) managerName = `${manager.firstName} ${manager.lastName}`;
+      }
+    }
+
+    const syncData = {
+      id: id,
+      contractor: contractorName ?? '',
+      project: dto.name ?? existing.name,
+      location: dto.city || dto.country ? `${dto.city ?? existing.city}, ${dto.country ?? existing.country}` : (existing.city ? `${existing.city}, ${existing.country}` : existing.country ?? ''),
+      dateFrom: dto.startDateContract !== undefined ? (dto.startDateContract ? dto.startDateContract.split('T')[0] : '') : (existing.start_date_contract ? existing.start_date_contract.toISOString().split('T')[0] : ''),
+      dateTo: dto.endDateContract !== undefined ? (dto.endDateContract ? dto.endDateContract.split('T')[0] : '') : (existing.end_date_contract ? existing.end_date_contract.toISOString().split('T')[0] : ''),
+      projectType: pTypeName ?? '',
+      pin: dto.pinUrl !== undefined ? (dto.pinUrl ?? '') : (existing.pin_url ?? ''),
+      manager: managerName,
+      power: dto.power !== undefined ? (dto.power ?? '') : (existing.power ? Number(existing.power) : ''),
+      dokumentationUrl: dto.dokumentationUrl !== undefined ? (dto.dokumentationUrl ?? '') : (existing.dokumentation_url ?? ''),
+      country: dto.country ?? existing.country ?? '',
+      status: dto.status ?? existing.status ?? 'DRAFT',
+      dateFromFact: dto.startDateFact !== undefined ? (dto.startDateFact ? dto.startDateFact.split('T')[0] : '') : (existing.start_date_fact ? existing.start_date_fact.toISOString().split('T')[0] : ''),
+      dateToFact: dto.endDateFact !== undefined ? (dto.endDateFact ? dto.endDateFact.split('T')[0] : '') : (existing.end_date_fact ? existing.end_date_fact.toISOString().split('T')[0] : ''),
+      warrantyPercent: dto.warrantyPercent !== undefined ? (dto.warrantyPercent ?? '') : (existing.warranty_percent ? Number(existing.warranty_percent) : ''),
+    };
+
+    const spreadsheetId = this.config.getOrThrow<string>('PROJECTS_SPREADSHEET_ID');
+    const sheetName = this.config.getOrThrow<string>('PROJECTS_SHEET_NAME');
+
+    try {
+      const rowIndex = await this.sheetsService.findRowIndexById(spreadsheetId, sheetName, id);
+      if (rowIndex) {
+        await this.sheetsService.updateRow(spreadsheetId, sheetName, rowIndex, syncData);
+      } else {
+        await this.sheetsService.appendRow(spreadsheetId, sheetName, syncData);
+      }
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      const errorsSheet = this.config.get<string>('SYNC_ERRORS_SHEET_NAME', 'SyncErrors');
+      try {
+        await this.sheetsService.appendRow(spreadsheetId, errorsSheet, {
+          timestamp: new Date().toISOString(),
+          action: 'UPDATE_PROJECT',
+          error_message: errMsg,
+          payload: JSON.stringify(syncData),
+        });
+      } catch (logErr) { }
+      throw new InternalServerErrorException('Nie udało się zaktualizować projektu w Google Sheets');
+    }
+
     const project = await this.prisma.projects.update({
       where: { id },
       data: {
@@ -286,11 +426,6 @@ export class ProjectsService {
           select: { id: true, firstName: true, lastName: true },
         },
       },
-    });
-
-    await this.syncQueue.add('sync-project', {
-      projectId: project.id,
-      action: 'update',
     });
 
     return sanitizeDecimals({

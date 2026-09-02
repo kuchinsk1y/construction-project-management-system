@@ -346,7 +346,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
   const normalizedRoles = (profile?.roles ?? []).map((entry) => entry.toLowerCase())
   const hasRole = (role: string) => normalizedRole === role || normalizedRoles.includes(role)
 
-  const canCreateProject = hasRole('admin') || hasRole('administrator') || hasRole('project_manager') || hasRole('operational_director')
+  const canCreateProject = hasRole('admin') || hasRole('administrator') || hasRole('operational_director')
   const canEditProject = hasRole('admin') || hasRole('administrator') || hasRole('project_manager') || hasRole('operational_director')
   const canDeleteProject = hasRole('admin')
 

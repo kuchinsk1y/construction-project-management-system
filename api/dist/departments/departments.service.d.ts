@@ -1,7 +1,11 @@
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
+import { GoogleSheetsService } from '../google-sheets/google-sheets.service';
 export declare class DepartmentsService {
     private prisma;
-    constructor(prisma: PrismaService);
+    private config;
+    private sheetsService;
+    constructor(prisma: PrismaService, config: ConfigService, sheetsService: GoogleSheetsService);
     findAll(): Promise<{
         id: number;
         name: string;

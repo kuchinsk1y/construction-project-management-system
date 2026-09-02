@@ -11,11 +11,17 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UsersService = void 0;
 const common_1 = require("@nestjs/common");
+const config_1 = require("@nestjs/config");
 const prisma_service_1 = require("../prisma/prisma.service");
+const google_sheets_service_1 = require("../google-sheets/google-sheets.service");
 let UsersService = class UsersService {
     prisma;
-    constructor(prisma) {
+    config;
+    sheetsService;
+    constructor(prisma, config, sheetsService) {
         this.prisma = prisma;
+        this.config = config;
+        this.sheetsService = sheetsService;
     }
     selectFields = {
         id: true,
@@ -81,6 +87,37 @@ let UsersService = class UsersService {
             },
             select: this.selectFields,
         });
+        const spreadsheetId = this.config.getOrThrow('PROJECTS_SPREADSHEET_ID');
+        const sheetName = this.config.get('USERS_SHEET_NAME', 'Uzytkownicy');
+        const syncData = {
+            id: created.id,
+            email: created.email,
+            first_name: created.firstName,
+            last_name: created.lastName,
+            middle_names: created.middleNames ?? '',
+            position: created.position,
+            phone_number: created.phoneNumber,
+            roles: created.roles.join(', '),
+            is_active: created.isActive ? 'TRUE' : 'FALSE',
+        };
+        try {
+            await this.sheetsService.appendRow(spreadsheetId, sheetName, syncData);
+        }
+        catch (error) {
+            await this.prisma.user.delete({ where: { id: created.id } });
+            const errMsg = error instanceof Error ? error.message : String(error);
+            const errorsSheet = this.config.get('SYNC_ERRORS_SHEET_NAME', 'SyncErrors');
+            try {
+                await this.sheetsService.appendRow(spreadsheetId, errorsSheet, {
+                    timestamp: new Date().toISOString(),
+                    action: 'CREATE_USER',
+                    error_message: errMsg,
+                    payload: JSON.stringify(syncData),
+                });
+            }
+            catch (logErr) { }
+            throw new common_1.InternalServerErrorException('Nie udało się zapisać użytkownika w Google Sheets');
+        }
         return this.toView(created);
     }
     async update(id, dto) {
@@ -136,6 +173,42 @@ let UsersService = class UsersService {
             data.roles = this.normalizeRoles(dto.roles);
         if (typeof dto.isActive === 'boolean')
             data.isActive = dto.isActive;
+        const spreadsheetId = this.config.getOrThrow('PROJECTS_SPREADSHEET_ID');
+        const sheetName = this.config.get('USERS_SHEET_NAME', 'Uzytkownicy');
+        const syncData = {
+            id: id,
+            email: data.email ?? existing.email,
+            first_name: data.firstName ?? existing.firstName,
+            last_name: data.lastName ?? existing.lastName,
+            middle_names: data.middleNames !== undefined ? (data.middleNames ?? '') : (existing.middleNames ?? ''),
+            position: data.position ?? existing.position,
+            phone_number: data.phoneNumber ?? existing.phoneNumber,
+            roles: data.roles ? data.roles.join(', ') : existing.roles.join(', '),
+            is_active: data.isActive !== undefined ? (data.isActive ? 'TRUE' : 'FALSE') : (existing.isActive ? 'TRUE' : 'FALSE'),
+        };
+        try {
+            const rowIndex = await this.sheetsService.findRowIndexById(spreadsheetId, sheetName, id.toString());
+            if (rowIndex) {
+                await this.sheetsService.updateRow(spreadsheetId, sheetName, rowIndex, syncData);
+            }
+            else {
+                await this.sheetsService.appendRow(spreadsheetId, sheetName, syncData);
+            }
+        }
+        catch (error) {
+            const errMsg = error instanceof Error ? error.message : String(error);
+            const errorsSheet = this.config.get('SYNC_ERRORS_SHEET_NAME', 'SyncErrors');
+            try {
+                await this.sheetsService.appendRow(spreadsheetId, errorsSheet, {
+                    timestamp: new Date().toISOString(),
+                    action: 'UPDATE_USER',
+                    error_message: errMsg,
+                    payload: JSON.stringify(syncData),
+                });
+            }
+            catch (logErr) { }
+            throw new common_1.InternalServerErrorException('Nie udało się zaktualizować użytkownika w Google Sheets');
+        }
         const updated = await this.prisma.user.update({
             where: { id },
             data,
@@ -176,6 +249,8 @@ let UsersService = class UsersService {
 exports.UsersService = UsersService;
 exports.UsersService = UsersService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        config_1.ConfigService,
+        google_sheets_service_1.GoogleSheetsService])
 ], UsersService);
 //# sourceMappingURL=users.service.js.map

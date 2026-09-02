@@ -241,28 +241,32 @@ export function PlannedExpenseFormDrawer({
             </div>
           </div>
 
-          <div className="space-y-3">
+          <div className="flex flex-col">
             {rows.map((row, index) => (
-              <div key={index} className="flex gap-2 items-start relative group">
-                <div className="flex-1 space-y-1">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] ml-1">Rodzaj wydatku</span>
+              <div key={index} className={`flex gap-2 items-start relative group ${index > 0 ? 'pt-3 mt-3 border-t border-[var(--border)]/50' : ''}`}>
+                <div className="flex-1">
+                  {index === 0 && (
+                    <span className="block text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] ml-1 mb-1.5">Rodzaj wydatku</span>
+                  )}
                   <input
                     type="text"
-                    list="category-options"
+                    list={`category-options-${index}`}
                     value={row.costCategoryName}
                     onChange={(e) => updateRow(index, 'costCategoryName', e.target.value)}
                     placeholder="Wybierz lub wpisz..."
                     className={inputCls}
                   />
-                  <datalist id="category-options">
+                  <datalist id={`category-options-${index}`}>
                     {categories.map((c) => (
                       <option key={c.id} value={c.name} />
                     ))}
                   </datalist>
                 </div>
 
-                <div className="w-24 space-y-1">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] ml-1">Udział (%)</span>
+                <div className="w-24">
+                  {index === 0 && (
+                    <span className="block text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] ml-1 mb-1.5">Udział (%)</span>
+                  )}
                   <input
                     type="number"
                     min="0"
@@ -274,7 +278,7 @@ export function PlannedExpenseFormDrawer({
                   />
                 </div>
 
-                <div className="pt-5">
+                <div className={index === 0 ? 'pt-[22px]' : ''}>
                   <Button
                     type="button"
                     variant="ghost"

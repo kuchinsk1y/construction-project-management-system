@@ -1,4 +1,5 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Loader2, Plus, Edit2, Layers, Check, X, ChevronDown, AlertTriangle, Trash2
@@ -47,9 +48,18 @@ function ComboBox({
 }) {
   const [open, setOpen] = useState(false)
   const isCustom = value && !options.includes(value)
+  const triggerRef = useRef<HTMLDivElement>(null)
+  const [coords, setCoords] = useState({ left: 0, top: 0, width: 0 })
+
+  useEffect(() => {
+    if (open && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect()
+      setCoords({ left: rect.left, top: rect.bottom + 2, width: rect.width })
+    }
+  }, [open])
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative ${className}`} ref={triggerRef}>
       <div
         className={`flex items-center gap-1 w-full bg-[var(--background)] border rounded-md px-2 py-1 text-[11px] outline-none transition ${disabled
           ? 'border-[var(--border)] opacity-40 cursor-not-allowed'
@@ -63,13 +73,16 @@ function ComboBox({
         <ChevronDown size={12} className={`shrink-0 text-[var(--muted-foreground)] transition-transform ${open ? 'rotate-180' : ''}`} />
       </div>
 
-      {open && (
+      {open && createPortal(
         <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute top-full left-0 right-0 z-20 mt-0.5 rounded-md border border-[var(--border)] bg-[var(--card)] shadow-xl overflow-hidden">
+          <div className="fixed inset-0 z-[9998]" onClick={() => setOpen(false)} />
+          <div 
+            className="fixed z-[9999] rounded-md border border-[var(--border)] bg-[var(--card)] shadow-xl overflow-hidden"
+            style={{ left: coords.left, top: coords.top, width: coords.width }}
+          >
             <input
               autoFocus
-              className="w-full px-2 py-1.5 text-[11px] border-b border-[var(--border)] bg-[var(--background)] outline-none"
+              className="w-full px-2 py-1.5 text-[11px] border-b border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] outline-none"
               placeholder="Wpisz własną..."
               value={isCustom ? value : ''}
               onChange={e => onChange(e.target.value)}
@@ -81,14 +94,15 @@ function ComboBox({
                   key={opt}
                   type="button"
                   onClick={() => { onChange(opt); setOpen(false) }}
-                  className={`w-full text-left px-2 py-1.5 text-[11px] hover:bg-[var(--sidebar-primary)]/10 transition-colors ${value === opt ? 'font-bold text-[var(--sidebar-primary)]' : ''}`}
+                  className={`w-full text-left px-2 py-1.5 text-[11px] hover:bg-[var(--sidebar-primary)]/10 transition-colors ${value === opt ? 'font-bold text-[var(--sidebar-primary)]' : 'text-[var(--foreground)]'}`}
                 >
                   {opt}
                 </button>
               ))}
             </div>
           </div>
-        </>
+        </>,
+        document.body
       )}
     </div>
   )

@@ -92,6 +92,40 @@ export const usersToSeed = [
     roles: ['foreman'],
     isActive: true,
   },
+  // --- Additional Roles ---
+  {
+    email: 'marcin.dyrektor@ispik.eu',
+    firstName: 'Marcin',
+    lastName: 'Dyrektorski',
+    middleNames: null,
+    position: 'Dyrektor Operacyjny',
+    phoneNumber: '+48666555444',
+    telegramId: null,
+    roles: ['operational_director'],
+    isActive: true,
+  },
+  {
+    email: 'kasia.finanse@ispik.eu',
+    firstName: 'Katarzyna',
+    lastName: 'Finansowa',
+    middleNames: null,
+    position: 'Dyrektor Finansowy',
+    phoneNumber: '+48555444333',
+    telegramId: null,
+    roles: ['financial_director'],
+    isActive: true,
+  },
+  {
+    email: 'jan.wykonawca@ispik.eu',
+    firstName: 'Jan',
+    lastName: 'Wykonawczy',
+    middleNames: null,
+    position: 'Przedstawiciel Wykonawcy',
+    phoneNumber: '+48444333222',
+    telegramId: null,
+    roles: ['contractor'],
+    isActive: true,
+  },
 ];
 
 const departmentsToSeed = [
@@ -153,6 +187,14 @@ async function main() {
         city: 'Warszawa',
         country: 'Polska',
       }
+    });
+  }
+
+  console.log('Linking contractor user to contractor...');
+  if (createdUsers['jan.wykonawca@ispik.eu']) {
+    await prisma.user.update({
+      where: { id: createdUsers['jan.wykonawca@ispik.eu'].id },
+      data: { contractor_id: contractor.id }
     });
   }
 

@@ -295,14 +295,7 @@ export function ContractorsPage({ canManage }: ContractorsPageProps) {
       </div>
 
       <article className="w-full overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-sm animate-fade-in mb-3">
-        <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
-          <div>
-            <p className="text-sm font-semibold">Lista partnerów handlowych</p>
-            <p className="text-xs text-[var(--muted-foreground)]">
-              Pokazano {filteredContractors.length} z {contractors.length} firm
-            </p>
-          </div>
-        </div>
+
 
         <div className="overflow-x-auto hide-scrollbar">
           {isPending ? (
@@ -323,10 +316,10 @@ export function ContractorsPage({ canManage }: ContractorsPageProps) {
               <table className="w-full whitespace-nowrap border-separate border-spacing-0 text-[13px]">
                 <thead className="sticky top-0 z-10">
                   <tr className="bg-[var(--background)]/95 backdrop-blur supports-[backdrop-filter]:bg-[var(--background)]/80">
-                    <th className="border-b border-[var(--border)] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">{t('contractors.table.headers.name')}</th>
-                    <th className="border-b border-[var(--border)] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">{t('contractors.table.headers.taxNumber')}</th>
-                    <th className="border-b border-[var(--border)] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">{t('contractors.table.headers.createdAt')}</th>
-                    <th className="border-b border-[var(--border)] px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">Akcje</th>
+                    <th className="border-b border-[var(--border)] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">{t('contractors.table.headers.name')}</th>
+                    <th className="border-b border-[var(--border)] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">{t('contractors.table.headers.taxNumber')}</th>
+                    <th className="border-b border-[var(--border)] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">{t('contractors.table.headers.createdAt')}</th>
+                    <th className="border-b border-[var(--border)] px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">Akcje</th>
                   </tr>
                 </thead>
 
@@ -337,9 +330,9 @@ export function ContractorsPage({ canManage }: ContractorsPageProps) {
                       className="group transition-colors odd:bg-[var(--background)]/25 hover:bg-[var(--sidebar-accent)]/35 animate-row-fade-in"
                       style={{ animationDelay: `${index * 35}ms` }}
                     >
-                      <td className="border-b border-[var(--border)] px-4 py-3 align-middle whitespace-normal">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <p className="font-semibold text-sm leading-snug text-[var(--foreground)]">
+                      <td className="border-b border-[var(--border)] px-4 py-3 align-middle">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-medium text-sm text-[var(--foreground)]">
                             {c.name}
                           </p>
                           {c.short_name && (
@@ -348,48 +341,37 @@ export function ContractorsPage({ canManage }: ContractorsPageProps) {
                             </span>
                           )}
                         </div>
-                        {/* {c.street || c.city ? (
-                          <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-                            {c.street ? `${c.street}, ` : ''}{c.postal_code ? `${c.postal_code} ` : ''}{c.city ? `${c.city}` : ''}{c.country ? `, ${c.country}` : ''}
-                          </p>
-                        ) : (
-                          <p className="mt-1 text-xs text-[var(--muted-foreground)]/50 italic">Brak adresu</p>
-                        )}
-                        {c.notes ? (
-                          <p className="mt-1.5 text-xs text-amber-500/90 italic leading-relaxed whitespace-pre-wrap max-w-md">
-                            * {c.notes}
-                          </p>
-                        ) : null} */}
                       </td>
                       <td className="border-b border-[var(--border)] px-4 py-3 align-middle">
-                        <span className="font-mono bg-[var(--muted)]/50 px-2 py-0.5 rounded text-xs font-semibold text-[var(--foreground)]">
+                        <span className="font-mono bg-[var(--muted)]/50 px-2 py-1 rounded text-xs font-medium text-[var(--foreground)]">
                           {c.tax_number || t('contractors.table.noTaxNumber')}
                         </span>
                       </td>
-                      <td className="border-b border-[var(--border)] px-4 py-3 align-middle text-[var(--muted-foreground)]">
+                      <td className="border-b border-[var(--border)] px-4 py-3 align-middle text-sm text-[var(--muted-foreground)]">
                         {c.created_at ? new Date(c.created_at).toLocaleDateString() : '-'}
                       </td>
                       <td className="border-b border-[var(--border)] px-4 py-3 align-middle text-right">
-                        <div className="inline-flex gap-1.5">
+                        <div className="inline-flex gap-2">
                           <Button
                             type="button"
                             variant="outline"
-                            size="sm"
+                            size="icon"
+                            className="h-8 w-8"
                             onClick={() => openEditModal(c)}
                             title={t('contractors.actions.edit')}
                           >
-                            <PencilLine size={13} />
+                            <PencilLine size={14} />
                           </Button>
                           <Button
                             type="button"
                             variant="outline"
-                            size="sm"
-                            className="text-rose-500 border-rose-500/20 hover:bg-rose-500/10"
+                            size="icon"
+                            className="h-8 w-8 text-rose-500 border-rose-500/20 hover:bg-rose-500/10 hover:text-rose-600"
                             onClick={() => handleDelete(c.id)}
                             disabled={deleteMutation.isPending}
                             title={t('contractors.actions.delete')}
                           >
-                            <Trash2 size={13} />
+                            <Trash2 size={14} />
                           </Button>
                         </div>
                       </td>
