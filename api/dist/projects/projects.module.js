@@ -12,6 +12,7 @@ const bullmq_1 = require("@nestjs/bullmq");
 const projects_controller_1 = require("./projects.controller");
 const projects_service_1 = require("./projects.service");
 const projects_sync_consumer_1 = require("./projects-sync.consumer");
+const planned_expenses_module_1 = require("../planned-expenses/planned-expenses.module");
 let ProjectsModule = class ProjectsModule {
 };
 exports.ProjectsModule = ProjectsModule;
@@ -21,6 +22,7 @@ exports.ProjectsModule = ProjectsModule = __decorate([
             bullmq_1.BullModule.registerQueue({
                 name: 'projects-sync',
             }),
+            planned_expenses_module_1.PlannedExpensesModule,
         ],
         controllers: [projects_controller_1.ProjectsController],
         providers: [projects_service_1.ProjectsService, projects_sync_consumer_1.ProjectsSyncConsumer],

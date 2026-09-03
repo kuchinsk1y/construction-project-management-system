@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
-import { createUser, fetchUsers, updateUser } from '@/features/users/api'
+import { createUser, fetchUsers, updateUser, deleteUser } from '@/features/users/api'
 import type { ApiUser, CreateUserPayload, UpdateUserPayload, UserRole } from '@/features/users/types'
 
 type UsersPageProps = {
@@ -134,6 +134,7 @@ export function UsersPage({ canView, canAdd, canEdit }: UsersPageProps) {
   const [formError, setFormError] = useState('')
   const [formState, setFormState] = useState<UserFormState>(emptyForm)
   const [notice, setNotice] = useState<NoticeState>(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const showNotice = (tone: NoticeTone, title: string, message: string) => {
     setNotice({ id: Date.now(), tone, title, message })
@@ -203,7 +204,24 @@ export function UsersPage({ canView, canAdd, canEdit }: UsersPageProps) {
     },
   })
 
-  // User deletion has been disabled
+  const deleteMutation = useMutation({
+    mutationFn: deleteUser,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['users'] })
+      setShowModal(false)
+      setShowDeleteConfirm(false)
+      setIsEditMode(false)
+      setEditingId(null)
+      setFormState(emptyForm)
+      setFormError('')
+      showNotice('success', t('users.notices.deleteTitle', 'Użytkownik usunięty'), t('users.notices.deleteMessage', 'Konto zostało pomyślnie usunięte.'))
+    },
+    onError: (mutationError) => {
+      const message = mutationError?.message || 'Nie można usunąć użytkownika.'
+      setShowDeleteConfirm(false)
+      showNotice('error', t('users.notices.deleteErrorTitle', 'Błąd usuwania'), message)
+    },
+  })
 
   const filteredUsers = useMemo(() => {
     const normalized = query.trim().toLowerCase()
@@ -636,16 +654,50 @@ export function UsersPage({ canView, canAdd, canEdit }: UsersPageProps) {
         </div>
 
         {/* Drawer footer */}
-        <div className="flex shrink-0 justify-end gap-2 border-t border-[var(--border)] px-5 py-3">
-          <Button type="button" variant="outline" onClick={() => setShowModal(false)}>{t('users.actions.cancel')}</Button>
-          <Button type="button" onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending}>
-            {(createMutation.isPending || updateMutation.isPending) ? <Loader2 size={14} className="animate-spin" /> : null}
-            {isEditMode ? t('users.actions.save') : t('users.actions.addUser')}
-          </Button>
+        <div className="flex shrink-0 justify-between gap-2 border-t border-[var(--border)] px-5 py-3">
+          <div>
+            {isEditMode && (
+              <Button type="button" variant="destructive" onClick={() => setShowDeleteConfirm(true)}>
+                {t('users.actions.delete', 'Usuń')}
+              </Button>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" onClick={() => setShowModal(false)}>{t('users.actions.cancel')}</Button>
+            <Button type="button" onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending || deleteMutation.isPending}>
+              {(createMutation.isPending || updateMutation.isPending) ? <Loader2 size={14} className="animate-spin" /> : null}
+              {isEditMode ? t('users.actions.save') : t('users.actions.addUser')}
+            </Button>
+          </div>
         </div>
       </aside>
 
-      {/* User deletion confirmation modal removed */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-sm rounded-xl bg-[var(--background)] p-6 shadow-xl border border-[var(--border)]">
+            <h3 className="mb-2 text-lg font-semibold text-[var(--foreground)]">{t('users.modal.deleteConfirmTitle', 'Potwierdź usunięcie')}</h3>
+            <p className="mb-6 text-sm text-[var(--muted-foreground)]">
+              {t('users.modal.deleteConfirmMessage', 'Czy na pewno chcesz usunąć tego użytkownika? Tej operacji nie można cofnąć.')}
+            </p>
+            <div className="flex justify-end gap-3">
+              <Button type="button" variant="outline" onClick={() => setShowDeleteConfirm(false)}>
+                {t('users.actions.cancel', 'Anuluj')}
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => {
+                  if (editingId) deleteMutation.mutate(editingId)
+                }}
+                disabled={deleteMutation.isPending}
+              >
+                {deleteMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : null}
+                {t('users.actions.confirmDelete', 'Usuń bezpowrotnie')}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   )
 }

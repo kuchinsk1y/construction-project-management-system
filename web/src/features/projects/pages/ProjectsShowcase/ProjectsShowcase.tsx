@@ -122,6 +122,7 @@ const emptyForm: CreateProjectPayload = {
 type UserProfile = {
   role?: string
   roles?: string[]
+  contractor_id?: string
 }
 
 type ProjectsShowcaseProps = {
@@ -151,7 +152,19 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
     queryFn: () => apiGet<Array<{ id: number; firstName: string; lastName: string; position?: string; roles?: string[] }>>('/users'),
   })
 
-  const projects = useMemo(() => rawProjects.map(mapApiProjectToItem), [rawProjects])
+  const normalizedRole = (profile?.role ?? '').toLowerCase()
+  const normalizedRoles = (profile?.roles ?? []).map((entry) => entry.toLowerCase())
+  const hasRole = (role: string) => normalizedRole === role || normalizedRoles.includes(role)
+  const isContractor = hasRole('contractor') && !hasRole('admin') && !hasRole('administrator') && !hasRole('operational_director') && !hasRole('project_manager')
+
+  const projects = useMemo(() => {
+    if (!rawProjects) return []
+    let filtered = rawProjects.map(mapApiProjectToItem)
+    if (isContractor) {
+      filtered = filtered.filter((p) => p.contractorId === profile?.contractor_id)
+    }
+    return filtered
+  }, [rawProjects, isContractor, profile?.contractor_id])
 
   // Filters and sorting
   const [searchQuery, setSearchQuery] = useState('')
@@ -342,13 +355,9 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
     }
   }
 
-  const normalizedRole = (profile?.role ?? '').toLowerCase()
-  const normalizedRoles = (profile?.roles ?? []).map((entry) => entry.toLowerCase())
-  const hasRole = (role: string) => normalizedRole === role || normalizedRoles.includes(role)
-
-  const canCreateProject = hasRole('admin') || hasRole('administrator') || hasRole('operational_director')
-  const canEditProject = hasRole('admin') || hasRole('administrator') || hasRole('project_manager') || hasRole('operational_director')
-  const canDeleteProject = hasRole('admin')
+  const canCreateProject = (hasRole('admin') || hasRole('administrator') || hasRole('operational_director')) && !isContractor
+  const canEditProject = (hasRole('admin') || hasRole('administrator') || hasRole('project_manager') || hasRole('operational_director')) && !isContractor
+  const canDeleteProject = hasRole('admin') && !isContractor
 
   const managerList = useMemo(() => {
     return users.filter((u) => {

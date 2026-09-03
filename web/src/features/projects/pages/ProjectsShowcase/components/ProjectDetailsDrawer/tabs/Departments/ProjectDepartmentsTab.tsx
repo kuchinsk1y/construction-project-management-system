@@ -175,7 +175,7 @@ export function ProjectDepartmentsTab({ projectId, canEditProject }: ProjectDepa
                       )}
                     </td>
                     {canEditProject && (
-                      <td className="px-4 py-3 align-middle text-center border-l border-[var(--border)]">
+                      <td className="px-4 py-3 align-top text-center">
                         <Button
                           type="button"
                           variant="outline"

@@ -12,113 +12,26 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PlannedExpensesController = exports.UpdatePlannedExpenseDto = exports.CreatePlannedExpenseDto = void 0;
+exports.PlannedExpensesController = void 0;
 const common_1 = require("@nestjs/common");
-const prisma_service_1 = require("../prisma/prisma.service");
-const class_validator_1 = require("class-validator");
-class CreatePlannedExpenseDto {
-    costCategoryId;
-    plannedPercent;
-}
-exports.CreatePlannedExpenseDto = CreatePlannedExpenseDto;
-__decorate([
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
-    __metadata("design:type", String)
-], CreatePlannedExpenseDto.prototype, "costCategoryId", void 0);
-__decorate([
-    (0, class_validator_1.IsNumber)(),
-    (0, class_validator_1.Min)(0),
-    (0, class_validator_1.Max)(100),
-    __metadata("design:type", Number)
-], CreatePlannedExpenseDto.prototype, "plannedPercent", void 0);
-class UpdatePlannedExpenseDto {
-    costCategoryId;
-    plannedPercent;
-}
-exports.UpdatePlannedExpenseDto = UpdatePlannedExpenseDto;
-__decorate([
-    (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
-    __metadata("design:type", String)
-], UpdatePlannedExpenseDto.prototype, "costCategoryId", void 0);
-__decorate([
-    (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsNumber)(),
-    (0, class_validator_1.Min)(0),
-    (0, class_validator_1.Max)(100),
-    __metadata("design:type", Number)
-], UpdatePlannedExpenseDto.prototype, "plannedPercent", void 0);
+const planned_expenses_service_1 = require("./planned-expenses.service");
+const planned_expense_dto_1 = require("./dto/planned-expense.dto");
 let PlannedExpensesController = class PlannedExpensesController {
-    prisma;
-    constructor(prisma) {
-        this.prisma = prisma;
+    plannedExpensesService;
+    constructor(plannedExpensesService) {
+        this.plannedExpensesService = plannedExpensesService;
     }
     async findAll(projectId) {
-        const expenses = await this.prisma.planned_expenses.findMany({
-            where: { project_id: projectId },
-            include: {
-                cost_categories: true,
-            },
-            orderBy: { id: 'asc' },
-        });
-        return expenses.map((e) => ({
-            id: e.id,
-            projectId: e.project_id,
-            costCategoryId: e.cost_category_id.toString(),
-            costCategoryName: e.cost_categories?.name,
-            plannedPercent: e.planned_percent ? Number(e.planned_percent) : 0,
-        }));
+        return this.plannedExpensesService.findAll(projectId);
     }
     async create(projectId, dto) {
-        const project = await this.prisma.projects.findUnique({ where: { id: projectId } });
-        if (!project)
-            throw new common_1.NotFoundException('Project not found');
-        const expense = await this.prisma.planned_expenses.create({
-            data: {
-                project_id: projectId,
-                cost_category_id: BigInt(dto.costCategoryId),
-                planned_percent: dto.plannedPercent,
-            },
-            include: {
-                cost_categories: true,
-            }
-        });
-        return {
-            id: expense.id,
-            projectId: expense.project_id,
-            costCategoryId: expense.cost_category_id.toString(),
-            costCategoryName: expense.cost_categories?.name,
-            plannedPercent: expense.planned_percent ? Number(expense.planned_percent) : 0,
-        };
+        return this.plannedExpensesService.create(projectId, dto);
     }
     async update(projectId, id, dto) {
-        const data = {};
-        if (dto.costCategoryId)
-            data.cost_category_id = BigInt(dto.costCategoryId);
-        if (dto.plannedPercent !== undefined)
-            data.planned_percent = dto.plannedPercent;
-        const expense = await this.prisma.planned_expenses.update({
-            where: { id },
-            data,
-            include: {
-                cost_categories: true,
-            }
-        });
-        return {
-            id: expense.id,
-            projectId: expense.project_id,
-            costCategoryId: expense.cost_category_id.toString(),
-            costCategoryName: expense.cost_categories?.name,
-            plannedPercent: expense.planned_percent ? Number(expense.planned_percent) : 0,
-        };
+        return this.plannedExpensesService.update(projectId, id, dto);
     }
     async remove(projectId, id) {
-        await this.prisma.planned_expenses.delete({
-            where: { id },
-        });
-        return { success: true };
+        return this.plannedExpensesService.remove(projectId, id);
     }
 };
 exports.PlannedExpensesController = PlannedExpensesController;
@@ -134,7 +47,7 @@ __decorate([
     __param(0, (0, common_1.Param)('projectId')),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, CreatePlannedExpenseDto]),
+    __metadata("design:paramtypes", [String, planned_expense_dto_1.CreatePlannedExpenseDto]),
     __metadata("design:returntype", Promise)
 ], PlannedExpensesController.prototype, "create", null);
 __decorate([
@@ -143,7 +56,7 @@ __decorate([
     __param(1, (0, common_1.Param)('id')),
     __param(2, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, UpdatePlannedExpenseDto]),
+    __metadata("design:paramtypes", [String, String, planned_expense_dto_1.UpdatePlannedExpenseDto]),
     __metadata("design:returntype", Promise)
 ], PlannedExpensesController.prototype, "update", null);
 __decorate([
@@ -156,6 +69,6 @@ __decorate([
 ], PlannedExpensesController.prototype, "remove", null);
 exports.PlannedExpensesController = PlannedExpensesController = __decorate([
     (0, common_1.Controller)('projects/:projectId/planned-expenses'),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [planned_expenses_service_1.PlannedExpensesService])
 ], PlannedExpensesController);
 //# sourceMappingURL=planned-expenses.controller.js.map

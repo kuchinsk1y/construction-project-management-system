@@ -99,6 +99,7 @@ export class AuthService {
       user.roles,
       user.firstName,
       user.lastName,
+      user.contractor_id,
       userAgent,
     );
   }
@@ -134,6 +135,7 @@ export class AuthService {
       record.user.roles,
       record.user.firstName,
       record.user.lastName,
+      record.user.contractor_id,
       userAgent,
     );
   }
@@ -151,6 +153,7 @@ export class AuthService {
     roles: string[],
     firstName: string | null,
     lastName: string | null,
+    contractorId: string | null,
     userAgent: string,
   ): Promise<TokensResponseDto> {
     const accessToken = this.jwt.sign({
@@ -159,6 +162,7 @@ export class AuthService {
       roles,
       firstName,
       lastName,
+      contractor_id: contractorId,
     });
 
     const refreshToken = randomUUID();

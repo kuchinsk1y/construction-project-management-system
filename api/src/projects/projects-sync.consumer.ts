@@ -38,7 +38,13 @@ export class ProjectsSyncConsumer extends WorkerHost {
     const project = await this.prisma.projects.findUnique({
       where: { id: projectId },
       include: {
-        contractors: { select: { name: true } },
+        contractors: {
+          select: {
+            name: true,
+            tax_number: true,
+            users: { select: { firstName: true, lastName: true } },
+          },
+        },
         project_types: { select: { name: true } },
         users_projects_manager_idTousers: {
           select: { firstName: true, lastName: true },
@@ -82,9 +88,16 @@ export class ProjectsSyncConsumer extends WorkerHost {
       ? project.end_date_fact.toISOString().split('T')[0]
       : '';
 
+    const firstContractorUser = project.contractors?.users?.[0];
+    const contractorRep = firstContractorUser
+      ? `${firstContractorUser.firstName} ${firstContractorUser.lastName}`
+      : '';
+
     const syncData = {
       id: project.id,
       contractor: project.contractors?.name ?? '',
+      contractorRepresentative: contractorRep,
+      nip: project.contractors?.tax_number ?? '',
       project: project.name,
       location: project.city
         ? `${project.city}, ${project.country}`
@@ -110,21 +123,38 @@ export class ProjectsSyncConsumer extends WorkerHost {
       project.id,
     );
 
-    if (rowIndex) {
-      this.logger.log(
-        `Updating existing row ${rowIndex} in Google Sheets for project ${project.id}`,
-      );
-      await this.sheetsService.updateRow(
-        spreadsheetId,
-        sheetName,
-        rowIndex,
-        syncData,
-      );
-    } else {
-      this.logger.log(
-        `Appending new row to Google Sheets for project ${project.id}`,
-      );
-      await this.sheetsService.appendRow(spreadsheetId, sheetName, syncData);
+    try {
+      if (rowIndex) {
+        this.logger.log(
+          `Updating existing row ${rowIndex} in Google Sheets for project ${project.id}`,
+        );
+        await this.sheetsService.updateRow(
+          spreadsheetId,
+          sheetName,
+          rowIndex,
+          syncData,
+        );
+      } else {
+        this.logger.log(
+          `Appending new row to Google Sheets for project ${project.id}`,
+        );
+        await this.sheetsService.appendRow(spreadsheetId, sheetName, syncData);
+      }
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to sync project ${project.id} to Google Sheets: ${errMsg}`);
+      
+      const errorsSheet = this.config.get<string>('SYNC_ERRORS_SHEET_NAME', 'SyncErrors');
+      try {
+        await this.sheetsService.appendRow(spreadsheetId, errorsSheet, {
+          timestamp: new Date().toISOString(),
+          action: 'SYNC_PROJECT',
+          error_message: errMsg,
+          payload: JSON.stringify(syncData),
+        });
+      } catch (logErr) {
+        this.logger.error(`Failed to write to SyncErrors sheet: ${logErr}`);
+      }
     }
   }
 }

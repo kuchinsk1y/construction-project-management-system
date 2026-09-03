@@ -42,35 +42,6 @@ export class DepartmentsService {
       },
     });
 
-    const spreadsheetId = this.config.getOrThrow<string>('PROJECTS_SPREADSHEET_ID');
-    const sheetName = this.config.get<string>('DEPARTMENTS_SHEET_NAME', 'Dzialy');
-    
-    const syncData = {
-      id: Number(created.id),
-      name: created.name,
-      description: created.description ?? '',
-      icon: created.icon,
-      is_active: created.is_active ? 'TRUE' : 'FALSE',
-    };
-
-    try {
-      await this.sheetsService.appendRow(spreadsheetId, sheetName, syncData);
-    } catch (error) {
-      await this.prisma.departments.delete({ where: { id: created.id } });
-      
-      const errMsg = error instanceof Error ? error.message : String(error);
-      const errorsSheet = this.config.get<string>('SYNC_ERRORS_SHEET_NAME', 'SyncErrors');
-      try {
-        await this.sheetsService.appendRow(spreadsheetId, errorsSheet, {
-          timestamp: new Date().toISOString(),
-          action: 'CREATE_DEPARTMENT',
-          error_message: errMsg,
-          payload: JSON.stringify(syncData),
-        });
-      } catch (logErr) {}
-      throw new InternalServerErrorException('Nie udało się zapisać działu w Google Sheets');
-    }
-
     return { ...created, id: Number(created.id) };
   }
 
@@ -84,38 +55,6 @@ export class DepartmentsService {
 
     if (!existing) {
       throw new NotFoundException('Department not found');
-    }
-
-    const spreadsheetId = this.config.getOrThrow<string>('PROJECTS_SPREADSHEET_ID');
-    const sheetName = this.config.get<string>('DEPARTMENTS_SHEET_NAME', 'Dzialy');
-
-    const syncData = {
-      id: Number(id),
-      name: data.name ?? existing.name,
-      description: data.description !== undefined ? (data.description ?? '') : (existing.description ?? ''),
-      icon: data.icon ?? existing.icon,
-      is_active: data.is_active !== undefined ? (data.is_active ? 'TRUE' : 'FALSE') : (existing.is_active ? 'TRUE' : 'FALSE'),
-    };
-
-    try {
-      const rowIndex = await this.sheetsService.findRowIndexById(spreadsheetId, sheetName, id.toString());
-      if (rowIndex) {
-        await this.sheetsService.updateRow(spreadsheetId, sheetName, rowIndex, syncData);
-      } else {
-        await this.sheetsService.appendRow(spreadsheetId, sheetName, syncData);
-      }
-    } catch (error) {
-      const errMsg = error instanceof Error ? error.message : String(error);
-      const errorsSheet = this.config.get<string>('SYNC_ERRORS_SHEET_NAME', 'SyncErrors');
-      try {
-        await this.sheetsService.appendRow(spreadsheetId, errorsSheet, {
-          timestamp: new Date().toISOString(),
-          action: 'UPDATE_DEPARTMENT',
-          error_message: errMsg,
-          payload: JSON.stringify(syncData),
-        });
-      } catch (logErr) {}
-      throw new InternalServerErrorException('Nie udało się zaktualizować działu w Google Sheets');
     }
 
     const updated = await this.prisma.departments.update({

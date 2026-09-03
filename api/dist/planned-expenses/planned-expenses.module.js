@@ -9,6 +9,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PlannedExpensesModule = void 0;
 const common_1 = require("@nestjs/common");
 const planned_expenses_controller_1 = require("./planned-expenses.controller");
+const planned_expenses_service_1 = require("./planned-expenses.service");
 const prisma_module_1 = require("../prisma/prisma.module");
 let PlannedExpensesModule = class PlannedExpensesModule {
 };
@@ -17,6 +18,8 @@ exports.PlannedExpensesModule = PlannedExpensesModule = __decorate([
     (0, common_1.Module)({
         imports: [prisma_module_1.PrismaModule],
         controllers: [planned_expenses_controller_1.PlannedExpensesController],
+        providers: [planned_expenses_service_1.PlannedExpensesService],
+        exports: [planned_expenses_service_1.PlannedExpensesService],
     })
 ], PlannedExpensesModule);
 //# sourceMappingURL=planned-expenses.module.js.map

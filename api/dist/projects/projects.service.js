@@ -20,6 +20,7 @@ const crypto_1 = require("crypto");
 const config_1 = require("@nestjs/config");
 const prisma_service_1 = require("../prisma/prisma.service");
 const google_sheets_service_1 = require("../google-sheets/google-sheets.service");
+const planned_expenses_service_1 = require("../planned-expenses/planned-expenses.service");
 function sanitizeDecimals(obj) {
     return JSON.parse(JSON.stringify(obj, (_key, value) => {
         if (typeof value === 'bigint')
@@ -32,11 +33,13 @@ let ProjectsService = class ProjectsService {
     syncQueue;
     config;
     sheetsService;
-    constructor(prisma, syncQueue, config, sheetsService) {
+    plannedExpensesService;
+    constructor(prisma, syncQueue, config, sheetsService, plannedExpensesService) {
         this.prisma = prisma;
         this.syncQueue = syncQueue;
         this.config = config;
         this.sheetsService = sheetsService;
+        this.plannedExpensesService = plannedExpensesService;
     }
     async list() {
         const rows = await this.prisma.projects.findMany({
@@ -148,41 +151,6 @@ let ProjectsService = class ProjectsService {
         }
         const spreadsheetId = this.config.getOrThrow('PROJECTS_SPREADSHEET_ID');
         const sheetName = this.config.getOrThrow('PROJECTS_SHEET_NAME');
-        const syncData = {
-            id: projectId,
-            contractor: contractor?.name ?? '',
-            project: dto.name,
-            location: dto.city ? `${dto.city}, ${dto.country}` : (dto.country ?? ''),
-            dateFrom: dto.startDateContract ? dto.startDateContract.split('T')[0] : '',
-            dateTo: dto.endDateContract ? dto.endDateContract.split('T')[0] : '',
-            projectType: pType?.name ?? '',
-            pin: dto.pinUrl ?? '',
-            manager: managerName,
-            power: dto.power ?? '',
-            dokumentationUrl: dto.dokumentationUrl ?? '',
-            country: dto.country ?? '',
-            status: dto.status ?? 'DRAFT',
-            dateFromFact: dto.startDateFact ? dto.startDateFact.split('T')[0] : '',
-            dateToFact: dto.endDateFact ? dto.endDateFact.split('T')[0] : '',
-            warrantyPercent: dto.warrantyPercent ?? '',
-        };
-        try {
-            await this.sheetsService.appendRow(spreadsheetId, sheetName, syncData);
-        }
-        catch (error) {
-            const errMsg = error instanceof Error ? error.message : String(error);
-            const errorsSheet = this.config.get('SYNC_ERRORS_SHEET_NAME', 'SyncErrors');
-            try {
-                await this.sheetsService.appendRow(spreadsheetId, errorsSheet, {
-                    timestamp: new Date().toISOString(),
-                    action: 'CREATE_PROJECT',
-                    error_message: errMsg,
-                    payload: JSON.stringify(syncData),
-                });
-            }
-            catch (logErr) { }
-            throw new common_1.InternalServerErrorException('Nie udało się zapisać projektu w Google Sheets');
-        }
         const project = await this.prisma.projects.create({
             data: {
                 id: projectId,
@@ -220,6 +188,10 @@ let ProjectsService = class ProjectsService {
                 },
             },
         });
+        await this.syncQueue.add('sync', {
+            projectId: project.id,
+            action: 'create',
+        });
         let defaultCostCategory = await this.prisma.cost_categories.findFirst({
             where: { name: 'Wypłata' },
         });
@@ -228,12 +200,9 @@ let ProjectsService = class ProjectsService {
                 data: { name: 'Wypłata', is_salary: true },
             });
         }
-        await this.prisma.planned_expenses.create({
-            data: {
-                project_id: project.id,
-                cost_category_id: defaultCostCategory.id,
-                planned_percent: 100,
-            }
+        await this.plannedExpensesService.create(project.id, {
+            costCategoryId: defaultCostCategory.id.toString(),
+            plannedPercent: 100,
         });
         return sanitizeDecimals({
             id: project.id,
@@ -503,6 +472,34 @@ let ProjectsService = class ProjectsService {
                 invoicing_percentage: dto.invoicingPercentage ?? null,
             },
         });
+        const spreadsheetId = this.config.getOrThrow('PROJECTS_SPREADSHEET_ID');
+        const sheetName = this.config.get('MILESTONES_SHEET_NAME', 'KamienieMilowe');
+        const syncData = {
+            id: row.id,
+            projectId: project.id,
+            projectName: project.name,
+            milestoneNo: row.milestone_no,
+            type: row.type,
+            description: row.description ?? '',
+            percentage: Number(row.percentage),
+            netAmount: Number(row.net_amount),
+        };
+        try {
+            await this.sheetsService.appendRow(spreadsheetId, sheetName, syncData);
+        }
+        catch (error) {
+            const errMsg = error instanceof Error ? error.message : String(error);
+            const errorsSheet = this.config.get('SYNC_ERRORS_SHEET_NAME', 'SyncErrors');
+            try {
+                await this.sheetsService.appendRow(spreadsheetId, errorsSheet, {
+                    timestamp: new Date().toISOString(),
+                    action: 'CREATE_MILESTONE',
+                    error_message: errMsg,
+                    payload: JSON.stringify(syncData),
+                });
+            }
+            catch (logErr) { }
+        }
         return {
             id: row.id,
             projectId: row.project_id,
@@ -563,6 +560,43 @@ let ProjectsService = class ProjectsService {
                 invoicing_percentage: dto.invoicingPercentage,
             },
         });
+        const project = await this.prisma.projects.findUnique({
+            where: { id: row.project_id },
+        });
+        const spreadsheetId = this.config.getOrThrow('PROJECTS_SPREADSHEET_ID');
+        const sheetName = this.config.get('MILESTONES_SHEET_NAME', 'KamienieMilowe');
+        const syncData = {
+            id: row.id,
+            projectId: row.project_id,
+            projectName: project?.name ?? '',
+            milestoneNo: row.milestone_no,
+            type: row.type,
+            description: row.description ?? '',
+            percentage: Number(row.percentage),
+            netAmount: Number(row.net_amount),
+        };
+        try {
+            const rowIndex = await this.sheetsService.findRowIndexById(spreadsheetId, sheetName, row.id);
+            if (rowIndex) {
+                await this.sheetsService.updateRow(spreadsheetId, sheetName, rowIndex, syncData);
+            }
+            else {
+                await this.sheetsService.appendRow(spreadsheetId, sheetName, syncData);
+            }
+        }
+        catch (error) {
+            const errMsg = error instanceof Error ? error.message : String(error);
+            const errorsSheet = this.config.get('SYNC_ERRORS_SHEET_NAME', 'SyncErrors');
+            try {
+                await this.sheetsService.appendRow(spreadsheetId, errorsSheet, {
+                    timestamp: new Date().toISOString(),
+                    action: 'UPDATE_MILESTONE',
+                    error_message: errMsg,
+                    payload: JSON.stringify(syncData),
+                });
+            }
+            catch (logErr) { }
+        }
         return {
             id: row.id,
             projectId: row.project_id,
@@ -666,7 +700,45 @@ let ProjectsService = class ProjectsService {
                 planned_start: dto.plannedStart ? new Date(dto.plannedStart) : null,
                 planned_end: dto.plannedEnd ? new Date(dto.plannedEnd) : null,
             },
+            include: {
+                projects: { select: { name: true } },
+                milestones: { select: { milestone_no: true } },
+                departments: { select: { name: true } },
+            },
         });
+        const spreadsheetId = this.config.getOrThrow('PROJECTS_SPREADSHEET_ID');
+        const sheetName = this.config.get('WORK_TYPES_SHEET_NAME', 'RodzajeRobot');
+        const syncData = {
+            id: row.id,
+            projectId: row.project_id,
+            projectName: row.projects?.name ?? '',
+            milestoneId: row.milestone_id ?? '',
+            milestoneNo: row.milestones?.milestone_no ?? '',
+            departmentId: Number(row.department_id),
+            departmentName: row.departments?.name ?? '',
+            jobType: row.name,
+            unit: row.unit ?? '',
+            totalQuantity: row.total_quantity ? Number(row.total_quantity) : 0,
+            percentage: row.percentage ? Number(row.percentage) : '',
+            plannedStart: row.planned_start ? row.planned_start.toISOString().split('T')[0] : '',
+            plannedEnd: row.planned_end ? row.planned_end.toISOString().split('T')[0] : '',
+        };
+        try {
+            await this.sheetsService.appendRow(spreadsheetId, sheetName, syncData);
+        }
+        catch (error) {
+            const errMsg = error instanceof Error ? error.message : String(error);
+            const errorsSheet = this.config.get('SYNC_ERRORS_SHEET_NAME', 'SyncErrors');
+            try {
+                await this.sheetsService.appendRow(spreadsheetId, errorsSheet, {
+                    timestamp: new Date().toISOString(),
+                    action: 'CREATE_WORK_TYPE',
+                    error_message: errMsg,
+                    payload: JSON.stringify(syncData),
+                });
+            }
+            catch (logErr) { }
+        }
         return {
             id: row.id,
             projectId: row.project_id,
@@ -693,7 +765,51 @@ let ProjectsService = class ProjectsService {
                     : undefined,
                 planned_end: dto.plannedEnd ? new Date(dto.plannedEnd) : undefined,
             },
+            include: {
+                projects: { select: { name: true } },
+                milestones: { select: { milestone_no: true } },
+                departments: { select: { name: true } },
+            },
         });
+        const spreadsheetId = this.config.getOrThrow('PROJECTS_SPREADSHEET_ID');
+        const sheetName = this.config.get('WORK_TYPES_SHEET_NAME', 'RodzajeRobot');
+        const syncData = {
+            id: row.id,
+            projectId: row.project_id,
+            projectName: row.projects?.name ?? '',
+            milestoneId: row.milestone_id ?? '',
+            milestoneNo: row.milestones?.milestone_no ?? '',
+            departmentId: Number(row.department_id),
+            departmentName: row.departments?.name ?? '',
+            jobType: row.name,
+            unit: row.unit ?? '',
+            totalQuantity: row.total_quantity ? Number(row.total_quantity) : 0,
+            percentage: row.percentage ? Number(row.percentage) : '',
+            plannedStart: row.planned_start ? row.planned_start.toISOString().split('T')[0] : '',
+            plannedEnd: row.planned_end ? row.planned_end.toISOString().split('T')[0] : '',
+        };
+        try {
+            const rowIndex = await this.sheetsService.findRowIndexById(spreadsheetId, sheetName, row.id);
+            if (rowIndex) {
+                await this.sheetsService.updateRow(spreadsheetId, sheetName, rowIndex, syncData);
+            }
+            else {
+                await this.sheetsService.appendRow(spreadsheetId, sheetName, syncData);
+            }
+        }
+        catch (error) {
+            const errMsg = error instanceof Error ? error.message : String(error);
+            const errorsSheet = this.config.get('SYNC_ERRORS_SHEET_NAME', 'SyncErrors');
+            try {
+                await this.sheetsService.appendRow(spreadsheetId, errorsSheet, {
+                    timestamp: new Date().toISOString(),
+                    action: 'UPDATE_WORK_TYPE',
+                    error_message: errMsg,
+                    payload: JSON.stringify(syncData),
+                });
+            }
+            catch (logErr) { }
+        }
         return {
             id: row.id,
             name: row.name,
@@ -914,6 +1030,7 @@ exports.ProjectsService = ProjectsService = __decorate([
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
         bullmq_2.Queue,
         config_1.ConfigService,
-        google_sheets_service_1.GoogleSheetsService])
+        google_sheets_service_1.GoogleSheetsService,
+        planned_expenses_service_1.PlannedExpensesService])
 ], ProjectsService);
 //# sourceMappingURL=projects.service.js.map

@@ -178,6 +178,7 @@ export type ProjectItem = {
   location: string
   country: string
   contractor: string
+  contractorId?: string | null
   projectType: string
   dokumentationUrl: string | null
   pinUrl: string | null
@@ -221,6 +222,7 @@ export function mapApiProjectToItem(p: ApiProject): ProjectItem {
     location,
     country: countryStr,
     contractor: p.contractors?.name ?? '-',
+    contractorId: p.contractors?.id ?? null,
     projectType: p.project_types?.name ?? '-',
     dokumentationUrl: p.dokumentationUrl ?? null,
     pinUrl: p.pinUrl ?? null,

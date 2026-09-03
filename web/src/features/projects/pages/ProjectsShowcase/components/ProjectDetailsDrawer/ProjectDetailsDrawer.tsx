@@ -71,6 +71,7 @@ type ProjectDetailsDrawerProps = {
   createMilestonesBatchMutation: UseMutationResult<void, Error, CreateMilestonePayload[], unknown>
   updateMilestoneMutation: UseMutationResult<ApiMilestone, Error, { id: string; payload: Partial<CreateMilestonePayload> }, unknown>
   deleteMilestoneMutation: UseMutationResult<void, Error, string, unknown>
+  isContractor?: boolean
 
   formatDate: (val: string | undefined | null, fallback?: string) => string
   formatBudget: (val: number, currency?: string) => string
@@ -127,6 +128,7 @@ export function ProjectDetailsDrawer({
   createMilestonesBatchMutation,
   updateMilestoneMutation,
   deleteMilestoneMutation,
+  isContractor = false,
   formatDate,
   formatBudget,
   statusTone,
@@ -552,19 +554,21 @@ export function ProjectDetailsDrawer({
             >
               Ogólne
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('expenses')
-                setMilestoneError('')
-              }}
-              className={`pb-2 px-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${activeTab === 'expenses'
-                ? 'border-[var(--sidebar-primary)] text-[var(--sidebar-primary)]'
-                : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
-                }`}
-            >
-              Rodzaje wydatków
-            </button>
+            {!isContractor && (
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('expenses')
+                  setMilestoneError('')
+                }}
+                className={`pb-2 px-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${activeTab === 'expenses'
+                  ? 'border-[var(--sidebar-primary)] text-[var(--sidebar-primary)]'
+                  : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                  }`}
+              >
+                Rodzaje wydatków
+              </button>
+            )}
             <button
               type="button"
               onClick={() => {
@@ -580,19 +584,21 @@ export function ProjectDetailsDrawer({
             </button>
             {(milestones.length > 0 || milestonesLoading) && (
               <>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('departments')
-                    setMilestoneError('')
-                  }}
-                  className={`pb-2 px-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${activeTab === 'departments'
-                    ? 'border-[var(--sidebar-primary)] text-[var(--sidebar-primary)]'
-                    : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
-                    }`}
-                >
-                  Działy
-                </button>
+                {!isContractor && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('departments')
+                      setMilestoneError('')
+                    }}
+                    className={`pb-2 px-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${activeTab === 'departments'
+                      ? 'border-[var(--sidebar-primary)] text-[var(--sidebar-primary)]'
+                      : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                      }`}
+                  >
+                    Działy
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => {

@@ -1,15 +1,8 @@
-import { PrismaService } from '../prisma/prisma.service';
-export declare class CreatePlannedExpenseDto {
-    costCategoryId: string;
-    plannedPercent: number;
-}
-export declare class UpdatePlannedExpenseDto {
-    costCategoryId?: string;
-    plannedPercent?: number;
-}
+import { PlannedExpensesService } from './planned-expenses.service';
+import { CreatePlannedExpenseDto, UpdatePlannedExpenseDto } from './dto/planned-expense.dto';
 export declare class PlannedExpensesController {
-    private readonly prisma;
-    constructor(prisma: PrismaService);
+    private readonly plannedExpensesService;
+    constructor(plannedExpensesService: PlannedExpensesService);
     findAll(projectId: string): Promise<{
         id: string;
         projectId: string;

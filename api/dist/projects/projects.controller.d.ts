@@ -44,8 +44,8 @@ export declare class ProjectsController {
     create(dto: CreateProjectDto): Promise<Record<string, unknown>>;
     update(id: string, dto: UpdateProjectDto): Promise<Record<string, unknown>>;
     listContractors(): Promise<{
-        name: string;
         id: string;
+        name: string;
     }[]>;
     listProjectTypes(): Promise<{
         id: number;
