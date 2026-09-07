@@ -4,6 +4,7 @@ import { ProjectsController } from './projects.controller';
 import { ProjectsService } from './projects.service';
 import { ProjectsSyncConsumer } from './projects-sync.consumer';
 import { PlannedExpensesModule } from '../planned-expenses/planned-expenses.module';
+import { MailModule } from '../mail/mail.module';
 
 @Module({
   imports: [
@@ -11,6 +12,7 @@ import { PlannedExpensesModule } from '../planned-expenses/planned-expenses.modu
       name: 'projects-sync',
     }),
     PlannedExpensesModule,
+    MailModule,
   ],
   controllers: [ProjectsController],
   providers: [ProjectsService, ProjectsSyncConsumer],

@@ -1,4 +1,4 @@
-import { Layers, Loader2, Plus, Wallet } from 'lucide-react' // Trash2
+import { Layers, Loader2, Plus } from 'lucide-react'
 import type { UseMutationResult } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import type { ApiMilestone, CreateMilestonePayload, ApiProject } from '@/features/projects/types'

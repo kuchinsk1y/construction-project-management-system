@@ -1,6 +1,7 @@
-import { Bell, CircleUserRound, LogOut, Menu, Moon, Sun, X } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { Bell, CircleUserRound, LogOut, Menu, Moon, Sun, X, MoreVertical, Building2 } from 'lucide-react'
+import { useMemo, useState, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { NavLink, useLocation } from 'react-router-dom'
 
 import { Button } from '@/components/ui/button'
 import { workspaceNavigation } from '@/features/workspace/config/navigation'
@@ -17,7 +18,7 @@ type WorkspaceShellProps = {
   profile: UserProfile | null
 }
 
-function titleForSection(section: WorkspaceSection): string {
+function titleForSection(section: string): string {
   const item = workspaceNavigation.find((entry) => entry.key === section)
   return item?.label ?? 'Projekty'
 }
@@ -25,7 +26,28 @@ function titleForSection(section: WorkspaceSection): string {
 export function WorkspaceShell({ onLogout, theme, themePreset, onThemePresetChange, onToggleTheme, profile }: WorkspaceShellProps) {
   const { t, i18n } = useTranslation()
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
-  const [activeSection, setActiveSection] = useState<WorkspaceSection>('dashboard')
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
+  const profileMenuRef = useRef<HTMLDivElement>(null)
+  const location = useLocation()
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setIsProfileMenuOpen(false)
+      }
+    }
+    if (isProfileMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isProfileMenuOpen])
+  
+  const activeSection = useMemo(() => {
+    const path = location.pathname.split('/')[1]
+    return (path || 'projects') as WorkspaceSection
+  }, [location.pathname])
 
   const isAdmin = useMemo(() => {
     const role = (profile?.role ?? '').toLowerCase()
@@ -66,19 +88,6 @@ export function WorkspaceShell({ onLogout, theme, themePreset, onThemePresetChan
     [canViewUsers, isAdminOrDirector, canViewDepartments, isContractor],
   )
 
-  // Adjust active section state during render if user permissions have changed and they can no longer access the current section
-  let currentSection = activeSection
-  if (!canViewUsers && activeSection === 'users') {
-    currentSection = 'projects'
-  } else if (!isAdminOrDirector && activeSection === 'contractors') {
-    currentSection = 'projects'
-  } else if (!canViewDepartments && activeSection === 'departments') {
-    currentSection = 'projects'
-  }
-  if (currentSection !== activeSection) {
-    setActiveSection(currentSection)
-  }
-
   const profileName = useMemo(
     () => [profile?.firstName, profile?.lastName].filter(Boolean).join(' ') || t('workspace.userFallback'),
     [profile?.firstName, profile?.lastName, t],
@@ -93,52 +102,75 @@ export function WorkspaceShell({ onLogout, theme, themePreset, onThemePresetChan
 
       <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto custom-scrollbar p-2.5">
         {navigationItems.map(({ key, label, icon: Icon }) => {
-          const active = key === activeSection
           return (
-            <button
+            <NavLink
               key={key}
-              type="button"
-              onClick={() => {
-                setActiveSection(key)
-                setIsMobileSidebarOpen(false)
-              }}
-              className={[
-                'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-sm transition-colors',
-                active
-                  ? 'bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)]'
-                  : 'text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)] hover:text-[var(--sidebar-accent-foreground)]',
-              ].join(' ')}
+              to={`/${key}`}
+              onClick={() => setIsMobileSidebarOpen(false)}
+              className={({ isActive }) =>
+                [
+                  'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-sm transition-colors',
+                  isActive || (key === 'projects' && activeSection === 'projects')
+                    ? 'bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)]'
+                    : 'text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)] hover:text-[var(--sidebar-accent-foreground)]',
+                ].join(' ')
+              }
             >
               <Icon size={16} />
               <span>{label}</span>
-            </button>
+            </NavLink>
           )
         })}
       </nav>
 
-      <div className="shrink-0 border-t border-[var(--sidebar-border)] p-3">
-        <div className="flex items-center justify-between gap-2 rounded-xl p-1.5 transition-colors hover:bg-[var(--sidebar-accent)]/50 group">
-          <div className="flex items-center gap-2.5 min-w-0 flex-1" title={profile?.email || profileName}>
+      <div className="shrink-0 border-t border-[var(--sidebar-border)] p-3 relative" ref={profileMenuRef}>
+        {isProfileMenuOpen && (
+          <div className="absolute bottom-full left-3 right-3 mb-2 rounded-xl border border-[var(--border)] bg-[var(--card)] p-2 shadow-lg animate-in fade-in zoom-in-95 duration-100 z-50">
+            <div className="flex flex-col gap-1 mb-2 px-2 pb-2 border-b border-[var(--border)]">
+              <p className="text-sm font-semibold text-[var(--foreground)]">{profileName}</p>
+              <p className="text-xs text-[var(--muted-foreground)]">{profile?.email}</p>
+              {isContractor && profile?.contractor_name && (
+                <div className="flex items-center gap-1.5 mt-1 text-xs font-medium text-amber-500 bg-amber-500/10 px-2 py-1 rounded-md w-fit">
+                  <Building2 size={12} />
+                  <span>{profile.contractor_name}</span>
+                </div>
+              )}
+            </div>
+            <button
+              onClick={() => {
+                setIsMobileSidebarOpen(false)
+                setIsProfileMenuOpen(false)
+                onLogout()
+              }}
+              className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-rose-500 hover:bg-rose-500/10 transition-colors"
+            >
+              <LogOut size={16} />
+              <span>{t('workspace.logout')}</span>
+            </button>
+          </div>
+        )}
+        
+        <button
+          onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+          className="flex w-full items-center justify-between gap-2 rounded-xl p-1.5 transition-colors hover:bg-[var(--sidebar-accent)]/50 group text-left"
+        >
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
             <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] shadow-sm">
               <CircleUserRound size={16} />
             </div>
             <div className="min-w-0 leading-tight flex-1">
               <p className="truncate text-sm font-bold text-[var(--sidebar-foreground)]">{profileName}</p>
-              <p className="truncate text-xs text-[var(--muted-foreground)]">{profile?.email || t('workspace.signedIn')}</p>
+              {isContractor && profile?.contractor_name ? (
+                <p className="truncate text-xs font-medium text-amber-500">{profile.contractor_name}</p>
+              ) : (
+                <p className="truncate text-xs text-[var(--muted-foreground)]">{t('workspace.viewProfile', 'Mój profil')}</p>
+              )}
             </div>
           </div>
-
-          <button
-            onClick={() => {
-              setIsMobileSidebarOpen(false)
-              onLogout()
-            }}
-            title={t('workspace.logout')}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[var(--muted-foreground)] transition-all hover:bg-rose-500/10 hover:text-rose-500"
-          >
-            <LogOut size={16} />
-          </button>
-        </div>
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[var(--muted-foreground)] group-hover:text-[var(--foreground)] transition-colors">
+            <MoreVertical size={16} />
+          </div>
+        </button>
       </div>
     </>
   )
@@ -210,7 +242,6 @@ export function WorkspaceShell({ onLogout, theme, themePreset, onThemePresetChan
           </header>
 
           <WorkspaceContent
-            section={activeSection}
             isAdmin={isAdmin}
             profile={profile}
             theme={theme}

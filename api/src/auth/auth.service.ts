@@ -69,6 +69,7 @@ export class AuthService {
     const email = dto.email.trim().toLowerCase();
     const user = await this.prisma.user.findFirst({
       where: { email, isActive: true },
+      include: { contractors: true },
     });
 
     if (!user) {
@@ -100,6 +101,7 @@ export class AuthService {
       user.firstName,
       user.lastName,
       user.contractor_id,
+      user.contractors?.name ?? null,
       userAgent,
     );
   }
@@ -110,7 +112,7 @@ export class AuthService {
   ): Promise<TokensResponseDto> {
     const record = await this.prisma.refreshToken.findUnique({
       where: { token: dto.refreshToken },
-      include: { user: true },
+      include: { user: { include: { contractors: true } } },
     });
 
     if (
@@ -136,6 +138,7 @@ export class AuthService {
       record.user.firstName,
       record.user.lastName,
       record.user.contractor_id,
+      record.user.contractors?.name ?? null,
       userAgent,
     );
   }
@@ -154,6 +157,7 @@ export class AuthService {
     firstName: string | null,
     lastName: string | null,
     contractorId: string | null,
+    contractorName: string | null,
     userAgent: string,
   ): Promise<TokensResponseDto> {
     const accessToken = this.jwt.sign({
@@ -163,6 +167,7 @@ export class AuthService {
       firstName,
       lastName,
       contractor_id: contractorId,
+      contractor_name: contractorName,
     });
 
     const refreshToken = randomUUID();

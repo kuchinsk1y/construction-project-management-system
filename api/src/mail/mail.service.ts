@@ -85,4 +85,64 @@ export class MailService {
       throw error;
     }
   }
+  async sendProjectAssignmentEmail(
+    to: string,
+    firstName: string | null | undefined,
+    projectName: string,
+    projectUrl: string,
+  ): Promise<void> {
+    try {
+      const name = firstName?.trim() ? firstName.trim() : 'User';
+      const fromName = this.config.get<string>('EMAIL_FROM_NAME') ?? 'ERP';
+      const fromEmail = this.config.getOrThrow<string>('EMAIL_USER');
+
+      await this.transporter.sendMail({
+        from: `"${fromName}" <${fromEmail}>`,
+        to,
+        subject: `Zostałeś przypisany do projektu: ${projectName}`,
+        html: `
+          <div style="background-color: #0c0a09; padding: 40px 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; min-height: 100%; box-sizing: border-box;">
+            <div style="max-width: 480px; margin: 0 auto; background-color: #1c1917; border: 1px solid #2e2a24; border-top: 4px solid #84cc16; border-radius: 16px; padding: 32px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);">
+              <!-- Logo / Brand Header -->
+              <div style="text-align: center; margin-bottom: 24px;">
+                <span style="font-weight: 800; font-size: 24px; color: #ffffff; letter-spacing: -0.5px;">
+                  ERP<span style="color: #84cc16;">.</span>
+                </span>
+              </div>
+
+              <!-- Divider -->
+              <div style="height: 1px; background: linear-gradient(90deg, transparent, #44403c, transparent); margin-bottom: 28px;"></div>
+
+              <h2 style="color: #ffffff; font-size: 20px; font-weight: 600; margin: 0 0 12px; text-align: center; letter-spacing: -0.2px;">
+                Cześć, ${name}!
+              </h2>
+              <p style="margin: 0 0 28px; color: #a8a29e; font-size: 15px; line-height: 1.6; text-align: center;">
+                Zostałeś wyznaczony jako kierownik projektu <strong>${projectName}</strong>.
+              </p>
+
+              <!-- Action Button -->
+              <div style="text-align: center; margin: 32px 0;">
+                <a href="${projectUrl}" style="background-color: #84cc16; color: #000000; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 15px; display: inline-block; box-shadow: 0 4px 12px rgba(132, 204, 22, 0.3);">
+                  Przejdź do projektu
+                </a>
+              </div>
+
+              <!-- Divider -->
+              <div style="height: 1px; background: #2e2a24; margin: 32px 0 16px 0;"></div>
+
+              <p style="margin: 0; color: #57534e; font-size: 12px; text-align: center; line-height: 1.5;">
+                Otrzymujesz tę wiadomość, ponieważ zostałeś przypisany do projektu w systemie ERP.
+              </p>
+            </div>
+          </div>
+        `,
+      });
+    } catch (error) {
+      this.logger.error(
+        `Failed to send project assignment email to ${to}`,
+        error as Error,
+      );
+      throw error;
+    }
+  }
 }

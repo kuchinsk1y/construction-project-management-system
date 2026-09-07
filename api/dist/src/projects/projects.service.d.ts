@@ -9,13 +9,15 @@ import { UpdateMilestoneDto } from './dto/update-milestone.dto';
 import { CreateWorkTypeDto } from './dto/create-work-type.dto';
 import { CreateResourcePlanDto } from './dto/create-resource-plan.dto';
 import { PlannedExpensesService } from '../planned-expenses/planned-expenses.service';
+import { MailService } from '../mail/mail.service';
 export declare class ProjectsService {
     private readonly prisma;
     private readonly syncQueue;
     private readonly config;
     private readonly sheetsService;
     private readonly plannedExpensesService;
-    constructor(prisma: PrismaService, syncQueue: Queue, config: ConfigService, sheetsService: GoogleSheetsService, plannedExpensesService: PlannedExpensesService);
+    private readonly mailService;
+    constructor(prisma: PrismaService, syncQueue: Queue, config: ConfigService, sheetsService: GoogleSheetsService, plannedExpensesService: PlannedExpensesService, mailService: MailService);
     list(): Promise<{
         id: string;
         name: string;

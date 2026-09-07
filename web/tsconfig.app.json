@@ -19,6 +19,7 @@
         "./src/*"
       ]
     },
+    "ignoreDeprecations": "6.0",
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",

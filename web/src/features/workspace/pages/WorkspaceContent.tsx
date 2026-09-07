@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
+import { Routes, Route, Navigate } from 'react-router-dom'
 
-import type { WorkspaceSection } from '@/features/workspace/types'
 import { ContractorsPage } from './ContractorsPage'
 import { DepartmentsPage } from './DepartmentsPage'
 import { DashboardPage } from './DashboardPage'
@@ -12,7 +12,6 @@ import { ResourcesPage } from './ResourcesPage'
 import type { ThemeMode, ThemePreset, UserProfile } from '@/types/auth'
 
 type WorkspaceContentProps = {
-  section: WorkspaceSection
   isAdmin: boolean
   profile: UserProfile | null
   theme: ThemeMode
@@ -20,7 +19,7 @@ type WorkspaceContentProps = {
   onThemePresetChange: (preset: ThemePreset) => void
 }
 
-export function WorkspaceContent({ section, isAdmin, profile, theme, themePreset, onThemePresetChange }: WorkspaceContentProps) {
+export function WorkspaceContent({ isAdmin, profile, theme, themePreset, onThemePresetChange }: WorkspaceContentProps) {
   const isAdminOrDirector = useMemo(() => {
     const role = (profile?.role ?? '').toLowerCase()
     const roles = (profile?.roles ?? []).map((entry) => entry.toLowerCase())
@@ -41,16 +40,37 @@ export function WorkspaceContent({ section, isAdmin, profile, theme, themePreset
   }, [profile?.role, profile?.roles])
 
   const canViewUsers = isAdminOrDirector
-
   const canEditWorks = isAdminOrDirector || isProjectManager
 
-  if (section === 'dashboard') return <DashboardPage />
-  if (section === 'users') return <UsersPage canView={canViewUsers} canAdd={isAdmin} canEdit={isAdminOrDirector} />
-  if (section === 'contractors') return <ContractorsPage canManage={isAdminOrDirector} />
-  if (section === 'departments') return <DepartmentsPage canManage={isAdminOrDirector || isProjectManager} />
-  if (section === 'works') return <WorksPage canManage={canEditWorks} />
-  if (section === 'resources') return <ResourcesPage canManage={canEditWorks} />
-  if (section === 'settings') return <SettingsPage theme={theme} themePreset={themePreset} onThemePresetChange={onThemePresetChange} />
-  return <ProjectsPage profile={profile} />
-}
+  return (
+    <Routes>
+      <Route path="/" element={<Navigate to="/projects" replace />} />
+      <Route path="/dashboard" element={<DashboardPage />} />
+      <Route path="/projects/*" element={<ProjectsPage profile={profile} />} />
+      
+      {canViewUsers && (
+        <Route path="/users" element={<UsersPage canView={canViewUsers} canAdd={isAdmin} canEdit={isAdminOrDirector} />} />
+      )}
+      
+      {isAdminOrDirector && (
+        <Route path="/contractors" element={<ContractorsPage canManage={isAdminOrDirector} />} />
+      )}
 
+      {(isAdminOrDirector || isProjectManager) && (
+        <Route path="/departments" element={<DepartmentsPage canManage={isAdminOrDirector || isProjectManager} />} />
+      )}
+
+      {canEditWorks && (
+        <>
+          <Route path="/works" element={<WorksPage canManage={canEditWorks} />} />
+          <Route path="/resources" element={<ResourcesPage canManage={canEditWorks} />} />
+        </>
+      )}
+
+      <Route path="/settings" element={<SettingsPage theme={theme} themePreset={themePreset} onThemePresetChange={onThemePresetChange} />} />
+      
+      {/* Fallback route */}
+      <Route path="*" element={<Navigate to="/projects" replace />} />
+    </Routes>
+  )
+}

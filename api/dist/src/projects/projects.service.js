@@ -21,6 +21,7 @@ const config_1 = require("@nestjs/config");
 const prisma_service_1 = require("../prisma/prisma.service");
 const google_sheets_service_1 = require("../google-sheets/google-sheets.service");
 const planned_expenses_service_1 = require("../planned-expenses/planned-expenses.service");
+const mail_service_1 = require("../mail/mail.service");
 function sanitizeDecimals(obj) {
     return JSON.parse(JSON.stringify(obj, (_key, value) => {
         if (typeof value === 'bigint')
@@ -34,12 +35,14 @@ let ProjectsService = class ProjectsService {
     config;
     sheetsService;
     plannedExpensesService;
-    constructor(prisma, syncQueue, config, sheetsService, plannedExpensesService) {
+    mailService;
+    constructor(prisma, syncQueue, config, sheetsService, plannedExpensesService, mailService) {
         this.prisma = prisma;
         this.syncQueue = syncQueue;
         this.config = config;
         this.sheetsService = sheetsService;
         this.plannedExpensesService = plannedExpensesService;
+        this.mailService = mailService;
     }
     async list() {
         const rows = await this.prisma.projects.findMany({
@@ -144,11 +147,18 @@ let ProjectsService = class ProjectsService {
         const contractor = await this.prisma.contractors.findUnique({ where: { id: dto.contractorId } });
         const pType = await this.prisma.project_types.findUnique({ where: { id: projectTypeId } });
         let managerName = '';
+        let managerEmail = '';
+        let managerFirstName = '';
         if (dto.managerId) {
             const manager = await this.prisma.user.findUnique({ where: { id: dto.managerId } });
-            if (manager)
+            if (manager) {
                 managerName = `${manager.firstName} ${manager.lastName}`;
+                managerEmail = manager.email;
+                managerFirstName = manager.firstName;
+            }
         }
+        const spreadsheetId = this.config.getOrThrow('PROJECTS_SPREADSHEET_ID');
+        const sheetName = this.config.getOrThrow('PROJECTS_SHEET_NAME');
         const project = await this.prisma.projects.create({
             data: {
                 id: projectId,
@@ -202,6 +212,11 @@ let ProjectsService = class ProjectsService {
             costCategoryId: defaultCostCategory.id.toString(),
             plannedPercent: 100,
         });
+        if (managerEmail) {
+            const frontendUrl = this.config.get('FRONTEND_URL') ?? 'http://localhost:5173';
+            const projectUrl = `${frontendUrl}/projects/${project.id}`;
+            this.mailService.sendProjectAssignmentEmail(managerEmail, managerFirstName, project.name, projectUrl).catch(() => { });
+        }
         return sanitizeDecimals({
             id: project.id,
             name: project.name,
@@ -278,14 +293,64 @@ let ProjectsService = class ProjectsService {
         let managerName = existing.users_projects_manager_idTousers
             ? `${existing.users_projects_manager_idTousers.firstName} ${existing.users_projects_manager_idTousers.lastName}`
             : '';
+        let managerEmail = '';
+        let managerFirstName = '';
         if (dto.managerId !== undefined) {
             if (dto.managerId === null)
                 managerName = '';
             else {
                 const manager = await this.prisma.user.findUnique({ where: { id: dto.managerId } });
-                if (manager)
+                if (manager) {
                     managerName = `${manager.firstName} ${manager.lastName}`;
+                    if (existing.users_projects_manager_idTousers?.id !== dto.managerId) {
+                        managerEmail = manager.email;
+                        managerFirstName = manager.firstName;
+                    }
+                }
             }
+        }
+        const syncData = {
+            id: id,
+            contractor: contractorName ?? '',
+            project: dto.name ?? existing.name,
+            location: dto.city || dto.country ? `${dto.city ?? existing.city}, ${dto.country ?? existing.country}` : (existing.city ? `${existing.city}, ${existing.country}` : existing.country ?? ''),
+            dateFrom: dto.startDateContract !== undefined ? (dto.startDateContract ? dto.startDateContract.split('T')[0] : '') : (existing.start_date_contract ? existing.start_date_contract.toISOString().split('T')[0] : ''),
+            dateTo: dto.endDateContract !== undefined ? (dto.endDateContract ? dto.endDateContract.split('T')[0] : '') : (existing.end_date_contract ? existing.end_date_contract.toISOString().split('T')[0] : ''),
+            projectType: pTypeName ?? '',
+            pin: dto.pinUrl !== undefined ? (dto.pinUrl ?? '') : (existing.pin_url ?? ''),
+            manager: managerName,
+            power: dto.power !== undefined ? (dto.power ?? '') : (existing.power ? Number(existing.power) : ''),
+            dokumentationUrl: dto.dokumentationUrl !== undefined ? (dto.dokumentationUrl ?? '') : (existing.dokumentation_url ?? ''),
+            country: dto.country ?? existing.country ?? '',
+            status: dto.status ?? existing.status ?? 'DRAFT',
+            dateFromFact: dto.startDateFact !== undefined ? (dto.startDateFact ? dto.startDateFact.split('T')[0] : '') : (existing.start_date_fact ? existing.start_date_fact.toISOString().split('T')[0] : ''),
+            dateToFact: dto.endDateFact !== undefined ? (dto.endDateFact ? dto.endDateFact.split('T')[0] : '') : (existing.end_date_fact ? existing.end_date_fact.toISOString().split('T')[0] : ''),
+            warrantyPercent: dto.warrantyPercent !== undefined ? (dto.warrantyPercent ?? '') : (existing.warranty_percent ? Number(existing.warranty_percent) : ''),
+        };
+        const spreadsheetId = this.config.getOrThrow('PROJECTS_SPREADSHEET_ID');
+        const sheetName = this.config.getOrThrow('PROJECTS_SHEET_NAME');
+        try {
+            const rowIndex = await this.sheetsService.findRowIndexById(spreadsheetId, sheetName, id);
+            if (rowIndex) {
+                await this.sheetsService.updateRow(spreadsheetId, sheetName, rowIndex, syncData);
+            }
+            else {
+                await this.sheetsService.appendRow(spreadsheetId, sheetName, syncData);
+            }
+        }
+        catch (error) {
+            const errMsg = error instanceof Error ? error.message : String(error);
+            const errorsSheet = this.config.get('SYNC_ERRORS_SHEET_NAME', 'SyncErrors');
+            try {
+                await this.sheetsService.appendRow(spreadsheetId, errorsSheet, {
+                    timestamp: new Date().toISOString(),
+                    action: 'UPDATE_PROJECT',
+                    error_message: errMsg,
+                    payload: JSON.stringify(syncData),
+                });
+            }
+            catch (logErr) { }
+            throw new common_1.InternalServerErrorException('Nie udało się zaktualizować projektu w Google Sheets');
         }
         const project = await this.prisma.projects.update({
             where: { id },
@@ -328,10 +393,11 @@ let ProjectsService = class ProjectsService {
                 },
             },
         });
-        await this.syncQueue.add('sync', {
-            projectId: project.id,
-            action: 'update',
-        });
+        if (managerEmail) {
+            const frontendUrl = this.config.get('FRONTEND_URL') ?? 'http://localhost:5173';
+            const projectUrl = `${frontendUrl}/projects/${project.id}`;
+            this.mailService.sendProjectAssignmentEmail(managerEmail, managerFirstName, project.name, projectUrl).catch(() => { });
+        }
         return sanitizeDecimals({
             id: project.id,
             name: project.name,
@@ -990,6 +1056,7 @@ exports.ProjectsService = ProjectsService = __decorate([
         bullmq_2.Queue,
         config_1.ConfigService,
         google_sheets_service_1.GoogleSheetsService,
-        planned_expenses_service_1.PlannedExpensesService])
+        planned_expenses_service_1.PlannedExpensesService,
+        mail_service_1.MailService])
 ], ProjectsService);
 //# sourceMappingURL=projects.service.js.map

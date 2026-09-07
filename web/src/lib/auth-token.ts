@@ -51,6 +51,7 @@ export function profileFromToken(token: string | null): UserProfile | null {
     role: role || undefined,
     roles,
     contractor_id: payload.contractor_id ?? undefined,
+    contractor_name: payload.contractor_name ?? undefined,
   }
 }
 

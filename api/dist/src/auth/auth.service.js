@@ -58,6 +58,7 @@ let AuthService = class AuthService {
         const email = dto.email.trim().toLowerCase();
         const user = await this.prisma.user.findFirst({
             where: { email, isActive: true },
+            include: { contractors: true },
         });
         if (!user) {
             throw new common_1.UnauthorizedException('Nieprawidłowy kod lub e-mail');
@@ -77,12 +78,12 @@ let AuthService = class AuthService {
             where: { id: authCode.id },
             data: { isUsed: true },
         });
-        return this.issueTokens(user.id, user.email, user.roles, user.firstName, user.lastName, user.contractor_id, userAgent);
+        return this.issueTokens(user.id, user.email, user.roles, user.firstName, user.lastName, user.contractor_id, user.contractors?.name ?? null, userAgent);
     }
     async refresh(dto, userAgent) {
         const record = await this.prisma.refreshToken.findUnique({
             where: { token: dto.refreshToken },
-            include: { user: true },
+            include: { user: { include: { contractors: true } } },
         });
         if (!record ||
             record.isRevoked ||
@@ -94,7 +95,7 @@ let AuthService = class AuthService {
             where: { id: record.id },
             data: { isRevoked: true, revokedAt: new Date() },
         });
-        return this.issueTokens(record.user.id, record.user.email, record.user.roles, record.user.firstName, record.user.lastName, record.user.contractor_id, userAgent);
+        return this.issueTokens(record.user.id, record.user.email, record.user.roles, record.user.firstName, record.user.lastName, record.user.contractor_id, record.user.contractors?.name ?? null, userAgent);
     }
     async logout(dto) {
         await this.prisma.refreshToken.updateMany({
@@ -102,7 +103,7 @@ let AuthService = class AuthService {
             data: { isRevoked: true, revokedAt: new Date() },
         });
     }
-    async issueTokens(userId, email, roles, firstName, lastName, contractorId, userAgent) {
+    async issueTokens(userId, email, roles, firstName, lastName, contractorId, contractorName, userAgent) {
         const accessToken = this.jwt.sign({
             sub: userId,
             email,
@@ -110,6 +111,7 @@ let AuthService = class AuthService {
             firstName,
             lastName,
             contractor_id: contractorId,
+            contractor_name: contractorName,
         });
         const refreshToken = (0, crypto_1.randomUUID)();
         const expiresAt = new Date(Date.now() + REFRESH_TTL_MS);

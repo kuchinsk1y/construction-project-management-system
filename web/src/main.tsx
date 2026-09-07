@@ -5,12 +5,16 @@ import './index.css'
 import '@/i18n'
 import App from './App.tsx'
 
+import { BrowserRouter } from 'react-router-dom'
+
 const queryClient = new QueryClient()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <App />
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
     </QueryClientProvider>
   </StrictMode>,
 )

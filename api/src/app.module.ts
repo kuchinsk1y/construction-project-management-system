@@ -12,6 +12,7 @@ import { UsersModule } from './users/users.module';
 import { DepartmentsModule } from './departments/departments.module';
 import { CostCategoriesModule } from './cost-categories/cost-categories.module';
 import { PlannedExpensesModule } from './planned-expenses/planned-expenses.module';
+import { IntegrationModule } from './integration/integration.module';
 
 @Module({
   imports: [
@@ -34,8 +35,9 @@ import { PlannedExpensesModule } from './planned-expenses/planned-expenses.modul
     DepartmentsModule,
     CostCategoriesModule,
     PlannedExpensesModule,
+    IntegrationModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }

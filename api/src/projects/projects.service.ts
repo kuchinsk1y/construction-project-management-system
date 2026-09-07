@@ -17,7 +17,7 @@ import { UpdateMilestoneDto } from './dto/update-milestone.dto';
 import { CreateWorkTypeDto } from './dto/create-work-type.dto';
 import { CreateResourcePlanDto } from './dto/create-resource-plan.dto';
 import { PlannedExpensesService } from '../planned-expenses/planned-expenses.service';
-
+import { MailService } from '../mail/mail.service';
 function sanitizeDecimals(
   obj: Record<string, unknown>,
 ): Record<string, unknown> {
@@ -37,6 +37,7 @@ export class ProjectsService {
     private readonly config: ConfigService,
     private readonly sheetsService: GoogleSheetsService,
     private readonly plannedExpensesService: PlannedExpensesService,
+    private readonly mailService: MailService,
   ) { }
 
   async list() {
@@ -153,9 +154,15 @@ export class ProjectsService {
     const contractor = await this.prisma.contractors.findUnique({ where: { id: dto.contractorId } });
     const pType = await this.prisma.project_types.findUnique({ where: { id: projectTypeId } });
     let managerName = '';
+    let managerEmail = '';
+    let managerFirstName = '';
     if (dto.managerId) {
       const manager = await this.prisma.user.findUnique({ where: { id: dto.managerId } });
-      if (manager) managerName = `${manager.firstName} ${manager.lastName}`;
+      if (manager) {
+        managerName = `${manager.firstName} ${manager.lastName}`;
+        managerEmail = manager.email;
+        managerFirstName = manager.firstName;
+      }
     }
 
     const spreadsheetId = this.config.getOrThrow<string>('PROJECTS_SPREADSHEET_ID');
@@ -219,6 +226,12 @@ export class ProjectsService {
       costCategoryId: defaultCostCategory.id.toString(),
       plannedPercent: 100,
     });
+
+    if (managerEmail) {
+      const frontendUrl = this.config.get<string>('FRONTEND_URL') ?? 'http://localhost:5173';
+      const projectUrl = `${frontendUrl}/projects/${project.id}`;
+      this.mailService.sendProjectAssignmentEmail(managerEmail, managerFirstName, project.name, projectUrl).catch(() => {});
+    }
 
     return sanitizeDecimals({
       id: project.id,
@@ -305,11 +318,19 @@ export class ProjectsService {
     let managerName = existing.users_projects_manager_idTousers
       ? `${existing.users_projects_manager_idTousers.firstName} ${existing.users_projects_manager_idTousers.lastName}`
       : '';
+    let managerEmail = '';
+    let managerFirstName = '';
     if (dto.managerId !== undefined) {
       if (dto.managerId === null) managerName = '';
       else {
         const manager = await this.prisma.user.findUnique({ where: { id: dto.managerId } });
-        if (manager) managerName = `${manager.firstName} ${manager.lastName}`;
+        if (manager) {
+          managerName = `${manager.firstName} ${manager.lastName}`;
+          if (existing.users_projects_manager_idTousers?.id !== dto.managerId) {
+            managerEmail = manager.email;
+            managerFirstName = manager.firstName;
+          }
+        }
       }
     }
 
@@ -397,6 +418,12 @@ export class ProjectsService {
         },
       },
     });
+
+    if (managerEmail) {
+      const frontendUrl = this.config.get<string>('FRONTEND_URL') ?? 'http://localhost:5173';
+      const projectUrl = `${frontendUrl}/projects/${project.id}`;
+      this.mailService.sendProjectAssignmentEmail(managerEmail, managerFirstName, project.name, projectUrl).catch(() => {});
+    }
 
     return sanitizeDecimals({
       id: project.id,

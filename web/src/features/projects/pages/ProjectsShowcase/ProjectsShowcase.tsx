@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
@@ -19,7 +20,6 @@ import {
 import { useProjectsQuery } from '@/features/projects/hooks/useProjectsQuery'
 import {
   mapApiProjectToItem,
-  type ApiProject,
   type CreateMilestonePayload,
   type CreateProjectPayload,
   type ProjectStatus,
@@ -179,19 +179,31 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
   const [viewMode, setViewMode] = useState<ViewMode>('table')
 
+  const navigate = useNavigate()
+  const { "*": urlPath } = useParams()
+  const pathParts = urlPath ? urlPath.split('/') : []
+  const projectIdStr = pathParts[0] || null
+  const tabId = (pathParts[1] || 'details') as 'details' | 'expenses' | 'milestones' | 'departments' | 'works'
+
   // Drawer / Form state
-  const [drawerOpen, setDrawerOpen] = useState(false)
+  const drawerOpen = !!projectIdStr
+  const activeTab = tabId
+  const setActiveTab = (tab: 'details' | 'expenses' | 'milestones' | 'departments' | 'works') => {
+    if (projectIdStr) navigate(`/projects/${projectIdStr}/${tab}`)
+  }
+
   const [formState, setFormState] = useState<CreateProjectPayload>(emptyForm)
   const [formError, setFormError] = useState('')
   const [contractorSearch, setContractorSearch] = useState('')
   const [showContractorList, setShowContractorList] = useState(false)
-  const [editingProject, setEditingProject] = useState<ApiProject | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const contractorRef = useRef<HTMLDivElement>(null)
 
-  // Milestones State & Mutations
-  const [activeTab, setActiveTab] = useState<'details' | 'expenses' | 'milestones' | 'departments' | 'works'>('details')
+  const editingProject = useMemo(() => {
+    if (!projectIdStr || projectIdStr === 'new') return null
+    return rawProjects.find(p => p.id === projectIdStr) || null
+  }, [projectIdStr, rawProjects])
   const [showMilestoneForm, setShowMilestoneForm] = useState(false)
   const [milestoneForm, setMilestoneForm] = useState<CreateMilestonePayload>({
     milestoneNo: '',
@@ -206,16 +218,13 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
 
   // Reset states and close drawer
   const handleCloseDrawer = () => {
-    setDrawerOpen(false)
-    setFormState(emptyForm)
-    setEditingProject(null)
+    navigate('/projects')
+    setIsEditing(false)
     setFormError('')
-    setActiveTab('details')
     setEditingMilestoneId(null)
     setShowMilestoneForm(false)
     setMilestoneForm({ milestoneNo: '', description: '', percentage: 0, invoicingPercentage: undefined })
     setMilestoneError('')
-    setIsEditing(false)
   }
 
   // Milestones Query
@@ -240,11 +249,8 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
   const updateMutation = useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: Partial<CreateProjectPayload> }) =>
       updateProject(id, payload),
-    onSuccess: async (updatedProject) => {
+    onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['projects'] })
-      if (updatedProject) {
-        setEditingProject(updatedProject)
-      }
       setIsEditing(false)
       setFormError('')
     },
@@ -362,7 +368,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
   const managerList = useMemo(() => {
     return users.filter((u) => {
       if (formState.managerId && u.id === formState.managerId) return true
-      if (editingProject?.manager && u.id === editingProject.manager.id) return true
+      if (editingProject?.manager?.id && u.id === editingProject.manager.id) return true
 
       const roles = (u.roles || []).map((r) => r.toLowerCase())
       const pos = (u.position || '').toLowerCase()
@@ -381,20 +387,17 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
     })
   }, [users, formState.managerId, editingProject])
 
-  const handleOpenDrawer = () => {
-    setEditingProject(null)
+  const handleOpenAddDrawer = () => {
+    setIsEditing(false)
     setFormState(emptyForm)
-    setFormError('')
-    setIsEditing(true)
-    setActiveTab('details')
-    setDrawerOpen(true)
+    setContractorSearch('')
+    navigate('/projects/new')
   }
 
   const handleEditProject = (projectId: string) => {
     const raw = rawProjects.find((p) => p.id === projectId)
     if (!raw) return
 
-    setEditingProject(raw)
     setFormState({
       name: raw.name,
       contractorId: raw.contractors?.id ?? '',
@@ -416,8 +419,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
     })
     setFormError('')
     setIsEditing(false)
-    setActiveTab('details')
-    setDrawerOpen(true)
+    navigate(`/projects/${projectId}`)
   }
 
   const handleDeleteProject = () => {
@@ -776,7 +778,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
             {canCreateProject ? (
               <Button
                 type="button"
-                onClick={handleOpenDrawer}
+                onClick={handleOpenAddDrawer}
                 className="mt-2 bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] hover:bg-[var(--sidebar-primary)]/90"
               >
                 <Plus size={16} />
@@ -824,7 +826,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
               setViewMode={setViewMode}
               canCreateProject={canCreateProject}
               canEditProject={canEditProject}
-              onOpenDrawer={handleOpenDrawer}
+              onOpenDrawer={handleOpenAddDrawer}
               onSelectProject={handleEditProject}
               formatDate={formatDate}
               statusTone={statusTone}
@@ -839,7 +841,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
               setViewMode={setViewMode}
               canCreateProject={canCreateProject}
               canEditProject={canEditProject}
-              onOpenDrawer={handleOpenDrawer}
+              onOpenDrawer={handleOpenAddDrawer}
               onSelectProject={handleEditProject}
               parseDateValue={parseDateValue}
               statusTone={statusTone}

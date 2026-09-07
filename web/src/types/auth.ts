@@ -13,6 +13,7 @@ export type JwtPayload = {
   role?: string | null
   roles?: string[] | null
   contractor_id?: string | null
+  contractor_name?: string | null
 }
 
 export type UserProfile = {
@@ -22,6 +23,7 @@ export type UserProfile = {
   role?: string
   roles: string[]
   contractor_id?: string
+  contractor_name?: string
 }
 
 export type ThemeMode = 'light' | 'dark'
