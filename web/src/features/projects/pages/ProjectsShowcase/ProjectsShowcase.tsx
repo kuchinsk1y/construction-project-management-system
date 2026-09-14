@@ -183,12 +183,12 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
   const { "*": urlPath } = useParams()
   const pathParts = urlPath ? urlPath.split('/') : []
   const projectIdStr = pathParts[0] || null
-  const tabId = (pathParts[1] || 'details') as 'details' | 'expenses' | 'milestones' | 'departments' | 'works'
+  const tabId = (pathParts[1] || 'details') as 'dashboard' | 'details' | 'expenses' | 'milestones' | 'departments' | 'works'
 
   // Drawer / Form state
   const drawerOpen = !!projectIdStr
   const activeTab = tabId
-  const setActiveTab = (tab: 'details' | 'expenses' | 'milestones' | 'departments' | 'works') => {
+  const setActiveTab = (tab: 'dashboard' | 'details' | 'expenses' | 'milestones' | 'departments' | 'works') => {
     if (projectIdStr) navigate(`/projects/${projectIdStr}/${tab}`)
   }
 
@@ -741,6 +741,17 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
     )
   }
 
+  if (projectIdStr && projectIdStr !== 'new' && isLoading) {
+    return (
+      <div className="flex flex-1 items-center justify-center p-8 h-[50vh]">
+        <div className="flex flex-col items-center gap-3 text-[var(--muted-foreground)]">
+          <Loader2 size={32} className="animate-spin text-[var(--sidebar-primary)]" />
+          <p className="text-base font-semibold">Ładowanie projektu...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <>
       <section className="grid flex-1 items-start gap-2 p-3 md:gap-4 xl:grid-cols-12 animate-page-enter">
@@ -853,7 +864,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
     </section>
 
       <ProjectDetailsDrawer
-        isOpen={drawerOpen && editingProject === null}
+        isOpen={drawerOpen && editingProject === null && projectIdStr === 'new'}
         editingProject={null}
         isEditing={true}
         setIsEditing={setIsEditing}

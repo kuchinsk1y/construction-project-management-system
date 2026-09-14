@@ -20,6 +20,7 @@ const create_milestone_dto_1 = require("./dto/create-milestone.dto");
 const update_milestone_dto_1 = require("./dto/update-milestone.dto");
 const create_work_type_dto_1 = require("./dto/create-work-type.dto");
 const create_resource_plan_dto_1 = require("./dto/create-resource-plan.dto");
+const create_milestone_invoice_dto_1 = require("./dto/create-milestone-invoice.dto");
 const projects_service_1 = require("./projects.service");
 let ProjectsController = class ProjectsController {
     projectsService;
@@ -61,6 +62,12 @@ let ProjectsController = class ProjectsController {
     }
     deleteMilestone(id) {
         return this.projectsService.deleteMilestone(id);
+    }
+    createMilestoneInvoice(milestoneId, dto) {
+        return this.projectsService.createMilestoneInvoice(milestoneId, dto);
+    }
+    deleteMilestoneInvoice(milestoneId, invoiceId) {
+        return this.projectsService.deleteMilestoneInvoice(milestoneId, invoiceId);
     }
     listWorkTypes(projectId) {
         return this.projectsService.listWorkTypes(projectId);
@@ -185,6 +192,22 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], ProjectsController.prototype, "deleteMilestone", null);
+__decorate([
+    (0, common_1.Post)('milestones/:milestoneId/invoices'),
+    __param(0, (0, common_1.Param)('milestoneId')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, create_milestone_invoice_dto_1.CreateMilestoneInvoiceDto]),
+    __metadata("design:returntype", void 0)
+], ProjectsController.prototype, "createMilestoneInvoice", null);
+__decorate([
+    (0, common_1.Delete)('milestones/:milestoneId/invoices/:invoiceId'),
+    __param(0, (0, common_1.Param)('milestoneId')),
+    __param(1, (0, common_1.Param)('invoiceId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", void 0)
+], ProjectsController.prototype, "deleteMilestoneInvoice", null);
 __decorate([
     (0, common_1.Get)(':projectId/work-types'),
     __param(0, (0, common_1.Param)('projectId')),

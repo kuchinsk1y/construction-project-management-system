@@ -1,5 +1,13 @@
 export type ProjectStatus = 'planning' | 'active' | 'blocked' | 'done'
 
+export type ApiMilestoneInvoice = {
+  id: string
+  invoiceNumber: string
+  netValue: number
+  note: string
+  issuedDate: string | null
+}
+
 export type ApiMilestone = {
   id: string
   projectId: string
@@ -11,15 +19,23 @@ export type ApiMilestone = {
   invoicingPercentage: number | null
   createdAt?: string
   updatedAt?: string
+  invoices?: ApiMilestoneInvoice[]
 }
 
 export type CreateMilestonePayload = {
   milestoneNo: string
   description: string
-  type?: 'KM' | 'roboty_dodatkowe'
+  type: 'KM' | 'roboty_dodatkowe'
   percentage?: number
-  netAmount?: number
+  netAmount: number
   invoicingPercentage?: number
+}
+
+export type CreateMilestoneInvoicePayload = {
+  invoiceNumber: string
+  netValue: number
+  note?: string
+  issuedDate: string
 }
 
 export type ApiDepartment = {
@@ -55,6 +71,7 @@ export type ApiWorkType = {
   unit: string | null
   percentage: number | null
   totalQuantity: number
+  actualQuantity?: number
   plannedStart: string | null
   plannedEnd: string | null
 }

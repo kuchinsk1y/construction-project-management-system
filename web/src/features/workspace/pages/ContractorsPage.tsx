@@ -465,81 +465,81 @@ export function ContractorsPage({ canManage }: ContractorsPageProps) {
               </div>
             </div>
 
-              {/* Section: Address */}
-              <div>
-                <p className="mb-3 border-b border-[var(--border)] pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
-                  Dane adresowe
-                </p>
-                <div className="space-y-3.5">
-                  <label className="block">
+            {/* Section: Address */}
+            <div>
+              <p className="mb-3 border-b border-[var(--border)] pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+                Dane adresowe
+              </p>
+              <div className="space-y-3.5">
+                <label className="block">
+                  <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 transition-colors block mb-1">
+                    {t('contractors.modal.labels.street')}
+                  </span>
+                  <input
+                    value={formState.street}
+                    onChange={(event) => setFormState((prev) => ({ ...prev, street: event.target.value }))}
+                    placeholder="np. ul. Marszałkowska 10/2"
+                    className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60"
+                  />
+                </label>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <label className="block col-span-1">
                     <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 transition-colors block mb-1">
-                      {t('contractors.modal.labels.street')}
+                      {t('contractors.modal.labels.postalCode')}
                     </span>
                     <input
-                      value={formState.street}
-                      onChange={(event) => setFormState((prev) => ({ ...prev, street: event.target.value }))}
-                      placeholder="np. ul. Marszałkowska 10/2"
+                      value={formState.postal_code}
+                      onChange={(event) => setFormState((prev) => ({ ...prev, postal_code: event.target.value }))}
+                      placeholder="np. 00-001"
                       className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60"
                     />
                   </label>
-
-                  <div className="grid grid-cols-3 gap-3">
-                    <label className="block col-span-1">
-                      <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 transition-colors block mb-1">
-                        {t('contractors.modal.labels.postalCode')}
-                      </span>
-                      <input
-                        value={formState.postal_code}
-                        onChange={(event) => setFormState((prev) => ({ ...prev, postal_code: event.target.value }))}
-                        placeholder="np. 00-001"
-                        className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60"
-                      />
-                    </label>
-                    <label className="block col-span-2">
-                      <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 transition-colors block mb-1">
-                        {t('contractors.modal.labels.city')}
-                      </span>
-                      <input
-                        value={formState.city}
-                        onChange={(event) => setFormState((prev) => ({ ...prev, city: event.target.value }))}
-                        placeholder="np. Warszawa"
-                        className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60"
-                      />
-                    </label>
-                  </div>
-
-                  <label className="block">
+                  <label className="block col-span-2">
                     <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 transition-colors block mb-1">
-                      {t('contractors.modal.labels.country')}
+                      {t('contractors.modal.labels.city')}
                     </span>
                     <input
-                      value={formState.country}
-                      onChange={(event) => setFormState((prev) => ({ ...prev, country: event.target.value }))}
-                      placeholder="np. Polska"
+                      value={formState.city}
+                      onChange={(event) => setFormState((prev) => ({ ...prev, city: event.target.value }))}
+                      placeholder="np. Warszawa"
                       className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60"
                     />
                   </label>
                 </div>
-              </div>
 
-              {/* Section: Additional info */}
-              <div>
-                <p className="mb-3 border-b border-[var(--border)] pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
-                  Inne informacje
-                </p>
                 <label className="block">
                   <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 transition-colors block mb-1">
-                    {t('contractors.modal.labels.notes')}
+                    {t('contractors.modal.labels.country')}
                   </span>
-                  <textarea
-                    value={formState.notes}
-                    onChange={(event) => setFormState((prev) => ({ ...prev, notes: event.target.value }))}
-                    placeholder="np. Główny dostawca stali, kontakt do handlowca: +48 500 123 456"
-                    rows={4}
-                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] p-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 custom-scrollbar resize-none animate-fade-in"
+                  <input
+                    value={formState.country}
+                    onChange={(event) => setFormState((prev) => ({ ...prev, country: event.target.value }))}
+                    placeholder="np. Polska"
+                    className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60"
                   />
                 </label>
               </div>
+            </div>
+
+            {/* Section: Additional info */}
+            <div>
+              <p className="mb-3 border-b border-[var(--border)] pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+                Inne informacje
+              </p>
+              <label className="block">
+                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 transition-colors block mb-1">
+                  {t('contractors.modal.labels.notes')}
+                </span>
+                <textarea
+                  value={formState.notes}
+                  onChange={(event) => setFormState((prev) => ({ ...prev, notes: event.target.value }))}
+                  placeholder="np. Główny dostawca stali, kontakt do handlowca: +48 500 123 456"
+                  rows={4}
+                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] p-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 custom-scrollbar resize-none animate-fade-in"
+                />
+              </label>
+            </div>
           </div>
 
           {formError && (

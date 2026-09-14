@@ -4,6 +4,7 @@ import { CreateMilestoneDto } from './dto/create-milestone.dto';
 import { UpdateMilestoneDto } from './dto/update-milestone.dto';
 import { CreateWorkTypeDto } from './dto/create-work-type.dto';
 import { CreateResourcePlanDto } from './dto/create-resource-plan.dto';
+import { CreateMilestoneInvoiceDto } from './dto/create-milestone-invoice.dto';
 import { ProjectsService } from './projects.service';
 export declare class ProjectsController {
     private readonly projectsService;
@@ -75,6 +76,13 @@ export declare class ProjectsController {
         invoicingPercentage: number | null;
         createdAt: Date | null;
         updatedAt: Date | null;
+        invoices: {
+            id: string;
+            invoiceNumber: string;
+            netValue: number;
+            note: string;
+            issuedDate: string;
+        }[];
     }[]>;
     createMilestone(projectId: string, dto: CreateMilestoneDto): Promise<{
         id: string;
@@ -99,6 +107,16 @@ export declare class ProjectsController {
     deleteMilestone(id: string): Promise<{
         success: boolean;
     }>;
+    createMilestoneInvoice(milestoneId: string, dto: CreateMilestoneInvoiceDto): Promise<{
+        id: string;
+        invoiceNumber: string;
+        netValue: number;
+        note: string;
+        issuedDate: string;
+    }>;
+    deleteMilestoneInvoice(milestoneId: string, invoiceId: string): Promise<{
+        success: boolean;
+    }>;
     listWorkTypes(projectId: string): Promise<{
         id: string;
         projectId: string;
@@ -110,6 +128,7 @@ export declare class ProjectsController {
         unit: string | null;
         percentage: number | null;
         totalQuantity: number;
+        actualQuantity: number;
         plannedStart: string | null;
         plannedEnd: string | null;
     }[]>;

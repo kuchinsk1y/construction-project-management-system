@@ -140,13 +140,19 @@ async function main() {
 
   const createdUsers: Record<string, any> = {};
   for (const userData of usersToSeed) {
-    const user = await prisma.user.upsert({
-      where: { email: userData.email },
-      update: userData,
-      create: userData,
-    });
-    createdUsers[userData.email] = user;
-    console.log(`Upserted user: ${user.firstName} ${user.lastName} (${user.email})`);
+    try {
+      const user = await prisma.user.upsert({
+        where: { email: userData.email },
+        update: userData,
+        create: userData,
+      });
+      createdUsers[userData.email] = user;
+      console.log(`Upserted user: ${user.firstName} ${user.lastName} (${user.email})`);
+    } catch (e) {
+      console.error(`Failed to upsert user ${userData.email}, trying to fetch existing:`, e.message);
+      const user = await prisma.user.findUnique({ where: { email: userData.email } });
+      if (user) createdUsers[userData.email] = user;
+    }
   }
 
   console.log('Seeding departments...');
@@ -208,7 +214,7 @@ async function main() {
     city: 'Gdańsk',
     currency: 'PLN',
     status: 'ACTIVE',
-    contract_net_value: 1000000,
+    contract_net_value: 2842715.00,
     power: 10.00,
     start_date_contract: new Date('2026-01-01'),
     end_date_contract: new Date('2026-12-31'),
@@ -276,14 +282,23 @@ async function main() {
   }
 
   console.log('Seeding milestones...');
+  await prisma.milestones.deleteMany({ where: { project_id: project.id } });
+
   const milestonesToSeed = [
-    { no: 'KM01', desc: 'Zaliczka', perc: 20, net: 200000, invPerc: 100 },
-    { no: 'KM02', desc: 'Dostawa konstrukcji', perc: 40, net: 400000, invPerc: 100 },
-    { no: 'KM03', desc: 'Uruchomienie', perc: 40, net: 400000, invPerc: 100 },
+    { no: 'KM 1', desc: 'Prace przygotowawcze (montaż kontenerów, umieszczenie tablic)', perc: 10.0, net: 284271.50, invoices: [{ invoiceNo: 'FV/06/05/2026/1', amount: 284271.50, date: '2026-05-06' }] },
+    { no: 'KM 2', desc: 'Wykonanie ogrodzenia', perc: 15.0, net: 426407.25, invoices: [{ invoiceNo: 'FV/06/06/2026/1', amount: 213203.62, date: '2026-06-06' }] },
+    { no: 'KM 3', desc: 'Wykonanie prac wodociągowych', perc: 10.0, net: 284271.50, invoices: [{ invoiceNo: 'FV/07/07/2026/1', amount: 94757.16, date: '2026-07-07' }] },
+    { no: 'KM 4', desc: 'Wykonanie fundamentów pod stacje', perc: 15.0, net: 426407.25, invoices: [{ invoiceNo: 'FV/08/08/2026/1', amount: 106601.81, date: '2026-08-08' }] },
+    { no: 'KM 5', desc: 'Wykonanie systemu uziemienia', perc: 20.0, net: 568543.00, invoices: [] },
+    { no: 'KM 6', desc: 'Wykonanie połączeń kablowych (Kable AC i DC)', perc: 20.0, net: 568543.00, invoices: [] },
+    { no: 'KM 7', desc: 'Odbiór końcowy', perc: 10.0, net: 284271.50, invoices: [] },
   ];
 
   const createdMilestones: Record<string, any> = {};
   for (const ms of milestonesToSeed) {
+    const totalInvoiced = ms.invoices.reduce((sum, inv) => sum + inv.amount, 0);
+    const invPerc = ms.net > 0 ? (totalInvoiced / ms.net) * 100 : 0;
+
     let existingMs = await prisma.milestones.findUnique({
       where: { project_id_milestone_no: { project_id: project.id, milestone_no: ms.no } }
     });
@@ -291,7 +306,12 @@ async function main() {
     if (existingMs) {
       existingMs = await prisma.milestones.update({
         where: { id: existingMs.id },
-        data: { net_amount: ms.net, invoicing_percentage: ms.invPerc }
+        data: {
+          description: ms.desc,
+          percentage: ms.perc,
+          net_amount: ms.net,
+          invoicing_percentage: invPerc
+        }
       });
       createdMilestones[ms.no] = existingMs;
     } else {
@@ -302,19 +322,38 @@ async function main() {
           description: ms.desc,
           percentage: ms.perc,
           net_amount: ms.net,
-          invoicing_percentage: ms.invPerc,
+          invoicing_percentage: invPerc,
         }
       });
       createdMilestones[ms.no] = newMs;
+    }
+
+    // Sync invoices
+    await prisma.milestones_invoices.deleteMany({
+      where: { milestone_id: createdMilestones[ms.no].id }
+    });
+
+    for (const inv of ms.invoices) {
+      await prisma.milestones_invoices.create({
+        data: {
+          milestone_id: createdMilestones[ms.no].id,
+          invoice_number: inv.invoiceNo,
+          net_value: inv.amount,
+          note: 'Wystawiona kwota ' + inv.amount,
+          issued_date: new Date(inv.date),
+          paid_at: new Date(inv.date),
+        }
+      });
     }
   }
 
   console.log('Seeding cost categories...');
   const categoriesToSeed = [
-    { name: 'Materiały', is_salary: false },
     { name: 'Wypłata', is_salary: true },
-    { name: 'Sprzęt', is_salary: false },
-    { name: 'Podwykonawcy', is_salary: false },
+    { name: 'Hostel / Zakwaterowanie', is_salary: false },
+    { name: 'Maszyny / Sprzęt', is_salary: false },
+    { name: 'Paliwo', is_salary: false },
+    { name: 'Narzędzia', is_salary: false },
   ];
 
   const createdCostCategories: Record<string, any> = {};
@@ -330,10 +369,11 @@ async function main() {
 
   console.log('Seeding project budget items and planned expenses...');
   const budgetItems = [
-    { cat: 'Materiały', amount: 400000 },
-    { cat: 'Wypłata', amount: 200000 },
-    { cat: 'Sprzęt', amount: 100000 },
-    { cat: 'Podwykonawcy', amount: 150000 },
+    { cat: 'Wypłata', amount: 500000 },
+    { cat: 'Hostel / Zakwaterowanie', amount: 80000 },
+    { cat: 'Maszyny / Sprzęt', amount: 200000 },
+    { cat: 'Paliwo', amount: 50000 },
+    { cat: 'Narzędzia', amount: 30000 },
   ];
 
   for (const item of budgetItems) {
@@ -368,15 +408,31 @@ async function main() {
     }
   }
 
+  console.log('Cleaning up old works and reports...');
+  await prisma.daily_reports.deleteMany({ where: { project_id: project.id } });
+  await prisma.project_work_types.deleteMany({ where: { project_id: project.id } });
+
   console.log('Seeding project work types...');
   const worksToSeed = [
-    { name: 'Wbijanie kafarów', unit: 'szt', qty: 2000, dept: 'Kafar', km: 'KM02', start: '2026-02-01', end: '2026-03-01', perc: 20 },
-    { name: 'Montaż stołów', unit: 'kpl', qty: 500, dept: 'Montaż', km: 'KM02', start: '2026-03-02', end: '2026-04-01', perc: 70 },
-    { name: 'Montaż modułów PV', unit: 'szt', qty: 15000, dept: 'Montaż', km: 'KM02', start: '2026-04-02', end: '2026-05-01', perc: 10 },
-    { name: 'Układanie kabli DC', unit: 'mb', qty: 25000, dept: 'Elektryka', km: 'KM03', start: '2026-05-02', end: '2026-06-01', perc: 10 },
-    { name: 'Podłączenie inwerterów', unit: 'kpl', qty: 40, dept: 'Elektryka', km: 'KM03', start: '2026-06-02', end: '2026-07-01', perc: 10 },
-    { name: 'Wykop pod kabel AC', unit: 'mb', qty: 1500, dept: 'Kable AC', km: 'KM03', start: '2026-07-02', end: '2026-08-01', perc: 80 },
-    { name: 'Roboty ziemne dodatkowe', unit: 'godz', qty: 100, dept: 'Kafar', km: null, start: '2026-08-02', end: '2026-09-01', perc: 0 }, // dodatkowe
+    // KM 1: Prace przygotowawcze (100% completed)
+    { name: 'Montaż kontenerów', unit: 'szt', qty: 4, actual: 4, dept: 'Montaż', km: 'KM 1', start: '2026-02-01', end: '2026-02-10', perc: 10 },
+    { name: 'Ustawienie tablic informacyjnych', unit: 'szt', qty: 2, actual: 2, dept: 'Montaż', km: 'KM 1', start: '2026-02-11', end: '2026-02-12', perc: 5 },
+
+    // KM 2: Wykonanie ogrodzenia (100% completed)
+    { name: 'Wbijanie kafarów', unit: 'szt', qty: 2000, actual: 2000, dept: 'Kafar', km: 'KM 2', start: '2026-02-15', end: '2026-03-01', perc: 20 },
+    { name: 'Montaż słupków i siatki', unit: 'mb', qty: 5000, actual: 5000, dept: 'Montaż', km: 'KM 2', start: '2026-03-02', end: '2026-03-20', perc: 50 },
+
+    // KM 3: Wykonanie prac wodociągowych (100% completed)
+    { name: 'Wykopy pod rury wodociągowe', unit: 'mb', qty: 800, actual: 800, dept: 'Kafar', km: 'KM 3', start: '2026-03-21', end: '2026-03-28', perc: 40 },
+    { name: 'Montaż instalacji wodnej', unit: 'mb', qty: 800, actual: 800, dept: 'Montaż', km: 'KM 3', start: '2026-03-25', end: '2026-04-05', perc: 60 },
+
+    // KM 4: Wykonanie fundamentów pod stacje (In progress)
+    { name: 'Wykopy pod fundamenty', unit: 'm3', qty: 500, actual: 100, dept: 'Kafar', km: 'KM 4', start: '2026-04-01', end: '2026-04-15', perc: 30 },
+    { name: 'Wylanie betonu', unit: 'm3', qty: 300, actual: 0, dept: 'Montaż', km: 'KM 4', start: '2026-04-16', end: '2026-04-30', perc: 70 },
+
+    // KM 6: Wykonanie połączeń kablowych (Not started)
+    { name: 'Układanie kabli DC', unit: 'mb', qty: 25000, actual: 0, dept: 'Elektryka', km: 'KM 6', start: '2026-05-02', end: '2026-06-01', perc: 40 },
+    { name: 'Wykop pod kabel AC', unit: 'mb', qty: 1500, actual: 0, dept: 'Kable AC', km: 'KM 6', start: '2026-06-02', end: '2026-07-01', perc: 60 },
   ];
 
   for (const work of worksToSeed) {
@@ -411,6 +467,33 @@ async function main() {
             planned_end: work.end ? new Date(work.end) : null,
           }
         });
+      }
+
+      if (work.actual > 0) {
+        const theWork = await prisma.project_work_types.findFirst({
+          where: { project_id: project.id, name: work.name }
+        });
+        if (theWork) {
+          // Check if there is already a daily report
+          const existingReport = await prisma.daily_reports.findFirst({
+            where: { project_id: project.id, work_type_id: theWork.id }
+          });
+          if (!existingReport) {
+            await prisma.daily_reports.create({
+              data: {
+                project_id: project.id,
+                work_type_id: theWork.id,
+                report_date: new Date('2026-02-10'),
+                actual_quantity: work.actual,
+              }
+            });
+          } else {
+            await prisma.daily_reports.update({
+              where: { id: existingReport.id },
+              data: { actual_quantity: work.actual }
+            });
+          }
+        }
       }
     }
   }

@@ -13,6 +13,7 @@ import { CreateMilestoneDto } from './dto/create-milestone.dto';
 import { UpdateMilestoneDto } from './dto/update-milestone.dto';
 import { CreateWorkTypeDto } from './dto/create-work-type.dto';
 import { CreateResourcePlanDto } from './dto/create-resource-plan.dto';
+import { CreateMilestoneInvoiceDto } from './dto/create-milestone-invoice.dto';
 import { ProjectsService } from './projects.service';
 
 @Controller('projects')
@@ -82,6 +83,24 @@ export class ProjectsController {
   @Delete('milestones/:id')
   deleteMilestone(@Param('id') id: string) {
     return this.projectsService.deleteMilestone(id);
+  }
+
+  // --- Milestone Invoices ---
+
+  @Post('milestones/:milestoneId/invoices')
+  createMilestoneInvoice(
+    @Param('milestoneId') milestoneId: string,
+    @Body() dto: CreateMilestoneInvoiceDto,
+  ) {
+    return this.projectsService.createMilestoneInvoice(milestoneId, dto);
+  }
+
+  @Delete('milestones/:milestoneId/invoices/:invoiceId')
+  deleteMilestoneInvoice(
+    @Param('milestoneId') milestoneId: string,
+    @Param('invoiceId') invoiceId: string,
+  ) {
+    return this.projectsService.deleteMilestoneInvoice(milestoneId, invoiceId);
   }
 
   // --- Work Types ---

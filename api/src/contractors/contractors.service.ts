@@ -9,7 +9,7 @@ import { UpdateContractorDto } from './dto/update-contractor.dto';
 
 @Injectable()
 export class ContractorsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async list() {
     return this.prisma.contractors.findMany({

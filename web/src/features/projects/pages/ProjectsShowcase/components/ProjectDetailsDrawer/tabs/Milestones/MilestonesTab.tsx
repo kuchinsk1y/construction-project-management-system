@@ -1,6 +1,9 @@
-import { Layers, Loader2, Plus } from 'lucide-react'
-import type { UseMutationResult } from '@tanstack/react-query'
+import { useState } from 'react'
+import { Layers, Loader2, Plus, Trash2 } from 'lucide-react' // FileText
+import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
+import { createMilestoneInvoice, deleteMilestoneInvoice } from '@/features/projects/api'
+import { InvoiceFormDrawer } from './InvoiceFormDrawer'
 import type { ApiMilestone, CreateMilestonePayload, ApiProject } from '@/features/projects/types'
 
 type MilestonesTabProps = {
@@ -38,6 +41,26 @@ export function MilestonesTab({
   const totalPct = kmMilestones.reduce((s, m) => s + (m.percentage || 0), 0)
   const totalNet = Math.round(milestones.reduce((s, m) => s + (m.netAmount || (m.type === 'KM' ? contractVal * (m.percentage / 100) : 0)), 0) * 100) / 100
   const diffNet = Math.round((contractVal - totalNet) * 100) / 100
+
+  const queryClient = useQueryClient()
+  const [activeInvoiceMilestone, setActiveInvoiceMilestone] = useState<ApiMilestone | null>(null)
+
+  const addInvoiceMutation = useMutation({
+    mutationFn: (data: { invoiceNumber: string; netValue: number; issuedDate: string; note?: string }) =>
+      createMilestoneInvoice(activeInvoiceMilestone!.id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['milestones', editingProject?.id] })
+      setActiveInvoiceMilestone(null)
+    },
+  })
+
+  const removeInvoiceMutation = useMutation({
+    mutationFn: ({ milestoneId, invoiceId }: { milestoneId: string; invoiceId: string }) =>
+      deleteMilestoneInvoice(milestoneId, invoiceId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['milestones', editingProject?.id] })
+    },
+  })
 
   return (
     <div className="w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-sm space-y-4 animate-tab-content">
@@ -122,13 +145,14 @@ export function MilestonesTab({
                       <th className="px-2 py-1.5 text-center w-24 border-r border-zinc-200/70 dark:border-zinc-800/70">Nr</th>
                       <th className="px-3 py-1.5 border-r border-zinc-200/70 dark:border-zinc-800/70">Etap / Opis prac</th>
                       <th className="px-2 py-1.5 text-center w-28 border-r border-zinc-200/70 dark:border-zinc-800/70">% Udziału</th>
-                      <th className="px-3 py-1.5 text-right w-40 border-r border-zinc-200/70 dark:border-zinc-800/70">Kwota netto</th>
+                      <th className="px-3 py-1.5 text-right w-32 border-r border-zinc-200/70 dark:border-zinc-800/70">Kwota netto</th>
+                      <th className="px-3 py-1.5 text-right w-44 border-r border-zinc-200/70 dark:border-zinc-800/70">Fakturowanie</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800/80 font-medium">
                     {kmMilestones.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="text-center py-6 text-xs text-[var(--muted-foreground)]">
+                        <td colSpan={5} className="text-center py-6 text-xs text-[var(--muted-foreground)]">
                           Brak zdefiniowanych kamieni milowych.
                         </td>
                       </tr>
@@ -157,13 +181,66 @@ export function MilestonesTab({
                             <td className="px-3 py-2 text-right border-r border-zinc-200/60 dark:border-zinc-800/60 font-bold text-[var(--foreground)]">
                               {formatBudget(netValue, currency)}
                             </td>
+                            <td className="px-3 py-2 border-r border-zinc-200/60 dark:border-zinc-800/60 align-top">
+                              <div className="flex flex-col gap-1.5">
+                                <div className="flex justify-between items-center text-[10px] font-bold">
+                                  <span className="text-[var(--muted-foreground)]">Postęp</span>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className={m.invoicingPercentage === 100 ? 'text-emerald-500' : (m.invoicingPercentage && m.invoicingPercentage > 0 ? 'text-amber-500' : 'text-zinc-400')}>
+                                      {m.invoicingPercentage ? m.invoicingPercentage.toFixed(1) : '0.0'}%
+                                    </span>
+                                    {canEditProject && (
+                                      <button
+                                        onClick={() => setActiveInvoiceMilestone(m)}
+                                        className="flex items-center gap-1 px-1.5 py-0.5 ml-2 text-[9px] font-bold text-zinc-500 bg-zinc-100 hover:bg-[var(--sidebar-primary)]/10 hover:text-[var(--sidebar-primary)] rounded border border-zinc-200 hover:border-[var(--sidebar-primary)]/30 transition-colors dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-400"
+                                        title="Dodaj fakturę"
+                                      >
+                                        <Plus className="w-2.5 h-2.5" />
+                                        Dodaj FV
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="relative h-1.5 w-full bg-[var(--muted)]/50 rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full transition-all duration-500 ${m.invoicingPercentage === 100 ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                                    style={{ width: `${Math.min(m.invoicingPercentage || 0, 100)}%` }}
+                                  />
+                                </div>
+                                {m.invoices && m.invoices.length > 0 && (
+                                  <div className="mt-1 flex flex-col gap-1">
+                                    {m.invoices.map(inv => (
+                                      <div key={inv.id} className="flex justify-between items-center text-[9px] bg-zinc-100 dark:bg-zinc-800/60 px-1.5 py-0.5 rounded-sm group/inv">
+                                        <span className="font-medium text-zinc-500 dark:text-zinc-400 truncate max-w-[70px]" title={inv.invoiceNumber}>{inv.invoiceNumber}</span>
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="font-bold text-zinc-700 dark:text-zinc-300">{formatBudget(inv.netValue, currency)}</span>
+                                          {canEditProject && (
+                                            <button
+                                              onClick={() => {
+                                                if (confirm('Czy na pewno chcesz usunąć tę fakturę?')) {
+                                                  removeInvoiceMutation.mutate({ milestoneId: m.id, invoiceId: inv.id })
+                                                }
+                                              }}
+                                              className="opacity-0 group-hover/inv:opacity-100 p-0.5 text-red-400 hover:text-red-500 hover:bg-red-500/10 rounded-sm transition-all"
+                                              title="Usuń fakturę"
+                                            >
+                                              <Trash2 className="w-2.5 h-2.5" />
+                                            </button>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
                           </tr>
                         )
                       })
                     )}
                   </tbody>
                   {kmMilestones.length > 0 && (
-                    <tfoot className="border-t-2 border-zinc-200 dark:border-zinc-800 bg-[var(--background)]/40 font-bold text-xs">
+                    <tfoot className="sticky bottom-0 z-10 border-t-2 border-zinc-200 dark:border-zinc-800 bg-[var(--background)]/90 backdrop-blur-md font-bold text-xs shadow-[0_-1px_3px_rgba(0,0,0,0.05)]">
                       <tr>
                         <td className="px-2 py-2.5 text-center text-[var(--sidebar-primary)]">
                           Razem
@@ -178,6 +255,9 @@ export function MilestonesTab({
                           <span className="underline underline-offset-4 decoration-zinc-300 dark:decoration-zinc-700 decoration-2">
                             {formatBudget(Math.round(kmMilestones.reduce((s, m) => s + (contractVal * (m.percentage / 100)), 0) * 100) / 100, currency)}
                           </span>
+                        </td>
+                        <td className="px-3 py-2.5 text-right text-[var(--foreground)]">
+                          {/* Here we could show the total invoiced amount across all KMs */}
                         </td>
                       </tr>
                     </tfoot>
@@ -235,7 +315,7 @@ export function MilestonesTab({
                     )}
                   </tbody>
                   {rdMilestones.length > 0 && (
-                    <tfoot className="border-t-2 border-amber-500/30 dark:border-amber-500/20 bg-amber-500/5 font-bold text-xs">
+                    <tfoot className="sticky bottom-0 z-10 border-t-2 border-amber-500/30 dark:border-amber-500/20 bg-amber-500/10 backdrop-blur-md font-bold text-xs shadow-[0_-1px_3px_rgba(0,0,0,0.05)]">
                       <tr>
                         <td className="px-2 py-2.5 text-center text-amber-600 dark:text-amber-400">
                           Razem
@@ -257,6 +337,15 @@ export function MilestonesTab({
           </div>
         </div>
       )}
+
+      <InvoiceFormDrawer
+        isOpen={!!activeInvoiceMilestone}
+        onClose={() => setActiveInvoiceMilestone(null)}
+        onSubmit={(data) => addInvoiceMutation.mutate(data)}
+        isSubmitting={addInvoiceMutation.isPending}
+        milestone={activeInvoiceMilestone}
+        contractVal={contractVal}
+      />
 
       {/* Back Footer */}
       <div className="border-t border-[var(--border)] pt-3 flex items-center justify-end">

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { AlertTriangle, ArrowLeft, CalendarRange, Coins, Edit, ExternalLink, FileText, Loader2, MapPin, Trash2, UserRoundCheck, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { UseMutationResult } from '@tanstack/react-query'
@@ -18,7 +18,7 @@ import { MilestoneFormDrawer } from '@/features/projects/pages/ProjectsShowcase/
 import { WorksTab } from '@/features/projects/pages/ProjectsShowcase/components/ProjectDetailsDrawer/tabs/Works/WorksTab'
 import { ProjectDepartmentsTab } from '@/features/projects/pages/ProjectsShowcase/components/ProjectDetailsDrawer/tabs/Departments/ProjectDepartmentsTab'
 import { PlannedExpensesTab } from '@/features/projects/pages/ProjectsShowcase/components/ProjectDetailsDrawer/tabs/PlannedExpenses/PlannedExpensesTab'
-
+import { ProjectDashboardTab } from '@/features/projects/pages/ProjectsShowcase/components/ProjectDetailsDrawer/tabs/Dashboard/ProjectDashboardTab'
 type ProjectDetailsDrawerProps = {
   isOpen?: boolean
   editingProject: ApiProject | null
@@ -55,8 +55,8 @@ type ProjectDetailsDrawerProps = {
   contractorRef: React.RefObject<HTMLDivElement | null>
 
   // Milestones & Works props
-  activeTab: 'details' | 'expenses' | 'milestones' | 'departments' | 'works'
-  setActiveTab: (tab: 'details' | 'expenses' | 'milestones' | 'departments' | 'works') => void
+  activeTab: 'dashboard' | 'details' | 'expenses' | 'milestones' | 'departments' | 'works'
+  setActiveTab: (tab: 'dashboard' | 'details' | 'expenses' | 'milestones' | 'departments' | 'works') => void
   milestones: ApiMilestone[]
   milestonesLoading: boolean
   showMilestoneForm: boolean
@@ -148,6 +148,37 @@ export function ProjectDetailsDrawer({
     setIsBulkEditMilestones(false)
     setShowMilestoneForm(false)
   }
+
+  useEffect(() => {
+    if (editingProject && !isEditing) {
+      setFormState({
+        name: editingProject.name,
+        contractorId: editingProject.contractors?.id ?? '',
+        projectTypeId: editingProject.project_types?.id ?? 0,
+        country: editingProject.country,
+        city: editingProject.city,
+        status: editingProject.status as ProjectStatus,
+        currency: editingProject.currency || 'PLN',
+        contractNetValue: editingProject.contract_net_value ? Number(editingProject.contract_net_value) : undefined,
+        startDateContract: editingProject.start_date_contract || '',
+        endDateContract: editingProject.end_date_contract || '',
+        startDateFact: editingProject.start_date_fact || '',
+        endDateFact: editingProject.end_date_fact || '',
+        managerId: editingProject.manager?.id ?? undefined,
+        power: editingProject.power ? Number(editingProject.power) : undefined,
+        dokumentationUrl: editingProject.dokumentationUrl ?? '',
+        pinUrl: editingProject.pinUrl ?? '',
+        vatRate: editingProject.vatRate ? Number(editingProject.vatRate) : undefined,
+        warrantyPercent: editingProject.warrantyPercent ? Number(editingProject.warrantyPercent) : undefined,
+        warrantyMonths: editingProject.warrantyMonths ?? undefined,
+        paymentTermDays: editingProject.paymentTermDays ?? undefined,
+        holdReason: editingProject.holdReason ?? '',
+        holdStartedAt: editingProject.holdStartedAt ?? '',
+        expectedResumeDate: editingProject.expectedResumeDate ?? '',
+      })
+      setFormError('')
+    }
+  }, [editingProject, isEditing, setFormState, setFormError])
 
   const handleCancelEdit = () => {
     if (editingProject) {
@@ -541,6 +572,19 @@ export function ProjectDetailsDrawer({
         {/* Tab navigation */}
         {editingProject && (
           <div className="flex border-b border-[var(--border)] mb-1">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('dashboard')
+                setMilestoneError('')
+              }}
+              className={`pb-2 px-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${activeTab === 'dashboard'
+                ? 'border-[var(--sidebar-primary)] text-[var(--sidebar-primary)]'
+                : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                }`}
+            >
+              Pulpit
+            </button>
             <button
               type="button"
               onClick={() => {
@@ -1181,6 +1225,12 @@ export function ProjectDetailsDrawer({
             </>
           ) : (
             <></>
+          )}
+
+          {activeTab === 'dashboard' && editingProject && (
+            <div className="animate-tab-content h-full">
+              <ProjectDashboardTab project={editingProject} milestones={milestones} formatBudget={formatBudget} />
+            </div>
           )}
 
           {activeTab === 'expenses' && editingProject && (

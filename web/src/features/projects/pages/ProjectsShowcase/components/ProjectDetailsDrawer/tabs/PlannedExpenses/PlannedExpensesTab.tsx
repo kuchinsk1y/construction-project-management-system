@@ -1,15 +1,14 @@
-import React, { useState } from 'react'
+import { useState } from 'react' // React,
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Trash2, Edit2, Wallet, Coins } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
-import { 
-  getCostCategories, 
-  createCostCategory, 
-  getPlannedExpenses, 
-  createPlannedExpense, 
-  updatePlannedExpense, 
-  deletePlannedExpense 
+import {
+  getCostCategories,
+  createCostCategory,
+  getPlannedExpenses,
+  createPlannedExpense,
+  updatePlannedExpense,
+  deletePlannedExpense
 } from '@/features/projects/api'
 import type { ApiProject, ApiPlannedExpense } from '@/features/projects/types'
 import { PlannedExpenseFormDrawer } from '@/features/projects/pages/ProjectsShowcase/components/ProjectDetailsDrawer/tabs/PlannedExpenses/PlannedExpenseFormDrawer'
@@ -19,7 +18,6 @@ interface PlannedExpensesTabProps {
 }
 
 export function PlannedExpensesTab({ project }: PlannedExpensesTabProps) {
-  const { t } = useTranslation()
   const queryClient = useQueryClient()
 
   // Queries
@@ -49,7 +47,7 @@ export function PlannedExpensesTab({ project }: PlannedExpensesTabProps) {
   })
 
   const updateExpenseMut = useMutation({
-    mutationFn: (data: { id: string, payload: { costCategoryId?: string, plannedPercent?: number } }) => 
+    mutationFn: (data: { id: string, payload: { costCategoryId?: string, plannedPercent?: number } }) =>
       updatePlannedExpense(project.id, data.id, data.payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['planned-expenses', project.id] })
@@ -66,14 +64,14 @@ export function PlannedExpensesTab({ project }: PlannedExpensesTabProps) {
   // State
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null)
-  
+
   // Budget calculations
   const contractValue = project.contract_net_value ? Number(project.contract_net_value) : 0
   const currency = project.currency || 'PLN'
   const warrantyPercent = project.warrantyPercent ? Number(project.warrantyPercent) : 0
   const availableBudget = contractValue - (contractValue * (warrantyPercent / 100))
   const totalPercentUsed = expenses.reduce((sum, e) => sum + e.plannedPercent, 0)
-  
+
   const formatBudget = (val: number, curr?: string) => {
     return new Intl.NumberFormat('pl-PL', {
       style: 'currency',

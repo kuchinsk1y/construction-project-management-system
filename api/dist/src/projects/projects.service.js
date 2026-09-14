@@ -441,6 +441,11 @@ let ProjectsService = class ProjectsService {
     async listMilestones(projectId) {
         const rows = await this.prisma.milestones.findMany({
             where: { project_id: projectId, deleted_at: null },
+            include: {
+                milestones_invoices: {
+                    orderBy: { issued_date: 'asc' }
+                }
+            },
             orderBy: { milestone_no: 'asc' },
         });
         return rows.map((m) => ({
@@ -456,6 +461,13 @@ let ProjectsService = class ProjectsService {
                 : null,
             createdAt: m.created_at,
             updatedAt: m.updated_at,
+            invoices: m.milestones_invoices.map((inv) => ({
+                id: inv.id,
+                invoiceNumber: inv.invoice_number,
+                netValue: Number(inv.net_value),
+                note: inv.note,
+                issuedDate: inv.issued_date?.toISOString().split('T')[0] ?? null,
+            }))
         }));
     }
     async createMilestone(projectId, dto) {
@@ -648,6 +660,61 @@ let ProjectsService = class ProjectsService {
         });
         return { success: true };
     }
+    async createMilestoneInvoice(milestoneId, dto) {
+        const milestone = await this.prisma.milestones.findUnique({
+            where: { id: milestoneId, deleted_at: null },
+        });
+        if (!milestone) {
+            throw new common_1.NotFoundException('Milestone not found');
+        }
+        const invoice = await this.prisma.milestones_invoices.create({
+            data: {
+                milestone_id: milestoneId,
+                invoice_number: dto.invoiceNumber,
+                net_value: dto.netValue,
+                issued_date: new Date(dto.issuedDate),
+                paid_at: new Date(dto.issuedDate),
+                note: dto.note ?? '',
+            }
+        });
+        await this.recalculateMilestoneInvoicing(milestoneId, Number(milestone.net_amount));
+        return {
+            id: invoice.id,
+            invoiceNumber: invoice.invoice_number,
+            netValue: Number(invoice.net_value),
+            note: invoice.note,
+            issuedDate: invoice.issued_date?.toISOString().split('T')[0] ?? null,
+        };
+    }
+    async deleteMilestoneInvoice(milestoneId, invoiceId) {
+        const invoice = await this.prisma.milestones_invoices.findUnique({
+            where: { id: invoiceId, milestone_id: milestoneId },
+        });
+        if (!invoice) {
+            throw new common_1.NotFoundException('Invoice not found');
+        }
+        await this.prisma.milestones_invoices.delete({
+            where: { id: invoiceId },
+        });
+        const milestone = await this.prisma.milestones.findUnique({
+            where: { id: milestoneId },
+        });
+        if (milestone) {
+            await this.recalculateMilestoneInvoicing(milestoneId, Number(milestone.net_amount));
+        }
+        return { success: true };
+    }
+    async recalculateMilestoneInvoicing(milestoneId, netAmount) {
+        const invoices = await this.prisma.milestones_invoices.findMany({
+            where: { milestone_id: milestoneId },
+        });
+        const totalInvoiced = invoices.reduce((sum, inv) => sum + Number(inv.net_value), 0);
+        const newPercentage = netAmount > 0 ? (totalInvoiced / netAmount) * 100 : 0;
+        await this.prisma.milestones.update({
+            where: { id: milestoneId },
+            data: { invoicing_percentage: Math.min(newPercentage, 100) },
+        });
+    }
     async listDepartments() {
         let list = await this.prisma.departments.findMany({
             where: { is_active: true },
@@ -690,27 +757,32 @@ let ProjectsService = class ProjectsService {
             include: {
                 milestones: { select: { id: true, milestone_no: true } },
                 departments: { select: { id: true, name: true } },
+                daily_reports: { select: { actual_quantity: true }, where: { deleted_at: null } },
             },
             orderBy: { created_at: 'desc' },
         });
-        return rows.map((w) => ({
-            id: w.id,
-            projectId: w.project_id,
-            milestoneId: w.milestone_id,
-            milestoneNo: w.milestones?.milestone_no ?? '',
-            departmentId: Number(w.department_id),
-            departmentName: w.departments?.name ?? '',
-            name: w.name,
-            unit: w.unit,
-            percentage: w.percentage ? Number(w.percentage) : null,
-            totalQuantity: w.total_quantity ? Number(w.total_quantity) : 0,
-            plannedStart: w.planned_start
-                ? w.planned_start.toISOString().split('T')[0]
-                : null,
-            plannedEnd: w.planned_end
-                ? w.planned_end.toISOString().split('T')[0]
-                : null,
-        }));
+        return rows.map((w) => {
+            const actualQuantity = w.daily_reports.reduce((sum, dr) => sum + (dr.actual_quantity ? Number(dr.actual_quantity) : 0), 0);
+            return {
+                id: w.id,
+                projectId: w.project_id,
+                milestoneId: w.milestone_id,
+                milestoneNo: w.milestones?.milestone_no ?? '',
+                departmentId: Number(w.department_id),
+                departmentName: w.departments?.name ?? '',
+                name: w.name,
+                unit: w.unit,
+                percentage: w.percentage ? Number(w.percentage) : null,
+                totalQuantity: w.total_quantity ? Number(w.total_quantity) : 0,
+                actualQuantity,
+                plannedStart: w.planned_start
+                    ? w.planned_start.toISOString().split('T')[0]
+                    : null,
+                plannedEnd: w.planned_end
+                    ? w.planned_end.toISOString().split('T')[0]
+                    : null,
+            };
+        });
     }
     async createWorkType(projectId, dto) {
         const row = await this.prisma.project_work_types.create({

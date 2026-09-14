@@ -6,6 +6,8 @@ import type {
   CreateProjectPayload,
   ApiMilestone,
   CreateMilestonePayload,
+  CreateMilestoneInvoicePayload,
+  ApiMilestoneInvoice,
   ApiDepartment,
   ApiProjectDepartment,
   ApiForemanUser,
@@ -65,6 +67,20 @@ export function updateMilestone(
 
 export function deleteMilestone(id: string): Promise<void> {
   return apiDelete<void>(`/projects/milestones/${id}`)
+}
+
+export function createMilestoneInvoice(
+  milestoneId: string,
+  payload: CreateMilestoneInvoicePayload,
+): Promise<ApiMilestoneInvoice> {
+  return apiPost<ApiMilestoneInvoice>(`/projects/milestones/${milestoneId}/invoices`, payload)
+}
+
+export function deleteMilestoneInvoice(
+  milestoneId: string,
+  invoiceId: string,
+): Promise<void> {
+  return apiDelete<void>(`/projects/milestones/${milestoneId}/invoices/${invoiceId}`)
 }
 
 // --- Departments & Foremen Reference ---
