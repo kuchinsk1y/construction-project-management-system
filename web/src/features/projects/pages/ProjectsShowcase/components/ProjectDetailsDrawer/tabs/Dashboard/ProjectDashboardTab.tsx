@@ -11,7 +11,9 @@ import {
   Zap,
   Activity,
   PieChart,
-  Briefcase
+  Briefcase,
+  LayoutList,
+  List
 } from 'lucide-react'
 import { ProjectActiveWorkers } from './ProjectActiveWorkers'
 import type { ApiMilestone, ApiProject } from '@/features/projects/types'
@@ -194,6 +196,7 @@ type ProjectDashboardTabProps = {
 
 export function ProjectDashboardTab({ project, milestones, formatBudget }: ProjectDashboardTabProps) {
   const { t } = useTranslation()
+  const [workersViewMode, setWorkersViewMode] = useState<'grouped' | 'list'>('grouped')
 
   const { data: workTypes = [] } = useQuery({
     queryKey: ['work-types', project.id],
@@ -318,7 +321,7 @@ export function ProjectDashboardTab({ project, milestones, formatBudget }: Proje
       </div>
 
       {/* SECOND ROW: TOP GRID (KPIs, Donut, Project Info / Workers) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 items-stretch">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 items-stretch lg:h-[340px]">
         
         {/* LEFT COLUMN: KPIs (col-span-3) */}
         <div className="lg:col-span-3 flex flex-col gap-2">
@@ -427,14 +430,42 @@ export function ProjectDashboardTab({ project, milestones, formatBudget }: Proje
                 )}
               </span>
             </div>
-            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold border ${statusTone(project.status || '')}`}>
-              {t(`projects.form.statuses.${project.status}`)}
-            </span>
+            <div className="flex items-center gap-2">
+              {project.status?.toUpperCase() === 'ACTIVE' && (
+                <div className="flex bg-[var(--muted)]/50 p-0.5 rounded-lg border border-[var(--border)]">
+                  <button
+                    onClick={() => setWorkersViewMode('grouped')}
+                    className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold transition-all ${
+                      workersViewMode === 'grouped'
+                        ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm'
+                        : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                    }`}
+                  >
+                    <LayoutList size={12} />
+                    <span className="hidden xl:inline">Grupy</span>
+                  </button>
+                  <button
+                    onClick={() => setWorkersViewMode('list')}
+                    className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold transition-all ${
+                      workersViewMode === 'list'
+                        ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm'
+                        : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                    }`}
+                  >
+                    <List size={12} />
+                    <span className="hidden xl:inline">Lista</span>
+                  </button>
+                </div>
+              )}
+              <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold border ${statusTone(project.status || '')}`}>
+                {t(`projects.form.statuses.${project.status}`)}
+              </span>
+            </div>
           </div>
           
           <div className="flex-1 overflow-hidden min-h-0 flex flex-col">
             {project.status?.toUpperCase() === 'ACTIVE' ? (
-              <ProjectActiveWorkers />
+              <ProjectActiveWorkers viewMode={workersViewMode} />
             ) : (
               <div className="flex flex-col gap-5 p-6 bg-[var(--background)] h-full justify-center min-h-0 overflow-y-auto custom-scrollbar">
                 <div className="grid grid-cols-2 gap-6">

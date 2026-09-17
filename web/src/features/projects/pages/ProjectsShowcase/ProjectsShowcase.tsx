@@ -208,9 +208,9 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
   const [milestoneForm, setMilestoneForm] = useState<CreateMilestonePayload>({
     milestoneNo: '',
     description: '',
-    type: undefined,
+    type: 'KM',
     percentage: 0,
-    netAmount: undefined,
+    netAmount: 0,
     invoicingPercentage: undefined,
   })
   const [editingMilestoneId, setEditingMilestoneId] = useState<string | null>(null)
@@ -223,7 +223,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
     setFormError('')
     setEditingMilestoneId(null)
     setShowMilestoneForm(false)
-    setMilestoneForm({ milestoneNo: '', description: '', percentage: 0, invoicingPercentage: undefined })
+    setMilestoneForm({ milestoneNo: '', description: '', type: 'KM', percentage: 0, netAmount: 0, invoicingPercentage: undefined })
     setMilestoneError('')
   }
 
@@ -276,7 +276,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['milestones', editingProject?.id] })
       await queryClient.invalidateQueries({ queryKey: ['projects'] })
-      setMilestoneForm({ milestoneNo: '', description: '', type: undefined, percentage: 0, netAmount: undefined, invoicingPercentage: undefined })
+      setMilestoneForm({ milestoneNo: '', description: '', type: 'KM', percentage: 0, netAmount: 0, invoicingPercentage: undefined })
       setMilestoneError('')
       setShowMilestoneForm(false)
     },
@@ -294,7 +294,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['milestones', editingProject?.id] })
       await queryClient.invalidateQueries({ queryKey: ['projects'] })
-      setMilestoneForm({ milestoneNo: '', description: '', type: undefined, percentage: 0, netAmount: undefined, invoicingPercentage: undefined })
+      setMilestoneForm({ milestoneNo: '', description: '', type: 'KM', percentage: 0, netAmount: 0, invoicingPercentage: undefined })
       setMilestoneError('')
       setShowMilestoneForm(false)
     },
@@ -309,7 +309,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['milestones', editingProject?.id] })
       await queryClient.invalidateQueries({ queryKey: ['projects'] })
-      setMilestoneForm({ milestoneNo: '', description: '', type: undefined, percentage: 0, netAmount: undefined, invoicingPercentage: undefined })
+      setMilestoneForm({ milestoneNo: '', description: '', type: 'KM', percentage: 0, netAmount: 0, invoicingPercentage: undefined })
       setEditingMilestoneId(null)
       setMilestoneError('')
       setShowMilestoneForm(false)
@@ -347,10 +347,12 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
       return
     }
 
-    const payload = {
+    const payload: CreateMilestonePayload = {
       milestoneNo: milestoneForm.milestoneNo.trim(),
       description: milestoneForm.description.trim(),
+      type: milestoneForm.type || 'KM',
       percentage: Number(milestoneForm.percentage),
+      netAmount: Number(milestoneForm.netAmount) || 0,
       invoicingPercentage: milestoneForm.invoicingPercentage ? Number(milestoneForm.invoicingPercentage) : undefined,
     }
 
