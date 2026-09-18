@@ -235,14 +235,16 @@ export function DepartmentsPage({ canManage }: DepartmentsPageProps) {
             <p>{search ? 'Nie znaleziono działów pasujących do wyszukiwania.' : 'Brak działów w systemie.'}</p>
           </div>
         ) : (
-          <div className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3" : "flex flex-col gap-2"}>
+          <div className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3" : "flex flex-col divide-y divide-[var(--border)] border border-[var(--border)] rounded-xl bg-[var(--card)] shadow-sm overflow-hidden"}>
             {filteredDepartments.map((dept) => {
               const DeptIcon = getDepartmentIcon(dept.icon).icon
 
               return (
                 <div
                   key={dept.id}
-                  className={`group relative bg-[var(--card)] rounded-xl border border-[var(--border)] shadow-sm hover:shadow-md hover:border-[var(--sidebar-primary)]/20 transition-all duration-300 overflow-hidden flex ${viewMode === 'grid' ? 'flex-col' : 'flex-row items-center p-2.5 gap-4'}`}
+                  className={viewMode === 'grid'
+                    ? "group relative bg-[var(--card)] rounded-xl border border-[var(--border)] shadow-sm hover:shadow-md hover:border-[var(--sidebar-primary)]/20 transition-all duration-300 overflow-hidden flex flex-col"
+                    : "group relative flex flex-row items-center p-3 gap-4 hover:bg-[var(--muted)]/20 transition-colors"}
                 >
                   {viewMode === 'grid' ? (
                     <>

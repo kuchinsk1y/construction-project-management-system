@@ -31,6 +31,7 @@ export function InvoiceFormDrawer({
   // Reset form when opened with a new milestone
   useEffect(() => {
     if (isOpen && milestone) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setInvoiceNumber('')
       setNetValue('')
       setPercentage('')

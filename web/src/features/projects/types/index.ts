@@ -6,6 +6,7 @@ export type ApiMilestoneInvoice = {
   netValue: number
   note: string
   issuedDate: string | null
+  paidAt?: string | null
 }
 
 export type ApiMilestone = {
@@ -27,7 +28,7 @@ export type CreateMilestonePayload = {
   description: string
   type: 'KM' | 'roboty_dodatkowe'
   percentage?: number
-  netAmount: number
+  netAmount?: number
   invoicingPercentage?: number
 }
 

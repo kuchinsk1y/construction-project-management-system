@@ -82,6 +82,7 @@ export declare class ProjectsController {
             netValue: number;
             note: string;
             issuedDate: string;
+            paidAt: string | null;
         }[];
     }[]>;
     createMilestone(projectId: string, dto: CreateMilestoneDto): Promise<{

@@ -19,6 +19,7 @@ export declare class ProjectsService {
     private readonly plannedExpensesService;
     private readonly mailService;
     constructor(prisma: PrismaService, syncQueue: Queue, config: ConfigService, sheetsService: GoogleSheetsService, plannedExpensesService: PlannedExpensesService, mailService: MailService);
+    private handleSyncError;
     list(): Promise<{
         id: string;
         name: string;
@@ -85,6 +86,7 @@ export declare class ProjectsService {
             netValue: number;
             note: string;
             issuedDate: string;
+            paidAt: string | null;
         }[];
     }[]>;
     createMilestone(projectId: string, dto: CreateMilestoneDto): Promise<{

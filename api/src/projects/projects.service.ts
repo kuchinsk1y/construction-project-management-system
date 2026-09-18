@@ -41,6 +41,30 @@ export class ProjectsService {
     private readonly mailService: MailService,
   ) { }
 
+  private async handleSyncError(sheetName: string, action: string, error: unknown, syncData: any) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    
+    // Try to log to Postgres
+    try {
+      await this.prisma.google_sheets_sync_errors.create({
+        data: {
+          table_name: sheetName,
+          action: action,
+          error_message: errMsg,
+          payload: JSON.stringify(syncData),
+        }
+      });
+    } catch (dbErr) {}
+
+    // Send email
+    await this.mailService.sendSyncErrorEmail(
+      sheetName,
+      action,
+      errMsg,
+      JSON.stringify(syncData, null, 2)
+    );
+  }
+
   async list() {
     const rows = await this.prisma.projects.findMany({
       where: { deleted_at: null },
@@ -365,17 +389,7 @@ export class ProjectsService {
         await this.sheetsService.appendRow(spreadsheetId, sheetName, syncData);
       }
     } catch (error) {
-      const errMsg = error instanceof Error ? error.message : String(error);
-      const errorsSheet = this.config.get<string>('SYNC_ERRORS_SHEET_NAME', 'SyncErrors');
-      try {
-        await this.sheetsService.appendRow(spreadsheetId, errorsSheet, {
-          timestamp: new Date().toISOString(),
-          action: 'UPDATE_PROJECT',
-          error_message: errMsg,
-          payload: JSON.stringify(syncData),
-        });
-      } catch (logErr) { }
-      throw new InternalServerErrorException('Nie udało się zaktualizować projektu w Google Sheets');
+      await this.handleSyncError(sheetName, 'UPDATE_PROJECT', error, syncData);
     }
 
     const project = await this.prisma.projects.update({
@@ -503,6 +517,7 @@ export class ProjectsService {
         netValue: Number(inv.net_value),
         note: inv.note,
         issuedDate: inv.issued_date?.toISOString().split('T')[0] ?? null,
+        paidAt: inv.paid_at?.toISOString().split('T')[0] ?? null,
       }))
     }));
   }
@@ -574,16 +589,7 @@ export class ProjectsService {
     try {
       await this.sheetsService.appendRow(spreadsheetId, sheetName, syncData);
     } catch (error) {
-      const errMsg = error instanceof Error ? error.message : String(error);
-      const errorsSheet = this.config.get<string>('SYNC_ERRORS_SHEET_NAME', 'SyncErrors');
-      try {
-        await this.sheetsService.appendRow(spreadsheetId, errorsSheet, {
-          timestamp: new Date().toISOString(),
-          action: 'CREATE_MILESTONE',
-          error_message: errMsg,
-          payload: JSON.stringify(syncData),
-        });
-      } catch (logErr) { }
+      await this.handleSyncError(sheetName, 'CREATE_MILESTONE', error, syncData);
     }
 
     return {
@@ -684,16 +690,7 @@ export class ProjectsService {
         await this.sheetsService.appendRow(spreadsheetId, sheetName, syncData);
       }
     } catch (error) {
-      const errMsg = error instanceof Error ? error.message : String(error);
-      const errorsSheet = this.config.get<string>('SYNC_ERRORS_SHEET_NAME', 'SyncErrors');
-      try {
-        await this.sheetsService.appendRow(spreadsheetId, errorsSheet, {
-          timestamp: new Date().toISOString(),
-          action: 'UPDATE_MILESTONE',
-          error_message: errMsg,
-          payload: JSON.stringify(syncData),
-        });
-      } catch (logErr) { }
+      await this.handleSyncError(sheetName, 'UPDATE_MILESTONE', error, syncData);
     }
 
     return {
@@ -920,16 +917,7 @@ export class ProjectsService {
     try {
       await this.sheetsService.appendRow(spreadsheetId, sheetName, syncData);
     } catch (error) {
-      const errMsg = error instanceof Error ? error.message : String(error);
-      const errorsSheet = this.config.get<string>('SYNC_ERRORS_SHEET_NAME', 'SyncErrors');
-      try {
-        await this.sheetsService.appendRow(spreadsheetId, errorsSheet, {
-          timestamp: new Date().toISOString(),
-          action: 'CREATE_WORK_TYPE',
-          error_message: errMsg,
-          payload: JSON.stringify(syncData),
-        });
-      } catch (logErr) { }
+      await this.handleSyncError(sheetName, 'CREATE_WORK_TYPE', error, syncData);
     }
 
     return {
@@ -993,16 +981,7 @@ export class ProjectsService {
         await this.sheetsService.appendRow(spreadsheetId, sheetName, syncData);
       }
     } catch (error) {
-      const errMsg = error instanceof Error ? error.message : String(error);
-      const errorsSheet = this.config.get<string>('SYNC_ERRORS_SHEET_NAME', 'SyncErrors');
-      try {
-        await this.sheetsService.appendRow(spreadsheetId, errorsSheet, {
-          timestamp: new Date().toISOString(),
-          action: 'UPDATE_WORK_TYPE',
-          error_message: errMsg,
-          payload: JSON.stringify(syncData),
-        });
-      } catch (logErr) { }
+      await this.handleSyncError(sheetName, 'UPDATE_WORK_TYPE', error, syncData);
     }
 
     return {

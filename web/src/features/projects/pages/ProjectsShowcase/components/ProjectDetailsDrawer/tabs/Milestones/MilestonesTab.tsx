@@ -63,7 +63,7 @@ export function MilestonesTab({
   })
 
   return (
-    <div className="w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-sm space-y-4 animate-tab-content">
+    <div className="w-full flex-1 flex flex-col min-h-0 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-sm gap-4 animate-tab-content">
       {/* Header Action Bar & Summary Stats */}
       <div className="flex flex-col gap-3">
         {/* Top KPI Cards */}
@@ -86,18 +86,10 @@ export function MilestonesTab({
           </div>
 
           <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/35 p-2.5 flex flex-col justify-center shadow-xs">
-            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] mb-1.5">
-              <span>Przypisano %</span>
-              <span className={`${totalPct === 100 ? 'text-emerald-500' : totalPct > 100 ? 'text-rose-500' : 'text-amber-500'}`}>
-                {totalPct.toFixed(1)}%
-              </span>
-            </div>
-            <div className="relative h-1.5 w-full bg-[var(--muted)]/50 rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${totalPct === 100 ? 'bg-emerald-500' : totalPct > 100 ? 'bg-rose-500' : 'bg-amber-500'}`}
-                style={{ width: `${Math.min(totalPct, 100)}%` }}
-              />
-            </div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] mb-1">Przypisano %</span>
+            <p className={`text-sm font-extrabold ${totalPct === 100 ? 'text-emerald-500' : totalPct > 100 ? 'text-rose-500' : 'text-amber-500'}`}>
+              {totalPct.toFixed(1)}%
+            </p>
           </div>
         </div>
 
@@ -131,14 +123,14 @@ export function MilestonesTab({
           <Loader2 className="animate-spin text-[var(--sidebar-primary)]" size={24} />
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="flex-1 flex flex-col min-h-0 gap-4">
           {/* Kamienie Milowe Table */}
-          <div className="space-y-2">
-            <h3 className="text-sm font-bold text-[var(--sidebar-primary)] px-1 flex items-center gap-2">
+          <div className="flex-1 flex flex-col min-h-[150px]">
+            <h3 className="text-sm font-bold text-[var(--sidebar-primary)] px-1 mb-2 flex items-center gap-2 shrink-0">
               Kamienie Milowe (KM)
             </h3>
-            <div className="w-full overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 bg-[var(--card)] shadow-xs">
-              <div className="max-h-[400px] overflow-auto custom-scrollbar">
+            <div className="flex-1 overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 bg-[var(--card)] shadow-xs flex flex-col">
+              <div className="flex-1 overflow-auto custom-scrollbar">
                 <table className="w-full border-collapse text-left text-xs">
                   <thead className="sticky top-0 z-10 border-b border-zinc-200 dark:border-zinc-800 bg-[var(--background)]/90 backdrop-blur-md text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
                     <tr>
@@ -268,12 +260,12 @@ export function MilestonesTab({
           </div>
 
           {/* Roboty Dodatkowe Table */}
-          <div className="space-y-2">
-            <h3 className="text-sm font-bold text-amber-600 dark:text-amber-500 px-1 flex items-center gap-2">
+          <div className="shrink-0 flex flex-col max-h-[40%] min-h-[150px]">
+            <h3 className="text-sm font-bold text-amber-600 dark:text-amber-500 px-1 mb-2 flex items-center gap-2 shrink-0">
               Roboty Dodatkowe (RD)
             </h3>
-            <div className="w-full overflow-hidden rounded-xl border border-amber-500/20 dark:border-amber-500/10 bg-[var(--card)] shadow-xs">
-              <div className="max-h-[300px] overflow-auto custom-scrollbar">
+            <div className="flex-1 overflow-hidden rounded-xl border border-amber-500/20 dark:border-amber-500/10 bg-[var(--card)] shadow-xs flex flex-col">
+              <div className="flex-1 overflow-auto custom-scrollbar">
                 <table className="w-full border-collapse text-left text-xs">
                   <thead className="sticky top-0 z-10 border-b border-amber-500/20 dark:border-amber-500/10 bg-amber-500/5 backdrop-blur-md text-[10px] font-bold uppercase tracking-wider text-amber-600/80 dark:text-amber-500/80">
                     <tr>

@@ -94,17 +94,17 @@ export function ProjectActiveWorkers({ viewMode }: ProjectActiveWorkersProps) {
         ) : viewMode === 'list' ? (
           workers.map((worker) => renderWorkerItem(worker, true))
         ) : (
-          <div className="space-y-1.5 p-1">
+          <div className="flex flex-col divide-y divide-[var(--border)] px-1">
             {sortedRoles.map(role => {
               const groupWorkers = groupedWorkers[role]
               const isExpanded = expandedGroups[role]
               const hasForeman = groupWorkers.some(w => w.isForeman)
 
               return (
-                <div key={role} className="flex flex-col rounded-lg border border-[var(--border)] bg-[var(--card)] shadow-sm overflow-hidden transition-all duration-200">
+                <div key={role} className="flex flex-col overflow-hidden transition-all duration-200">
                   <button
                     onClick={() => toggleGroup(role)}
-                    className="flex items-center justify-between p-2 hover:bg-[var(--muted)]/30 transition-colors w-full text-left"
+                    className="flex items-center justify-between py-2 px-1 hover:bg-[var(--muted)]/20 transition-colors w-full text-left rounded-md my-0.5"
                   >
                     <div className="flex items-center gap-2.5">
                       <div className={`rounded p-1.5 shadow-sm ${hasForeman ? 'bg-amber-500/15 text-amber-500' : 'bg-[var(--sidebar-primary)]/10 text-[var(--sidebar-primary)]'}`}>

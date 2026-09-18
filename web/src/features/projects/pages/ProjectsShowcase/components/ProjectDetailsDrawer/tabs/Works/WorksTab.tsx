@@ -63,7 +63,7 @@ function ComboBox({
       <div
         className={`flex items-center gap-1 w-full bg-[var(--background)] border rounded-md px-2 py-1 text-[11px] outline-none transition ${disabled
           ? 'border-[var(--border)] opacity-40 cursor-not-allowed'
-          : 'border-[var(--sidebar-primary)] shadow-[0_0_0_2px_color-mix(in_oklch,var(--sidebar-primary),transparent_82%)] cursor-pointer'
+          : 'border-[var(--border)] hover:border-[var(--sidebar-primary)] cursor-pointer'
           }`}
         onClick={() => !disabled && setOpen(o => !o)}
       >
@@ -76,7 +76,7 @@ function ComboBox({
       {open && createPortal(
         <>
           <div className="fixed inset-0 z-[9998]" onClick={() => setOpen(false)} />
-          <div 
+          <div
             className="fixed z-[9999] rounded-md border border-[var(--border)] bg-[var(--card)] shadow-xl overflow-hidden"
             style={{ left: coords.left, top: coords.top, width: coords.width }}
           >
@@ -108,32 +108,6 @@ function ComboBox({
   )
 }
 
-/** Percentage progress bar for a milestone */
-function PercentBar({ total, count }: { total: number; count: number }) {
-  const isOk = Math.abs(total - 100) < 0.01
-  const isOver = total > 100
-  const color = isOk ? 'bg-emerald-500' : isOver ? 'bg-rose-500' : 'bg-amber-500'
-  const textColor = isOk ? 'text-emerald-600 dark:text-emerald-400' : isOver ? 'text-rose-500' : 'text-amber-600 dark:text-amber-400'
-  const pct = Math.min(total, 100)
-
-  if (count === 0) return null
-
-  return (
-    <div className="flex items-center gap-1.5 px-1">
-      <div className="flex-1 h-1.5 rounded-full bg-[var(--border)] overflow-hidden">
-        <div
-          className={`h-full rounded-full transition-all duration-500 ${color}`}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <span className={`text-[10px] font-bold tabular-nums w-9 text-right ${textColor}`}>
-        {total.toFixed(0)}%
-      </span>
-      {isOk && <Check size={10} className="text-emerald-500 shrink-0" />}
-      {!isOk && <AlertTriangle size={10} className={`shrink-0 ${textColor}`} />}
-    </div>
-  )
-}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -309,7 +283,24 @@ export function WorksTab({ projectId, milestones, canEditProject }: WorksTabProp
         if (row.isNew) {
           promises.push(createMut.mutateAsync({ milestoneId: row.milestoneId, payload: payload as CreateWorkTypePayload }))
         } else {
-          promises.push(updateMut.mutateAsync({ id: row.id, payload }))
+          // Dirty check for existing rows
+          const original = workTypes.find(wt => wt.id === row.id)
+          let hasChanges = false
+          if (original) {
+            if (String(original.departmentId) !== row.departmentId) hasChanges = true
+            if (original.name !== row.name.trim()) hasChanges = true
+            if ((original.unit || '') !== (row.unit || '')) hasChanges = true
+            if (String(original.percentage ?? '') !== row.percentage) hasChanges = true
+            if (String(original.totalQuantity ?? '') !== row.totalQuantity) hasChanges = true
+            if ((original.plannedStart ?? '') !== (row.plannedStart || '')) hasChanges = true
+            if ((original.plannedEnd ?? '') !== (row.plannedEnd || '')) hasChanges = true
+          } else {
+            hasChanges = true // Should not happen for isNew=false, but just in case
+          }
+
+          if (hasChanges) {
+            promises.push(updateMut.mutateAsync({ id: row.id, payload }))
+          }
         }
       }
 
@@ -478,20 +469,21 @@ export function WorksTab({ projectId, milestones, canEditProject }: WorksTabProp
                   <th className="px-2 py-2 border-r border-[var(--border)] min-w-[160px]">Rodzaj robot</th>
                   <th className="px-2 py-2 text-center border-r border-[var(--border)] w-24">
                     <div className="flex items-center justify-center gap-1">
-                      <span>%</span>
+                      <span>% w etapie</span>
                     </div>
                   </th>
                   <th className="px-2 py-2 border-r border-[var(--border)] whitespace-nowrap w-28">Start</th>
                   <th className="px-2 py-2 border-r border-[var(--border)] whitespace-nowrap w-28">Koniec</th>
-                  <th className="px-2 py-2 text-center border-r border-[var(--border)] w-20">Jm.</th>
                   <th className="px-2 py-2 text-right border-r border-[var(--border)] whitespace-nowrap w-20">Ilość</th>
-                  <th className="px-3 py-2 min-w-[140px]">Dział</th>
+                  <th className="px-2 py-2 text-center border-r border-[var(--border)] w-20">Jm.</th>
+                  <th className={`px-3 py-2 min-w-[140px] ${isEditMode ? 'border-r border-[var(--border)]' : ''}`}>Dział</th>
+                  {isEditMode && <th className="px-2 py-2 w-12"></th>}
                 </tr>
               </thead>
               {workTypesLoading ? (
                 <tbody className="font-medium">
                   <tr>
-                    <td colSpan={9} className="px-3 py-10 text-center text-[var(--muted-foreground)]">
+                    <td colSpan={isEditMode ? 10 : 9} className="px-3 py-10 text-center text-[var(--muted-foreground)]">
                       <Loader2 size={18} className="animate-spin mx-auto mb-2" />
                       Wczytywanie robót...
                     </td>
@@ -500,18 +492,18 @@ export function WorksTab({ projectId, milestones, canEditProject }: WorksTabProp
               ) : milestoneGroups.length === 0 ? (
                 <tbody className="font-medium">
                   <tr>
-                    <td colSpan={9} className="px-3 py-10 text-center text-[var(--muted-foreground)] italic text-[11px]">
+                    <td colSpan={isEditMode ? 10 : 9} className="px-3 py-10 text-center text-[var(--muted-foreground)] italic text-[11px]">
                       Brak etapów. Przejdź do zakładki „Kamienie Milowe", aby stworzyć strukturę projektu.
                     </td>
                   </tr>
                 </tbody>
               ) : (
                 milestoneGroups.map(group => {
-                  const { milestone, rows, percentSum, isInvalid } = group
+                  const { milestone, rows, isInvalid } = group
                   const visibleRows = isEditMode
                     ? rows.filter(r => !('editRow' in r && r.editRow.markedForDelete))
                     : rows
-                  const rowSpan = Math.max(1, visibleRows.length) + (isEditMode ? 1 : 0) // +1 for progress bar row only in edit mode
+                  const rowSpan = Math.max(1, visibleRows.length)
 
                   return (
                     <tbody key={milestone.id} className="font-medium border-b-[3px] border-zinc-200 dark:border-zinc-800 last:border-b-0">
@@ -521,7 +513,6 @@ export function WorksTab({ projectId, milestones, canEditProject }: WorksTabProp
                         rows={visibleRows}
                         allEditRows={editRows}
                         rowSpan={rowSpan}
-                        percentSum={percentSum}
                         isInvalid={isInvalid}
                         isEditMode={isEditMode}
                         deptOptions={deptOptions}
@@ -551,7 +542,6 @@ type MilestoneRowsProps = {
   rows: Array<{ wt: ApiWorkType } | { editRow: EditRow }>
   allEditRows: EditRow[]
   rowSpan: number
-  percentSum: number
   isInvalid: boolean
   isEditMode: boolean
   deptOptions: DeptOption[]
@@ -565,7 +555,6 @@ function MilestoneRows({
   milestone,
   rows,
   rowSpan,
-  percentSum,
   isInvalid,
   isEditMode,
   deptOptions,
@@ -605,24 +594,27 @@ function MilestoneRows({
   if (rows.length === 0) {
     // No rows for this milestone
     return (
-      <>
-        <tr className="bg-[var(--muted)]/10 align-middle border-b border-[var(--border)] last:border-b-0">
-          {milestoneCell(isEditMode ? 2 : 1)}
-          {descriptionCell(isEditMode ? 2 : 1)}
-          <td colSpan={7} className="px-3 py-2 text-[var(--muted-foreground)] italic text-[10px] border-r border-[var(--border)]">
-            {isEditMode ? (
-              <span className="opacity-60">Brak robót — dodaj klikając +</span>
-            ) : 'Brak robót'}
+      <tr className="bg-[var(--muted)]/10 align-middle border-b border-[var(--border)] last:border-b-0">
+        {milestoneCell(1)}
+        {descriptionCell(1)}
+        <td colSpan={isEditMode ? 7 : 8} className={`px-3 py-2 text-[var(--muted-foreground)] italic text-[10px] ${isEditMode ? 'border-r border-[var(--border)]' : ''}`}>
+          Brak robót
+        </td>
+        {isEditMode && (
+          <td className="px-1.5 py-1 text-center">
+            {canEdit && (
+              <button
+                type="button"
+                onClick={() => addSubRow(milestone.id)}
+                className="p-1 rounded-md text-[var(--sidebar-primary)] hover:bg-[var(--sidebar-primary)]/10 transition-colors shrink-0 mx-auto block"
+                title="Dodaj robotę"
+              >
+                <Plus size={12} />
+              </button>
+            )}
           </td>
-        </tr>
-        {isEditMode && canEdit && (
-          <tr className="bg-[var(--sidebar-primary)]/3 border-b border-[var(--border)] last:border-b-0">
-            <td colSpan={7} className="px-2 py-1.5">
-              <AddRowButton milestoneId={milestone.id} addSubRow={addSubRow} />
-            </td>
-          </tr>
         )}
-      </>
+      </tr>
     )
   }
 
@@ -653,18 +645,16 @@ function MilestoneRows({
               </td>
               <td className="px-2 py-2 border-r border-[var(--border)] whitespace-nowrap text-[11px]">{formatDateLocal(wt.plannedStart)}</td>
               <td className="px-2 py-2 border-r border-[var(--border)] whitespace-nowrap text-[11px]">{formatDateLocal(wt.plannedEnd)}</td>
-              <td className="px-2 py-2 text-center border-r border-[var(--border)] text-[var(--muted-foreground)] text-[11px]">{wt.unit || '-'}</td>
               <td className="px-2 py-2 text-right border-r border-[var(--border)] font-bold text-[11px]">
                 {wt.totalQuantity ? Number(wt.totalQuantity).toFixed(2) : '-'}
               </td>
-              <td className="px-3 py-2">
+              <td className="px-2 py-2 text-center border-r border-[var(--border)] text-[var(--muted-foreground)] text-[11px]">{wt.unit || '-'}</td>
+              <td className={`px-3 py-2 ${isEditMode ? 'border-r border-[var(--border)]' : ''}`}>
                 <span className="inline-flex items-center rounded-md bg-[var(--sidebar-primary)]/10 px-2 py-0.5 text-[10px] font-bold text-[var(--sidebar-primary)] whitespace-nowrap">
                   {deptOptions.find(d => d.id === wt.departmentId)?.label || wt.departmentName}
                 </span>
               </td>
-              {isLast && (
-                <></>
-              )}
+              {isEditMode && <td className="px-1.5 py-1 text-center"></td>}
             </tr>
           )
         } else {
@@ -690,7 +680,7 @@ function MilestoneRows({
                   list={`suggestions-${editRow.id}`}
                   className={`w-full bg-[var(--background)] border rounded-md px-2 py-1 text-[11px] outline-none transition ${!editRow.departmentId
                     ? 'border-[var(--border)] opacity-40 cursor-not-allowed'
-                    : 'border-[var(--sidebar-primary)] shadow-[0_0_0_2px_color-mix(in_oklch,var(--sidebar-primary),transparent_82%)]'
+                    : 'border-[var(--border)] focus:border-[var(--sidebar-primary)]'
                     }`}
                   placeholder="Rodzaj roboty..."
                   value={editRow.name}
@@ -715,7 +705,7 @@ function MilestoneRows({
                   step={1}
                   className={`w-full text-center bg-[var(--background)] border rounded-md px-1 py-1 text-[11px] outline-none tabular-nums font-bold transition ${isRowInvalid
                     ? 'border-amber-400 focus:border-amber-500'
-                    : 'border-[var(--sidebar-primary)] shadow-[0_0_0_1px_color-mix(in_oklch,var(--sidebar-primary),transparent_85%)]'
+                    : 'border-[var(--border)] focus:border-[var(--sidebar-primary)]'
                     }`}
                   placeholder="%"
                   value={editRow.percentage}
@@ -743,17 +733,6 @@ function MilestoneRows({
                 />
               </td>
 
-              {/* Jm — combo */}
-              <td className="px-1.5 py-1 border-r border-[var(--border)]">
-                <ComboBox
-                  value={editRow.unit}
-                  onChange={v => updateEditRow(editRow.id, 'unit', v)}
-                  options={UNIT_OPTIONS}
-                  placeholder="Jm..."
-                  className="min-w-[70px]"
-                />
-              </td>
-
               {/* Ilość */}
               <td className="px-1.5 py-1 border-r border-[var(--border)]">
                 <input
@@ -767,26 +746,50 @@ function MilestoneRows({
                 />
               </td>
 
+              {/* Jm — combo */}
+              <td className="px-1.5 py-1 border-r border-[var(--border)]">
+                <ComboBox
+                  value={editRow.unit}
+                  onChange={v => updateEditRow(editRow.id, 'unit', v)}
+                  options={UNIT_OPTIONS}
+                  placeholder="Jm..."
+                  className="min-w-[70px]"
+                />
+              </td>
+
               {/* Dział */}
-              <td className="px-1.5 py-1">
-                <div className="flex items-center gap-1">
-                  <select
-                    className="flex-1 bg-[var(--background)] border border-[var(--sidebar-primary)] rounded-md px-1.5 py-1 text-[11px] outline-none cursor-pointer shadow-[0_0_0_1px_color-mix(in_oklch,var(--sidebar-primary),transparent_85%)]"
-                    value={editRow.departmentId}
-                    onChange={e => {
-                      updateEditRow(editRow.id, 'departmentId', e.target.value)
-                      // Reset name if dept changed
-                      if (e.target.value !== editRow.departmentId) {
-                        updateEditRow(editRow.id, 'name', '')
-                      }
-                    }}
-                  >
-                    <option value="">Wybierz dział...</option>
-                    {deptOptions.map(d => (
-                      <option key={d.id} value={String(d.id)}>{d.label}</option>
-                    ))}
-                  </select>
-                  {/* Delete this sub-row */}
+              <td className="px-1.5 py-1 border-r border-[var(--border)]">
+                <select
+                  className="w-full bg-[var(--background)] border border-[var(--border)] focus:border-[var(--sidebar-primary)] rounded-md px-1.5 py-1 text-[11px] outline-none cursor-pointer"
+                  value={editRow.departmentId}
+                  onChange={e => {
+                    updateEditRow(editRow.id, 'departmentId', e.target.value)
+                    // Reset name if dept changed
+                    if (e.target.value !== editRow.departmentId) {
+                      updateEditRow(editRow.id, 'name', '')
+                    }
+                  }}
+                >
+                  <option value="">Wybierz dział...</option>
+                  {deptOptions.map(d => (
+                    <option key={d.id} value={String(d.id)}>{d.label}</option>
+                  ))}
+                </select>
+              </td>
+
+              {/* Akcje */}
+              <td className="px-1.5 py-1 text-center">
+                <div className="flex items-center justify-center gap-1">
+                  {isLast && canEdit && (
+                    <button
+                      type="button"
+                      onClick={() => addSubRow(milestone.id)}
+                      className="p-1 rounded-md text-[var(--sidebar-primary)] hover:bg-[var(--sidebar-primary)]/10 transition-colors shrink-0"
+                      title="Dodaj robotę"
+                    >
+                      <Plus size={12} />
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => updateEditRow(editRow.id, 'markedForDelete', true)}
@@ -801,36 +804,6 @@ function MilestoneRows({
           )
         }
       })}
-
-      {/* Progress / add-row bar — always last row for this milestone group, BUT only in Edit Mode */}
-      {isEditMode && (
-        <tr className="bg-[var(--sidebar-primary)]/3 border-t border-[var(--border)]/40">
-          {/* Colspan 7 = all work columns (milestone + description are already rowSpan'd from first row) */}
-          <td colSpan={7} className="px-2 py-1.5">
-            <div className="flex items-center gap-3">
-              {canEdit && (
-                <AddRowButton milestoneId={milestone.id} addSubRow={addSubRow} />
-              )}
-              <div className="flex-1">
-                <PercentBar total={percentSum} count={rows.length} />
-              </div>
-            </div>
-          </td>
-        </tr>
-      )}
     </>
-  )
-}
-
-function AddRowButton({ milestoneId, addSubRow }: { milestoneId: string; addSubRow: (id: string) => void }) {
-  return (
-    <button
-      type="button"
-      onClick={() => addSubRow(milestoneId)}
-      className="flex items-center gap-1 rounded-lg px-2 py-0.5 text-[10px] font-bold text-[var(--sidebar-primary)] bg-[var(--sidebar-primary)]/10 hover:bg-[var(--sidebar-primary)]/20 transition-colors border border-[var(--sidebar-primary)]/20"
-    >
-      <Plus size={11} />
-      Dodaj robotę
-    </button>
   )
 }

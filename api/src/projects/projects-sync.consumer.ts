@@ -3,6 +3,7 @@ import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { GoogleSheetsService } from '../google-sheets/google-sheets.service';
+import { MailService } from '../mail/mail.service';
 import { ConfigService } from '@nestjs/config';
 
 export interface ProjectSyncJobData {
@@ -18,8 +19,33 @@ export class ProjectsSyncConsumer extends WorkerHost {
     private readonly prisma: PrismaService,
     private readonly sheetsService: GoogleSheetsService,
     private readonly config: ConfigService,
+    private readonly mailService: MailService,
   ) {
     super();
+  }
+
+  private async handleSyncError(sheetName: string, action: string, error: unknown, syncData: any) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    
+    // Try to log to Postgres
+    try {
+      await this.prisma.google_sheets_sync_errors.create({
+        data: {
+          table_name: sheetName,
+          action: action,
+          error_message: errMsg,
+          payload: JSON.stringify(syncData),
+        }
+      });
+    } catch (dbErr) {}
+
+    // Send email
+    await this.mailService.sendSyncErrorEmail(
+      sheetName,
+      action,
+      errMsg,
+      JSON.stringify(syncData, null, 2)
+    );
   }
 
   async process(job: Job<ProjectSyncJobData, any, string>): Promise<any> {
@@ -143,18 +169,7 @@ export class ProjectsSyncConsumer extends WorkerHost {
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error);
       this.logger.error(`Failed to sync project ${project.id} to Google Sheets: ${errMsg}`);
-      
-      const errorsSheet = this.config.get<string>('SYNC_ERRORS_SHEET_NAME', 'SyncErrors');
-      try {
-        await this.sheetsService.appendRow(spreadsheetId, errorsSheet, {
-          timestamp: new Date().toISOString(),
-          action: 'SYNC_PROJECT',
-          error_message: errMsg,
-          payload: JSON.stringify(syncData),
-        });
-      } catch (logErr) {
-        this.logger.error(`Failed to write to SyncErrors sheet: ${logErr}`);
-      }
+      await this.handleSyncError(sheetName, 'SYNC_PROJECT', error, syncData);
     }
   }
 }

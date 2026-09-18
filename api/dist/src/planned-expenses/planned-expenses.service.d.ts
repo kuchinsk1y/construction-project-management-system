@@ -1,12 +1,14 @@
 import { PrismaService } from '../prisma/prisma.service';
 import { GoogleSheetsService } from '../google-sheets/google-sheets.service';
+import { MailService } from '../mail/mail.service';
 import { ConfigService } from '@nestjs/config';
 import { CreatePlannedExpenseDto, UpdatePlannedExpenseDto } from './dto/planned-expense.dto';
 export declare class PlannedExpensesService {
     private readonly prisma;
     private readonly sheetsService;
     private readonly config;
-    constructor(prisma: PrismaService, sheetsService: GoogleSheetsService, config: ConfigService);
+    private readonly mailService;
+    constructor(prisma: PrismaService, sheetsService: GoogleSheetsService, config: ConfigService, mailService: MailService);
     findAll(projectId: string): Promise<{
         id: string;
         projectId: string;

@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { GoogleSheetsService } from '../google-sheets/google-sheets.service';
+import { MailService } from '../mail/mail.service';
 import { ConfigService } from '@nestjs/config';
 import { CreatePlannedExpenseDto, UpdatePlannedExpenseDto } from './dto/planned-expense.dto';
 import { randomUUID } from 'crypto';
@@ -11,6 +12,7 @@ export class PlannedExpensesService {
     private readonly prisma: PrismaService,
     private readonly sheetsService: GoogleSheetsService,
     private readonly config: ConfigService,
+    private readonly mailService: MailService,
   ) {}
 
   async findAll(projectId: string) {
@@ -57,16 +59,28 @@ export class PlannedExpensesService {
       await this.sheetsService.appendRow(spreadsheetId, sheetName, syncData);
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error);
-      const errorsSheet = this.config.get<string>('SYNC_ERRORS_SHEET_NAME', 'SyncErrors');
+      
+      // Try to log to Postgres
       try {
-        await this.sheetsService.appendRow(spreadsheetId, errorsSheet, {
-          timestamp: new Date().toISOString(),
-          action: 'CREATE_PLANNED_EXPENSE',
-          error_message: errMsg,
-          payload: JSON.stringify(syncData),
+        await this.prisma.google_sheets_sync_errors.create({
+          data: {
+            table_name: sheetName,
+            action: 'CREATE_PLANNED_EXPENSE',
+            error_message: errMsg,
+            payload: JSON.stringify(syncData),
+          }
         });
-      } catch (logErr) {}
-      throw new InternalServerErrorException('Nie udało się zapisać wydatku w Google Sheets');
+      } catch (dbErr) {
+        // Silently ignore if logging fails
+      }
+
+      // Send email
+      await this.mailService.sendSyncErrorEmail(
+        sheetName,
+        'CREATE_PLANNED_EXPENSE',
+        errMsg,
+        JSON.stringify(syncData, null, 2)
+      );
     }
 
     const expense = await this.prisma.planned_expenses.create({
@@ -123,16 +137,26 @@ export class PlannedExpensesService {
       }
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error);
-      const errorsSheet = this.config.get<string>('SYNC_ERRORS_SHEET_NAME', 'SyncErrors');
+      
+      // Try to log to Postgres
       try {
-        await this.sheetsService.appendRow(spreadsheetId, errorsSheet, {
-          timestamp: new Date().toISOString(),
-          action: 'UPDATE_PLANNED_EXPENSE',
-          error_message: errMsg,
-          payload: JSON.stringify(syncData),
+        await this.prisma.google_sheets_sync_errors.create({
+          data: {
+            table_name: sheetName,
+            action: 'UPDATE_PLANNED_EXPENSE',
+            error_message: errMsg,
+            payload: JSON.stringify(syncData),
+          }
         });
-      } catch (logErr) {}
-      throw new InternalServerErrorException('Nie udało się zaktualizować wydatku w Google Sheets');
+      } catch (dbErr) {}
+
+      // Send email
+      await this.mailService.sendSyncErrorEmail(
+        sheetName,
+        'UPDATE_PLANNED_EXPENSE',
+        errMsg,
+        JSON.stringify(syncData, null, 2)
+      );
     }
 
     const data: any = {};

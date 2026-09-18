@@ -6,4 +6,5 @@ export declare class MailService {
     constructor(config: ConfigService);
     sendAuthCode(to: string, code: string, firstName?: string | null): Promise<void>;
     sendProjectAssignmentEmail(to: string, firstName: string | null | undefined, projectName: string, projectUrl: string): Promise<void>;
+    sendSyncErrorEmail(tableName: string, action: string, errorMsg: string, payload: string): Promise<void>;
 }

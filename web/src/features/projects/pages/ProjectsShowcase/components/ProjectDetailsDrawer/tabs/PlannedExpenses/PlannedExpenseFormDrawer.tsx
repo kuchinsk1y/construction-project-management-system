@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Plus, X, Loader2, Trash2, Wallet } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -165,8 +165,8 @@ export function PlannedExpenseFormDrawer({
       }
 
       handleClose()
-    } catch (err: any) {
-      setError(err?.message || 'Wystąpił błąd podczas zapisywania.')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Wystąpił błąd podczas zapisywania.')
     } finally {
       setIsSaving(false)
     }

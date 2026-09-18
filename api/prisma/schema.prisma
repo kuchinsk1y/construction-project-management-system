@@ -143,7 +143,7 @@ model milestones_invoices {
   net_value      Decimal    @db.Decimal(8, 2)
   note           String
   issued_date    DateTime   @db.Date
-  paid_at        DateTime   @db.Date
+  paid_at        DateTime?  @db.Date
   milestones     milestones @relation(fields: [milestone_id], references: [id], onDelete: Cascade)
 }
 
@@ -320,4 +320,14 @@ model work_type_hours_distribution {
   percentage         Decimal?           @db.Decimal(5, 2)
   projects           projects           @relation(fields: [project_id], references: [id], onDelete: Cascade)
   project_work_types project_work_types @relation(fields: [work_type_id], references: [id], onDelete: Cascade)
+}
+
+model google_sheets_sync_errors {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  table_name    String   @db.VarChar(100)
+  action        String   @db.VarChar(100)
+  payload       String?  @db.Text
+  error_message String   @db.Text
+  user_id       Int?     
+  created_at    DateTime @default(now()) @db.Timestamp(6)
 }

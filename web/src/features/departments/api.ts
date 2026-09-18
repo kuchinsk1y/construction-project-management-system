@@ -40,7 +40,7 @@ export function useUpdateDepartment() {
       }
       return { previous }
     },
-    onError: (err, variables, context) => {
+    onError: (_err, _variables, context) => {
       if (context?.previous) {
         queryClient.setQueryData(['departments'], context.previous)
       }

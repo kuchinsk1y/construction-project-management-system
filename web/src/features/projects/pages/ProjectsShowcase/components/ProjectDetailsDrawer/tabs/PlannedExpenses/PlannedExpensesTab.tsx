@@ -120,15 +120,13 @@ export function PlannedExpensesTab({ project }: PlannedExpensesTabProps) {
           </div>
 
           <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/35 p-2.5 space-y-1 shadow-xs">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">Budżet (-{warrantyPercent}% gw.)</span>
-            <p className="text-sm font-extrabold text-[var(--foreground)]">{formatBudget(availableBudget, currency)}</p>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">Gwarancja ({warrantyPercent}%)</span>
+            <p className="text-sm font-extrabold text-[var(--foreground)]">{formatBudget(contractValue * (warrantyPercent / 100), currency)}</p>
           </div>
 
           <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/35 p-2.5 space-y-1 shadow-xs">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">Pozostało (%)</span>
-            <p className={`text-sm font-extrabold ${(100 - totalPercentUsed) === 0 ? 'text-emerald-500' : (100 - totalPercentUsed) < 0 ? 'text-rose-500' : 'text-amber-500'}`}>
-              {(100 - totalPercentUsed).toFixed(2)}%
-            </p>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">Budżet</span>
+            <p className="text-sm font-extrabold text-[var(--foreground)]">{formatBudget(availableBudget, currency)}</p>
           </div>
         </div>
 

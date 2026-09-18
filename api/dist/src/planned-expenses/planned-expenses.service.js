@@ -13,16 +13,19 @@ exports.PlannedExpensesService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
 const google_sheets_service_1 = require("../google-sheets/google-sheets.service");
+const mail_service_1 = require("../mail/mail.service");
 const config_1 = require("@nestjs/config");
 const crypto_1 = require("crypto");
 let PlannedExpensesService = class PlannedExpensesService {
     prisma;
     sheetsService;
     config;
-    constructor(prisma, sheetsService, config) {
+    mailService;
+    constructor(prisma, sheetsService, config, mailService) {
         this.prisma = prisma;
         this.sheetsService = sheetsService;
         this.config = config;
+        this.mailService = mailService;
     }
     async findAll(projectId) {
         const expenses = await this.prisma.planned_expenses.findMany({
@@ -64,17 +67,19 @@ let PlannedExpensesService = class PlannedExpensesService {
         }
         catch (error) {
             const errMsg = error instanceof Error ? error.message : String(error);
-            const errorsSheet = this.config.get('SYNC_ERRORS_SHEET_NAME', 'SyncErrors');
             try {
-                await this.sheetsService.appendRow(spreadsheetId, errorsSheet, {
-                    timestamp: new Date().toISOString(),
-                    action: 'CREATE_PLANNED_EXPENSE',
-                    error_message: errMsg,
-                    payload: JSON.stringify(syncData),
+                await this.prisma.google_sheets_sync_errors.create({
+                    data: {
+                        table_name: sheetName,
+                        action: 'CREATE_PLANNED_EXPENSE',
+                        error_message: errMsg,
+                        payload: JSON.stringify(syncData),
+                    }
                 });
             }
-            catch (logErr) { }
-            throw new common_1.InternalServerErrorException('Nie udało się zapisać wydatku w Google Sheets');
+            catch (dbErr) {
+            }
+            await this.mailService.sendSyncErrorEmail(sheetName, 'CREATE_PLANNED_EXPENSE', errMsg, JSON.stringify(syncData, null, 2));
         }
         const expense = await this.prisma.planned_expenses.create({
             data: {
@@ -128,17 +133,18 @@ let PlannedExpensesService = class PlannedExpensesService {
         }
         catch (error) {
             const errMsg = error instanceof Error ? error.message : String(error);
-            const errorsSheet = this.config.get('SYNC_ERRORS_SHEET_NAME', 'SyncErrors');
             try {
-                await this.sheetsService.appendRow(spreadsheetId, errorsSheet, {
-                    timestamp: new Date().toISOString(),
-                    action: 'UPDATE_PLANNED_EXPENSE',
-                    error_message: errMsg,
-                    payload: JSON.stringify(syncData),
+                await this.prisma.google_sheets_sync_errors.create({
+                    data: {
+                        table_name: sheetName,
+                        action: 'UPDATE_PLANNED_EXPENSE',
+                        error_message: errMsg,
+                        payload: JSON.stringify(syncData),
+                    }
                 });
             }
-            catch (logErr) { }
-            throw new common_1.InternalServerErrorException('Nie udało się zaktualizować wydatku w Google Sheets');
+            catch (dbErr) { }
+            await this.mailService.sendSyncErrorEmail(sheetName, 'UPDATE_PLANNED_EXPENSE', errMsg, JSON.stringify(syncData, null, 2));
         }
         const data = {};
         if (dto.costCategoryId)
@@ -172,6 +178,7 @@ exports.PlannedExpensesService = PlannedExpensesService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
         google_sheets_service_1.GoogleSheetsService,
-        config_1.ConfigService])
+        config_1.ConfigService,
+        mail_service_1.MailService])
 ], PlannedExpensesService);
 //# sourceMappingURL=planned-expenses.service.js.map

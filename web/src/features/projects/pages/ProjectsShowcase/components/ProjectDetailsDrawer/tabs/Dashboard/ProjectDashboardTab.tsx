@@ -21,8 +21,8 @@ import { useTranslation } from 'react-i18next'
 
 type FinancialDonutChartProps = {
   total: number;
-  invoiced: number;
-  doneUninvoiced: number;
+  paid: number;
+  invoicedNotPaid: number;
   remaining: number;
   formatBudget: (val: number, currency?: string) => string;
   currency?: string | null;
@@ -53,15 +53,15 @@ function describeArc(x: number, y: number, radius: number, startAngle: number, e
   return ['M', start.x, start.y, 'A', radius, radius, 0, largeArcFlag, 1, end.x, end.y].join(' ')
 }
 
-function FinancialDonutChart({ total, invoiced, doneUninvoiced, remaining, formatBudget, currency }: FinancialDonutChartProps) {
+function FinancialDonutChart({ total, paid, invoicedNotPaid, remaining, formatBudget, currency }: FinancialDonutChartProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [tooltip, setTooltip] = useState<{ x: number, y: number, seg: DonutSegment } | null>(null)
   const radius = 68
 
   const segments = [
-    { id: 'invoiced', value: invoiced, color: 'var(--sidebar-primary)', label: 'Zapłacone' },
-    { id: 'done', value: doneUninvoiced, color: '#f59e0b', label: 'Wykonano (bez FV)' },
-    { id: 'remaining', value: remaining, color: 'var(--border)', label: 'Pozostało do wykonania' }
+    { id: 'paid', value: paid, color: 'var(--sidebar-primary)', label: 'Zapłacono' },
+    { id: 'invoiced', value: invoicedNotPaid, color: '#3b82f6', label: 'Wystawiono FV' },
+    { id: 'remaining', value: remaining, color: 'var(--border)', label: 'Pozostało' }
   ]
 
   const activeSegments = segments.filter(s => s.value > 0)
@@ -74,7 +74,7 @@ function FinancialDonutChart({ total, invoiced, doneUninvoiced, remaining, forma
   return (
     <div ref={containerRef} className="flex flex-col items-center w-full max-w-[280px] mx-auto relative">
       <div className="relative w-48 h-48 flex items-center justify-center shrink-0">
-        <svg 
+        <svg
           className="w-full h-full overflow-visible drop-shadow-sm cursor-pointer"
           onMouseLeave={() => setTooltip(null)}
           onMouseMove={(e) => {
@@ -84,9 +84,9 @@ function FinancialDonutChart({ total, invoiced, doneUninvoiced, remaining, forma
             const centerY = rect.height / 2
             const dx = e.clientX - rect.left - centerX
             const dy = e.clientY - rect.top - centerY
-            
+
             // Calculate distance from center
-            const d = Math.sqrt(dx*dx + dy*dy)
+            const d = Math.sqrt(dx * dx + dy * dy)
             // Stroke radius is 68, width is 16 -> 60 to 76. Let's add some margin: 48 to 88.
             if (d < 48 || d > 88) {
               setTooltip(null)
@@ -121,7 +121,7 @@ function FinancialDonutChart({ total, invoiced, doneUninvoiced, remaining, forma
             const startAngle = currentAngle - 90
             const endAngle = currentAngle + segDegrees - 90
             const pathData = describeArc(100, 100, radius, startAngle, endAngle)
-            
+
             currentAngle += segDegrees + gapDegrees
 
             const isHovered = tooltip?.seg.id === seg.id
@@ -144,8 +144,8 @@ function FinancialDonutChart({ total, invoiced, doneUninvoiced, remaining, forma
             <span className="text-xl font-extrabold text-[var(--muted-foreground)]">Brak KM</span>
           ) : (
             <>
-              <span className="text-3xl font-extrabold text-[var(--foreground)] tracking-tight leading-none">{((invoiced + doneUninvoiced) / total * 100).toFixed(0)}%</span>
-              <span className="text-[9px] uppercase tracking-wider font-extrabold text-[var(--muted-foreground)] mt-1 text-center leading-tight max-w-[80px]">Wykonano łącznie</span>
+              <span className="text-3xl font-extrabold text-[var(--foreground)] tracking-tight leading-none">{((paid + invoicedNotPaid) / total * 100).toFixed(0)}%</span>
+              <span className="text-[9px] uppercase tracking-wider font-extrabold text-[var(--muted-foreground)] mt-1 text-center leading-tight max-w-[80px]">Zafakturowano łącznie</span>
             </>
           )}
         </div>
@@ -222,7 +222,7 @@ export function ProjectDashboardTab({ project, milestones, formatBudget }: Proje
     const total = milestones.length
     const completed = milestones.filter(m => {
       const milestoneWorks = workTypes.filter(wt => wt.milestoneId === m.id)
-      
+
       if (milestoneWorks.length === 0) {
         return false
       }
@@ -239,29 +239,45 @@ export function ProjectDashboardTab({ project, milestones, formatBudget }: Proje
   }, [milestones, workTypes])
 
   // Financial calculations for donut chart (3-part)
-  const { totalKmNet, invoicedKmNet, doneUninvoicedKmNet, remainingKmNet } = useMemo(() => {
+  const { totalKmNet, paidKmNet, invoicedNotPaidKmNet, remainingKmNet } = useMemo(() => {
     let total = 0
+    let paid = 0
     let invoiced = 0
-    let doneUninvoiced = 0
-    let remaining = 0
 
     if (milestones && milestones.length > 0) {
       milestones.forEach(m => {
         const net = Number(m.netAmount) || 0
-        const perc = m.percentage || 0
-        const invPerc = m.invoicingPercentage || 0
-
         total += net
-        invoiced += net * (invPerc / 100)
-        doneUninvoiced += net * (Math.max(0, perc - invPerc) / 100)
-        remaining += net * (Math.max(0, 100 - perc) / 100)
+
+        let mInvoiced = 0
+        let mPaid = 0
+        
+        if (m.invoices && m.invoices.length > 0) {
+          m.invoices.forEach(inv => {
+            mInvoiced += inv.netValue
+            if (inv.paidAt) {
+              mPaid += inv.netValue
+            }
+          })
+        } else {
+          // fallback to milestone percentage if no invoices exist (though they should)
+          mInvoiced = net * ((m.invoicingPercentage || 0) / 100)
+        }
+
+        invoiced += mInvoiced
+        paid += mPaid
       })
     }
+    
+    // Safety boundaries
+    invoiced = Math.min(invoiced, total)
+    paid = Math.min(paid, invoiced)
+    
     return {
       totalKmNet: total,
-      invoicedKmNet: invoiced,
-      doneUninvoicedKmNet: doneUninvoiced,
-      remainingKmNet: remaining
+      paidKmNet: paid,
+      invoicedNotPaidKmNet: invoiced - paid,
+      remainingKmNet: total - invoiced
     }
   }, [milestones])
 
@@ -285,7 +301,7 @@ export function ProjectDashboardTab({ project, milestones, formatBudget }: Proje
     dateStr ? new Date(dateStr).toLocaleDateString('pl-PL', { month: 'short', year: 'numeric', day: 'numeric' }) : '-'
 
   return (
-    <div className="w-full flex flex-col gap-1 animate-tab-content">
+    <div className="w-full flex flex-col gap-1.5 animate-tab-content">
       {/* TOP ROW: Progress Card */}
       <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="flex items-center gap-3 shrink-0">
@@ -321,10 +337,10 @@ export function ProjectDashboardTab({ project, milestones, formatBudget }: Proje
       </div>
 
       {/* SECOND ROW: TOP GRID (KPIs, Donut, Project Info / Workers) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 items-stretch lg:h-[340px]">
-        
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-1.5 items-stretch lg:h-[340px]">
+
         {/* LEFT COLUMN: KPIs (col-span-3) */}
-        <div className="lg:col-span-3 flex flex-col gap-2">
+        <div className="lg:col-span-3 flex flex-col gap-1.5">
           <div className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-sm flex flex-col transition-colors hover:border-[var(--sidebar-primary)]/50">
             <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
               <div className="rounded bg-[var(--sidebar-primary)]/10 text-[var(--sidebar-primary)] p-1 shrink-0">
@@ -399,8 +415,8 @@ export function ProjectDashboardTab({ project, milestones, formatBudget }: Proje
             </div>
             <FinancialDonutChart
               total={totalKmNet}
-              invoiced={invoicedKmNet}
-              doneUninvoiced={doneUninvoicedKmNet}
+              paid={paidKmNet}
+              invoicedNotPaid={invoicedNotPaidKmNet}
               remaining={remainingKmNet}
               formatBudget={formatBudget}
               currency={project.currency}
@@ -435,22 +451,20 @@ export function ProjectDashboardTab({ project, milestones, formatBudget }: Proje
                 <div className="flex bg-[var(--muted)]/50 p-0.5 rounded-lg border border-[var(--border)]">
                   <button
                     onClick={() => setWorkersViewMode('grouped')}
-                    className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold transition-all ${
-                      workersViewMode === 'grouped'
-                        ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm'
-                        : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
-                    }`}
+                    className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold transition-all ${workersViewMode === 'grouped'
+                      ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm'
+                      : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                      }`}
                   >
                     <LayoutList size={12} />
                     <span className="hidden xl:inline">Grupy</span>
                   </button>
                   <button
                     onClick={() => setWorkersViewMode('list')}
-                    className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold transition-all ${
-                      workersViewMode === 'list'
-                        ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm'
-                        : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
-                    }`}
+                    className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold transition-all ${workersViewMode === 'list'
+                      ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm'
+                      : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                      }`}
                   >
                     <List size={12} />
                     <span className="hidden xl:inline">Lista</span>
@@ -462,7 +476,7 @@ export function ProjectDashboardTab({ project, milestones, formatBudget }: Proje
               </span>
             </div>
           </div>
-          
+
           <div className="flex-1 overflow-hidden min-h-0 flex flex-col">
             {project.status?.toUpperCase() === 'ACTIVE' ? (
               <ProjectActiveWorkers viewMode={workersViewMode} />
@@ -478,7 +492,7 @@ export function ProjectDashboardTab({ project, milestones, formatBudget }: Proje
                       {formatBudget(budgetValue, project.currency || undefined)}
                     </span>
                   </div>
-                  
+
                   <div className="flex flex-col gap-1.5">
                     <div className="flex items-center gap-1.5 text-[var(--muted-foreground)]">
                       <UserRoundCheck size={14} />
@@ -545,9 +559,9 @@ export function ProjectDashboardTab({ project, milestones, formatBudget }: Proje
               }).map(key => ({ km: key, works: groups[key] }))
 
               return (
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col divide-y divide-[var(--border)]">
                   {sortedGroups.map(group => (
-                    <div key={group.km} className="flex flex-col md:flex-row items-stretch gap-4 bg-[var(--background)]/30 rounded-xl p-3 border border-[var(--border)] hover:border-[var(--sidebar-primary)]/30 transition-colors">
+                    <div key={group.km} className="flex flex-col md:flex-row items-stretch gap-4 p-3 hover:bg-[var(--background)]/30 transition-colors">
                       {/* Left side: KM Badge (vertically centered) */}
                       <div className="md:w-16 flex items-center justify-center shrink-0 border-b md:border-b-0 md:border-r border-[var(--border)] pb-2 md:pb-0 md:pr-4">
                         <div className="text-[12px] font-extrabold uppercase tracking-widest text-[var(--sidebar-primary)] text-center">
@@ -567,7 +581,7 @@ export function ProjectDashboardTab({ project, milestones, formatBudget }: Proje
                           else if (progress > 0) progressColor = 'bg-amber-500'
 
                           return (
-                            <div key={wt.id} className="group flex items-center justify-between gap-2 p-1.5 rounded-lg hover:bg-[var(--sidebar-primary)]/10 transition-all border border-transparent hover:border-[var(--border)]">
+                            <div key={wt.id} className="group flex items-center justify-between gap-2 p-1.5 rounded-lg hover:bg-[var(--sidebar-primary)]/5 transition-all border border-transparent hover:border-[var(--sidebar-primary)]/10">
                               <span className="text-[11px] font-bold text-[var(--foreground)] truncate flex-1 group-hover:text-[var(--sidebar-primary)] transition-colors" title={wt.name}>
                                 {wt.name}
                               </span>

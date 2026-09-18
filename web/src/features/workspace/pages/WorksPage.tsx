@@ -149,16 +149,17 @@ export function WorksPage({ canManage }: WorksPageProps) {
     const groups: Record<string, { milestoneId: string; milestoneNo: string; description: string; items: ApiWorkType[] }> = {}
 
     workTypes.forEach((wt) => {
-      if (!groups[wt.milestoneId]) {
-        const milestone = milestones.find((m) => m.id === wt.milestoneId)
-        groups[wt.milestoneId] = {
-          milestoneId: wt.milestoneId,
-          milestoneNo: wt.milestoneNo,
+      const mId = wt.milestoneId || 'unassigned'
+      if (!groups[mId]) {
+        const milestone = milestones.find((m) => m.id === mId)
+        groups[mId] = {
+          milestoneId: mId,
+          milestoneNo: wt.milestoneNo || '',
           description: milestone?.description || '',
           items: [],
         }
       }
-      groups[wt.milestoneId].items.push(wt)
+      groups[mId].items.push(wt)
     })
 
     return Object.values(groups)
@@ -695,9 +696,9 @@ export function WorksPage({ canManage }: WorksPageProps) {
                                         type="button"
                                         onClick={() => {
                                           setEditingWorkTypeId(wt.id)
-                                          setWorkTypeForm({
-                                            milestoneId: wt.milestoneId,
-                                            departmentId: wt.departmentId,
+                                            setWorkTypeForm({
+                                              milestoneId: wt.milestoneId || '',
+                                              departmentId: wt.departmentId,
                                             name: wt.name,
                                             unit: wt.unit || '',
                                             totalQuantity: wt.totalQuantity,

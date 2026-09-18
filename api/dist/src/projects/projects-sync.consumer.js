@@ -15,17 +15,35 @@ const bullmq_1 = require("@nestjs/bullmq");
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
 const google_sheets_service_1 = require("../google-sheets/google-sheets.service");
+const mail_service_1 = require("../mail/mail.service");
 const config_1 = require("@nestjs/config");
 let ProjectsSyncConsumer = ProjectsSyncConsumer_1 = class ProjectsSyncConsumer extends bullmq_1.WorkerHost {
     prisma;
     sheetsService;
     config;
+    mailService;
     logger = new common_1.Logger(ProjectsSyncConsumer_1.name);
-    constructor(prisma, sheetsService, config) {
+    constructor(prisma, sheetsService, config, mailService) {
         super();
         this.prisma = prisma;
         this.sheetsService = sheetsService;
         this.config = config;
+        this.mailService = mailService;
+    }
+    async handleSyncError(sheetName, action, error, syncData) {
+        const errMsg = error instanceof Error ? error.message : String(error);
+        try {
+            await this.prisma.google_sheets_sync_errors.create({
+                data: {
+                    table_name: sheetName,
+                    action: action,
+                    error_message: errMsg,
+                    payload: JSON.stringify(syncData),
+                }
+            });
+        }
+        catch (dbErr) { }
+        await this.mailService.sendSyncErrorEmail(sheetName, action, errMsg, JSON.stringify(syncData, null, 2));
     }
     async process(job) {
         const { projectId, action } = job.data;
@@ -115,18 +133,7 @@ let ProjectsSyncConsumer = ProjectsSyncConsumer_1 = class ProjectsSyncConsumer e
         catch (error) {
             const errMsg = error instanceof Error ? error.message : String(error);
             this.logger.error(`Failed to sync project ${project.id} to Google Sheets: ${errMsg}`);
-            const errorsSheet = this.config.get('SYNC_ERRORS_SHEET_NAME', 'SyncErrors');
-            try {
-                await this.sheetsService.appendRow(spreadsheetId, errorsSheet, {
-                    timestamp: new Date().toISOString(),
-                    action: 'SYNC_PROJECT',
-                    error_message: errMsg,
-                    payload: JSON.stringify(syncData),
-                });
-            }
-            catch (logErr) {
-                this.logger.error(`Failed to write to SyncErrors sheet: ${logErr}`);
-            }
+            await this.handleSyncError(sheetName, 'SYNC_PROJECT', error, syncData);
         }
     }
 };
@@ -135,6 +142,7 @@ exports.ProjectsSyncConsumer = ProjectsSyncConsumer = ProjectsSyncConsumer_1 = _
     (0, bullmq_1.Processor)('projects-sync'),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
         google_sheets_service_1.GoogleSheetsService,
-        config_1.ConfigService])
+        config_1.ConfigService,
+        mail_service_1.MailService])
 ], ProjectsSyncConsumer);
 //# sourceMappingURL=projects-sync.consumer.js.map

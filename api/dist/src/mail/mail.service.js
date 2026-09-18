@@ -174,6 +174,34 @@ let MailService = MailService_1 = class MailService {
             throw error;
         }
     }
+    async sendSyncErrorEmail(tableName, action, errorMsg, payload) {
+        try {
+            const fromName = this.config.get('EMAIL_FROM_NAME') ?? 'ERP';
+            const fromEmail = this.config.getOrThrow('EMAIL_USER');
+            const adminEmail = 'tymur.kuchynskyi@ispik.eu';
+            await this.transporter.sendMail({
+                from: `"${fromName}" <${fromEmail}>`,
+                to: adminEmail,
+                subject: `⚠️ Błąd synchronizacji Google Sheets: ${tableName}`,
+                html: `
+          <div style="background-color: #0c0a09; padding: 40px 20px; font-family: sans-serif; color: #fff;">
+            <h2>Błąd synchronizacji z Google Sheets</h2>
+            <p>Wystąpił błąd podczas próby zapisu danych do Google Sheets.</p>
+            <ul>
+              <li><strong>Tabela / Arkusz:</strong> ${tableName}</li>
+              <li><strong>Akcja:</strong> ${action}</li>
+              <li><strong>Błąd:</strong> ${errorMsg}</li>
+            </ul>
+            <h3>Payload:</h3>
+            <pre style="background: #1c1917; padding: 10px; border-radius: 5px; color: #a8a29e; font-size: 12px; white-space: pre-wrap;">${payload}</pre>
+          </div>
+        `,
+            });
+        }
+        catch (error) {
+            this.logger.error('Failed to send sync error email', error);
+        }
+    }
 };
 exports.MailService = MailService;
 exports.MailService = MailService = MailService_1 = __decorate([

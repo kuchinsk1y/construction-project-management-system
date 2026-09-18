@@ -177,7 +177,7 @@ export function WorkspaceShell({ onLogout, theme, themePreset, onThemePresetChan
 
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
-      <div className="grid min-h-screen grid-cols-1 md:grid-cols-[250px_1fr]">
+      <div className="mx-auto grid min-h-screen w-full max-w-[1600px] grid-cols-1 bg-[var(--background)] md:grid-cols-[250px_1fr] md:border-x md:border-[var(--border)] shadow-sm">
         {isMobileSidebarOpen ? (
           <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden" onClick={() => setIsMobileSidebarOpen(false)} />
         ) : null}

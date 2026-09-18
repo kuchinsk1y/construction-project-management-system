@@ -2,6 +2,7 @@ import { WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { GoogleSheetsService } from '../google-sheets/google-sheets.service';
+import { MailService } from '../mail/mail.service';
 import { ConfigService } from '@nestjs/config';
 export interface ProjectSyncJobData {
     projectId: string;
@@ -11,7 +12,9 @@ export declare class ProjectsSyncConsumer extends WorkerHost {
     private readonly prisma;
     private readonly sheetsService;
     private readonly config;
+    private readonly mailService;
     private readonly logger;
-    constructor(prisma: PrismaService, sheetsService: GoogleSheetsService, config: ConfigService);
+    constructor(prisma: PrismaService, sheetsService: GoogleSheetsService, config: ConfigService, mailService: MailService);
+    private handleSyncError;
     process(job: Job<ProjectSyncJobData, any, string>): Promise<any>;
 }
