@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { AlertTriangle, ArrowLeft, CalendarRange, Coins, Edit, ExternalLink, FileText, Loader2, MapPin, Trash2, UserRoundCheck, X } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, CalendarRange, Coins, Edit, ExternalLink, FileText, Loader2, MapPin, Trash2, UserRoundCheck, X, LayoutDashboard, Settings, Milestone, Users, Wrench } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { UseMutationResult } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
@@ -256,7 +256,7 @@ export function ProjectDetailsDrawer({
           {/* Drawer scrollable content body */}
           <div className="flex-1 overflow-y-auto custom-scrollbar px-5 py-4 space-y-4 bg-[var(--card)]">
             <div className="w-full space-y-4 animate-tab-content pb-6">
-              <div className="flex flex-col gap-5">
+              <div className="flex flex-col gap-2.5">
                 {/* Basic Info Card */}
                 <div className="space-y-4">
                   <p className="mb-3 border-b border-[var(--border)] pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)] flex items-center gap-1.5">
@@ -317,7 +317,7 @@ export function ProjectDetailsDrawer({
                       </select>
                     </label>
 
-                    <label className="block sm:col-span-2">
+                    <label className="block sm:col-span-1">
                       <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">{t('projects.form.labels.dokumentationUrl')}</span>
                       <input
                         value={formState.dokumentationUrl || ''}
@@ -326,7 +326,7 @@ export function ProjectDetailsDrawer({
                         className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50"
                       />
                     </label>
-                    <label className="block sm:col-span-2">
+                    <label className="block sm:col-span-1">
                       <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">{t('projects.form.labels.pinUrl')}</span>
                       <input
                         value={formState.pinUrl || ''}
@@ -544,7 +544,7 @@ export function ProjectDetailsDrawer({
 
   return (
     <>
-      <section className="flex flex-col gap-4 p-3 select-none w-full">
+      <section className="flex flex-col gap-3 p-3 select-none w-full">
         {/* Header */}
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] pb-3.5">
           <div className="flex items-center gap-2.5">
@@ -578,12 +578,13 @@ export function ProjectDetailsDrawer({
                 setActiveTab('dashboard')
                 setMilestoneError('')
               }}
-              className={`pb-2 px-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${activeTab === 'dashboard'
+              className={`flex items-center gap-1.5 pb-2 px-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${activeTab === 'dashboard'
                 ? 'border-[var(--sidebar-primary)] text-[var(--sidebar-primary)]'
                 : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
                 }`}
             >
-              Pulpit
+              <LayoutDashboard size={14} className="text-lime-600 dark:text-lime-400" />
+              <span>Pulpit</span>
             </button>
             <button
               type="button"
@@ -591,12 +592,13 @@ export function ProjectDetailsDrawer({
                 setActiveTab('details')
                 setMilestoneError('')
               }}
-              className={`pb-2 px-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${activeTab === 'details'
+              className={`flex items-center gap-1.5 pb-2 px-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${activeTab === 'details'
                 ? 'border-[var(--sidebar-primary)] text-[var(--sidebar-primary)]'
                 : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
                 }`}
             >
-              Ogólne
+              <Settings size={14} className="text-lime-600 dark:text-lime-400" />
+              <span>Ogólne</span>
             </button>
             {!isContractor && (
               <button
@@ -605,12 +607,13 @@ export function ProjectDetailsDrawer({
                   setActiveTab('expenses')
                   setMilestoneError('')
                 }}
-                className={`pb-2 px-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${activeTab === 'expenses'
+                className={`flex items-center gap-1.5 pb-2 px-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${activeTab === 'expenses'
                   ? 'border-[var(--sidebar-primary)] text-[var(--sidebar-primary)]'
                   : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
                   }`}
               >
-                Rodzaje wydatków
+                <Coins size={14} className="text-lime-600 dark:text-lime-400" />
+                <span>Rodzaje wydatków</span>
               </button>
             )}
             <button
@@ -619,12 +622,13 @@ export function ProjectDetailsDrawer({
                 setActiveTab('milestones')
                 setMilestoneError('')
               }}
-              className={`pb-2 px-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${activeTab === 'milestones'
+              className={`flex items-center gap-1.5 pb-2 px-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${activeTab === 'milestones'
                 ? 'border-[var(--sidebar-primary)] text-[var(--sidebar-primary)]'
                 : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
                 }`}
             >
-              Kamienie milowe
+              <Milestone size={14} className="text-lime-600 dark:text-lime-400" />
+              <span>Kamienie milowe</span>
             </button>
             {(milestones.length > 0 || milestonesLoading) && (
               <>
@@ -635,12 +639,13 @@ export function ProjectDetailsDrawer({
                       setActiveTab('departments')
                       setMilestoneError('')
                     }}
-                    className={`pb-2 px-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${activeTab === 'departments'
+                    className={`flex items-center gap-1.5 pb-2 px-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${activeTab === 'departments'
                       ? 'border-[var(--sidebar-primary)] text-[var(--sidebar-primary)]'
                       : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
                       }`}
                   >
-                    Działy
+                    <Users size={14} className="text-lime-600 dark:text-lime-400" />
+                    <span>Działy</span>
                   </button>
                 )}
                 <button
@@ -649,12 +654,13 @@ export function ProjectDetailsDrawer({
                     setActiveTab('works')
                     setMilestoneError('')
                   }}
-                  className={`pb-2 px-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${activeTab === 'works'
+                  className={`flex items-center gap-1.5 pb-2 px-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${activeTab === 'works'
                     ? 'border-[var(--sidebar-primary)] text-[var(--sidebar-primary)]'
                     : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
                     }`}
                 >
-                  Roboty
+                  <Wrench size={14} className="text-lime-600 dark:text-lime-400" />
+                  <span>Roboty</span>
                 </button>
               </>
             )}
@@ -667,9 +673,9 @@ export function ProjectDetailsDrawer({
             <>
               {/* Read-only view */}
               <div className="w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 md:p-5 shadow-sm space-y-4 animate-tab-content">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 items-stretch">
                   {/* Left Column: Basic Info & Financials */}
-                  <div className="lg:col-span-7 flex flex-col gap-3.5">
+                  <div className="lg:col-span-7 flex flex-col gap-2">
                     {/* Basic Info Card */}
                     <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/35 p-3.5 space-y-3">
                       <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] pb-2">
@@ -682,10 +688,7 @@ export function ProjectDetailsDrawer({
                         </span>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-0.5">
-                        <div>
-                          <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--muted-foreground)]">{t('projects.form.labels.name')}</span>
-                          <p className="text-xs font-bold text-[var(--foreground)] mt-0.5">{formState.name}</p>
-                        </div>
+
                         <div>
                           <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--muted-foreground)]">{t('projects.form.labels.manager')}</span>
                           <div className="flex items-center gap-1.5 mt-0.5">
@@ -697,7 +700,7 @@ export function ProjectDetailsDrawer({
                           <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--muted-foreground)]">Moc (MW)</span>
                           <p className="text-xs font-bold text-[var(--foreground)] mt-0.5">{formState.power ? `${formState.power} MW` : '-'}</p>
                         </div>
-                        <div className="sm:col-span-2">
+                        <div className="sm:col-span-1">
                           <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--muted-foreground)]">{t('projects.form.labels.dokumentationUrl')}</span>
                           <div className="mt-0.5">
                             {formState.dokumentationUrl ? (
@@ -715,7 +718,7 @@ export function ProjectDetailsDrawer({
                             )}
                           </div>
                         </div>
-                        <div className="sm:col-span-2">
+                        <div className="sm:col-span-1">
                           <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--muted-foreground)]">{t('projects.form.labels.pinUrl')}</span>
                           <div className="mt-0.5">
                             {formState.pinUrl ? (
@@ -759,10 +762,6 @@ export function ProjectDetailsDrawer({
                           </p>
                         </div>
                         <div>
-                          <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--muted-foreground)]">{t('projects.form.labels.currency')}</span>
-                          <p className="text-xs font-semibold text-[var(--foreground)] mt-0.5">{formState.currency || '-'}</p>
-                        </div>
-                        <div>
                           <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--muted-foreground)]">Pobrana gwarancja, %</span>
                           <p className="text-xs font-semibold text-[var(--foreground)] mt-0.5">{formState.warrantyPercent ? `${formState.warrantyPercent}%` : '-'}</p>
                         </div>
@@ -771,7 +770,7 @@ export function ProjectDetailsDrawer({
                   </div>
 
                   {/* Right Column: Location & Timeline */}
-                  <div className="lg:col-span-5 flex flex-col gap-3.5">
+                  <div className="lg:col-span-5 flex flex-col gap-2">
                     {/* Location Card */}
                     <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/35 p-3.5 space-y-3">
                       <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)] border-b border-[var(--border)] pb-2">

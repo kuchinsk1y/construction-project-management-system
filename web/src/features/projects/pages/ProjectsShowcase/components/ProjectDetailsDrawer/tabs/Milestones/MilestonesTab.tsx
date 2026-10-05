@@ -1,9 +1,11 @@
 import { useState } from 'react'
-import { Layers, Loader2, Plus, Trash2 } from 'lucide-react' // FileText
+import { Layers, Loader2, Plus, Trash2, FileText, Calculator, PieChart, ArrowLeft } from 'lucide-react'
 import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/react-query'
+import { useParams, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { createMilestoneInvoice, deleteMilestoneInvoice } from '@/features/projects/api'
 import { InvoiceFormDrawer } from './InvoiceFormDrawer'
+import { MilestoneInvoicesView } from './MilestoneInvoicesView'
 import type { ApiMilestone, CreateMilestonePayload, ApiProject } from '@/features/projects/types'
 
 type MilestonesTabProps = {
@@ -44,6 +46,14 @@ export function MilestonesTab({
 
   const queryClient = useQueryClient()
   const [activeInvoiceMilestone, setActiveInvoiceMilestone] = useState<ApiMilestone | null>(null)
+  
+  const { "*": urlPath } = useParams()
+  const navigate = useNavigate()
+  const pathParts = urlPath ? urlPath.split('/') : []
+  const projectId = pathParts[0]
+  
+  const detailedMilestoneId = pathParts[2] === 'faktury' ? pathParts[3] : null
+  const detailedMilestone = milestones.find(m => m.id === detailedMilestoneId) || null
 
   const addInvoiceMutation = useMutation({
     mutationFn: (data: { invoiceNumber: string; netValue: number; issuedDate: string; note?: string }) =>
@@ -62,35 +72,92 @@ export function MilestonesTab({
     },
   })
 
+  if (detailedMilestoneId && detailedMilestone) {
+    return (
+      <>
+        <MilestoneInvoicesView
+          milestone={detailedMilestone}
+          contractVal={contractVal}
+          currency={currency}
+          canEditProject={canEditProject}
+          onClose={() => navigate(`/projects/${projectId}/milestones`)}
+          onAddInvoiceClick={setActiveInvoiceMilestone}
+          onRemoveInvoiceClick={(milestoneId, invoiceId) => {
+            removeInvoiceMutation.mutate({ milestoneId, invoiceId })
+          }}
+          formatBudget={formatBudget}
+        />
+        
+        {/* Render InvoiceDrawer over this nested view too */}
+        {activeInvoiceMilestone && (
+          <InvoiceFormDrawer
+            isOpen={true}
+            onClose={() => setActiveInvoiceMilestone(null)}
+            milestone={activeInvoiceMilestone}
+            onSubmit={(data) => {
+              addInvoiceMutation.mutate(data)
+            }}
+            isSubmitting={addInvoiceMutation.isPending}
+            contractVal={contractVal}
+          />
+        )}
+      </>
+    )
+  }
+
   return (
     <div className="w-full flex-1 flex flex-col min-h-0 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-sm gap-4 animate-tab-content">
       {/* Header Action Bar & Summary Stats */}
       <div className="flex flex-col gap-3">
-        {/* Top KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/35 p-2.5 flex flex-col justify-center shadow-xs">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] mb-1">Wartość kontraktu netto</span>
-            <p className="text-sm font-extrabold text-[var(--foreground)]">{formatBudget(contractVal, currency)}</p>
+        {/* Top Stats & Progress Bar in a row */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+
+          {/* Left: Progress Bar */}
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/30 p-3 shadow-2xs flex flex-col justify-center gap-2">
+            <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
+              <span className="flex items-center gap-1.5">
+                <Layers size={14} className="text-[var(--sidebar-primary)]" />
+                Przypisano z kontraktu
+              </span>
+              <span className={`font-extrabold ${totalPct === 100 ? 'text-[var(--sidebar-primary)]' : totalPct > 100 ? 'text-rose-500' : 'text-amber-500'}`}>
+                {totalPct.toFixed(2)}% / 100%
+              </span>
+            </div>
+            <div className="relative h-3 w-full bg-[var(--muted)]/50 rounded-full overflow-hidden mt-0.5">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${totalPct === 100 ? 'bg-[var(--sidebar-primary)]' : totalPct > 100 ? 'bg-rose-500' : 'bg-amber-500'}`}
+                style={{ width: `${Math.min(totalPct, 100)}%` }}
+              />
+            </div>
           </div>
 
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/35 p-2.5 flex flex-col justify-center shadow-xs">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] mb-1">Suma kwot etapów</span>
-            <p className="text-sm font-extrabold text-[var(--foreground)]">{formatBudget(totalNet, currency)}</p>
+          {/* Right: KPI Card with dividers */}
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/35 shadow-xs flex items-center divide-x divide-[var(--border)] overflow-hidden">
+            <div className="flex-[1.3] p-3 space-y-1 min-w-0">
+              <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] whitespace-nowrap truncate">
+                <FileText size={12} className="text-[var(--sidebar-primary)] shrink-0" />
+                Wartość kontraktu netto
+              </span>
+              <p className="text-sm font-extrabold text-[var(--foreground)] truncate">{formatBudget(contractVal, currency)}</p>
+            </div>
+            <div className="flex-1 p-3 space-y-1 min-w-0">
+              <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] whitespace-nowrap truncate">
+                <Calculator size={12} className="text-[var(--sidebar-primary)] shrink-0" />
+                Suma kwot etapów
+              </span>
+              <p className="text-sm font-extrabold text-[var(--foreground)] truncate">{formatBudget(totalNet, currency)}</p>
+            </div>
+            <div className="flex-1 p-3 space-y-1 min-w-0">
+              <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] whitespace-nowrap truncate">
+                <PieChart size={12} className="text-[var(--sidebar-primary)] shrink-0" />
+                Przypisano
+              </span>
+              <p className={`text-sm font-extrabold truncate ${totalPct === 100 ? 'text-[var(--sidebar-primary)]' : totalPct > 100 ? 'text-rose-500' : 'text-amber-500'}`}>
+                {totalPct.toFixed(1)}%
+              </p>
+            </div>
           </div>
 
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/35 p-2.5 flex flex-col justify-center shadow-xs">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] mb-1">Pozostało do przypisania</span>
-            <p className={`text-sm font-extrabold ${diffNet === 0 ? 'text-emerald-500' : diffNet < 0 ? 'text-rose-500' : 'text-amber-500'}`}>
-              {formatBudget(diffNet, currency)}
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/35 p-2.5 flex flex-col justify-center shadow-xs">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] mb-1">Przypisano %</span>
-            <p className={`text-sm font-extrabold ${totalPct === 100 ? 'text-emerald-500' : totalPct > 100 ? 'text-rose-500' : 'text-amber-500'}`}>
-              {totalPct.toFixed(1)}%
-            </p>
-          </div>
         </div>
 
         {/* Header controls */}
@@ -155,7 +222,8 @@ export function MilestonesTab({
                           <tr
                             key={m.id}
                             style={{ animationDelay: `${index * 25}ms` }}
-                            className="group transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/40 align-middle cursor-default"
+                            onDoubleClick={() => navigate(`/projects/${projectId}/milestones/faktury/${m.id}`)}
+                            className="group transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/40 align-middle cursor-pointer"
                           >
                             <td className="px-2 py-2 text-center border-r border-zinc-200/60 dark:border-zinc-800/60 font-bold">
                               <span className="inline-block rounded-md px-1.5 py-0.5 text-[11px] shadow-2xs font-extrabold bg-[var(--sidebar-primary)]/10 text-[var(--sidebar-primary)]">
@@ -173,57 +241,19 @@ export function MilestonesTab({
                             <td className="px-3 py-2 text-right border-r border-zinc-200/60 dark:border-zinc-800/60 font-bold text-[var(--foreground)]">
                               {formatBudget(netValue, currency)}
                             </td>
-                            <td className="px-3 py-2 border-r border-zinc-200/60 dark:border-zinc-800/60 align-top">
-                              <div className="flex flex-col gap-1.5">
-                                <div className="flex justify-between items-center text-[10px] font-bold">
-                                  <span className="text-[var(--muted-foreground)]">Postęp</span>
-                                  <div className="flex items-center gap-1.5">
-                                    <span className={m.invoicingPercentage === 100 ? 'text-emerald-500' : (m.invoicingPercentage && m.invoicingPercentage > 0 ? 'text-amber-500' : 'text-zinc-400')}>
-                                      {m.invoicingPercentage ? m.invoicingPercentage.toFixed(1) : '0.0'}%
-                                    </span>
-                                    {canEditProject && (
-                                      <button
-                                        onClick={() => setActiveInvoiceMilestone(m)}
-                                        className="flex items-center gap-1 px-1.5 py-0.5 ml-2 text-[9px] font-bold text-zinc-500 bg-zinc-100 hover:bg-[var(--sidebar-primary)]/10 hover:text-[var(--sidebar-primary)] rounded border border-zinc-200 hover:border-[var(--sidebar-primary)]/30 transition-colors dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-400"
-                                        title="Dodaj fakturę"
-                                      >
-                                        <Plus className="w-2.5 h-2.5" />
-                                        Dodaj FV
-                                      </button>
-                                    )}
-                                  </div>
+                            <td className="px-3 py-2 border-r border-zinc-200/60 dark:border-zinc-800/60 align-middle">
+                              <div className="flex flex-col gap-1.5 justify-center mt-1">
+                                <div className="flex justify-end items-center text-[10px] font-bold">
+                                  <span className={m.invoicingPercentage === 100 ? 'text-[var(--sidebar-primary)]' : (m.invoicingPercentage && m.invoicingPercentage > 0 ? 'text-amber-500' : 'text-zinc-400')}>
+                                    {m.invoicingPercentage ? m.invoicingPercentage.toFixed(1) : '0.0'}%
+                                  </span>
                                 </div>
                                 <div className="relative h-1.5 w-full bg-[var(--muted)]/50 rounded-full overflow-hidden">
                                   <div
-                                    className={`h-full rounded-full transition-all duration-500 ${m.invoicingPercentage === 100 ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                                    className={`h-full rounded-full transition-all duration-500 ${m.invoicingPercentage === 100 ? 'bg-[var(--sidebar-primary)]' : (m.invoicingPercentage && m.invoicingPercentage > 0 ? 'bg-amber-500' : 'bg-transparent')}`}
                                     style={{ width: `${Math.min(m.invoicingPercentage || 0, 100)}%` }}
                                   />
                                 </div>
-                                {m.invoices && m.invoices.length > 0 && (
-                                  <div className="mt-1 flex flex-col gap-1">
-                                    {m.invoices.map(inv => (
-                                      <div key={inv.id} className="flex justify-between items-center text-[9px] bg-zinc-100 dark:bg-zinc-800/60 px-1.5 py-0.5 rounded-sm group/inv">
-                                        <span className="font-medium text-zinc-500 dark:text-zinc-400 truncate max-w-[70px]" title={inv.invoiceNumber}>{inv.invoiceNumber}</span>
-                                        <div className="flex items-center gap-1.5">
-                                          <span className="font-bold text-zinc-700 dark:text-zinc-300">{formatBudget(inv.netValue, currency)}</span>
-                                          {canEditProject && (
-                                            <button
-                                              onClick={() => {
-                                                if (confirm('Czy na pewno chcesz usunąć tę fakturę?')) {
-                                                  removeInvoiceMutation.mutate({ milestoneId: m.id, invoiceId: inv.id })
-                                                }
-                                              }}
-                                              className="opacity-0 group-hover/inv:opacity-100 p-0.5 text-red-400 hover:text-red-500 hover:bg-red-500/10 rounded-sm transition-all"
-                                              title="Usuń fakturę"
-                                            >
-                                              <Trash2 className="w-2.5 h-2.5" />
-                                            </button>
-                                          )}
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
                               </div>
                             </td>
                           </tr>
@@ -288,7 +318,8 @@ export function MilestonesTab({
                           <tr
                             key={m.id}
                             style={{ animationDelay: `${index * 25}ms` }}
-                            className="group transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/40 align-middle cursor-default"
+                            onDoubleClick={() => navigate(`/projects/${projectId}/milestones/faktury/${m.id}`)}
+                            className="group transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/40 align-middle cursor-pointer"
                           >
                             <td className="px-2 py-2 text-center border-r border-amber-500/10 dark:border-amber-500/10 font-bold">
                               <span className="inline-block rounded-md px-1.5 py-0.5 text-[11px] shadow-2xs font-extrabold bg-amber-500/10 text-amber-600 dark:text-amber-400">

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Loader2, Plus, Folder, Users } from 'lucide-react' // Briefcase
 import { Button } from '@/components/ui/button'
@@ -88,9 +89,9 @@ export function ProjectDepartmentsTab({ projectId, canEditProject }: ProjectDepa
       .filter(d => d.departmentId !== departmentId)
       .map(d => {
         const foreman = foremenAssignments.find(a => a.departmentId === d.departmentId)
-        return { 
+        return {
           uid: d.departmentId.toString(),
-          departmentId: d.departmentId, 
+          departmentId: d.departmentId,
           foremanId: foreman?.foremanId || ('' as const)
         }
       })
@@ -136,63 +137,59 @@ export function ProjectDepartmentsTab({ projectId, canEditProject }: ProjectDepa
           )}
         </div>
       ) : (
-        <div className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--card)] shadow-sm">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-[var(--muted)]/30 border-b border-[var(--border)] text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-wider">
-              <tr>
-                <th className="px-4 py-3 w-1/2">Dział</th>
-                <th className="px-4 py-3 w-1/2">St. Brygadzista</th>
-                {canEditProject && <th className="px-4 py-3 w-14 text-center">Akcje</th>}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--border)]">
-              {projectDepartments.map(dep => {
-                const depsAssignments = foremenAssignments.filter(a => a.departmentId === dep.departmentId)
-                const Icon = getDepartmentIcon(dep.departmentIcon || 'Folder').icon
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+          {projectDepartments.map(dep => {
+            const depsAssignments = foremenAssignments.filter(a => a.departmentId === dep.departmentId)
+            const Icon = getDepartmentIcon(dep.departmentIcon || 'Folder').icon
 
-                return (
-                  <tr key={dep.departmentId} className="hover:bg-[var(--muted)]/10 transition-colors">
-                    <td className="px-4 py-3 align-top">
-                      <div className="flex items-center gap-2.5">
-                        <div className="p-1.5 rounded-md bg-[var(--sidebar-primary)]/10 text-[var(--sidebar-primary)]">
-                          <Icon size={14} />
-                        </div>
-                        <span className="font-bold text-[var(--foreground)]">{dep.departmentName}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 align-top">
-                      {depsAssignments.length > 0 ? (
-                        <div className="flex flex-col gap-1.5">
-                          {depsAssignments.map(a => (
-                            <div key={a.id} className="inline-flex items-center gap-1.5 bg-[var(--sidebar-primary)]/10 text-[var(--sidebar-primary)] px-2 py-1 rounded text-[11px] font-bold w-fit shadow-sm">
-                              <Users size={12} />
-                              {a.foremanName}
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-[10px] text-[var(--muted-foreground)] italic opacity-70">Brak</span>
-                      )}
-                    </td>
+            return (
+              <div
+                key={dep.departmentId}
+                className="group relative bg-[var(--card)] rounded-xl border border-[var(--border)] shadow-sm hover:shadow-md hover:border-[var(--sidebar-primary)]/20 transition-all duration-300 overflow-hidden flex flex-col"
+              >
+                <div className="p-3 flex flex-col gap-2 flex-1">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Icon size={16} strokeWidth={2.5} className="text-[var(--sidebar-primary)] shrink-0" />
+                      <h3 className="font-semibold text-sm text-[var(--foreground)] truncate" title={dep.departmentName}>
+                        {dep.departmentName}
+                      </h3>
+                    </div>
                     {canEditProject && (
-                      <td className="px-4 py-3 align-top text-center">
-                        <Button
+                      <div className="shrink-0 -mt-0.5 -mr-0.5">
+                        <button
                           type="button"
-                          variant="outline"
-                          size="icon"
                           onClick={() => setDeletingDept(dep.departmentId)}
-                          className="h-8 w-8 text-rose-500 hover:bg-rose-500/10 hover:text-rose-600 border-rose-500/20"
+                          className="p-1.5 text-[var(--muted-foreground)] hover:text-rose-500 hover:bg-rose-500/10 rounded-md transition-colors"
                           title="Usuń ten dział"
                         >
-                          <Trash2 size={13} />
-                        </Button>
-                      </td>
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     )}
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+                  </div>
+
+                  <div className="mt-1">
+                    <p className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-wider mb-1.5">
+                      St. Brygadzista
+                    </p>
+                    {depsAssignments.length > 0 ? (
+                      <div className="flex flex-col gap-1.5">
+                        {depsAssignments.map(a => (
+                          <div key={a.id} className="flex items-center gap-2 text-[var(--foreground)] text-[12px] font-medium">
+                            <Users size={16} className="text-[var(--sidebar-primary)] shrink-0" />
+                            <span className="truncate">{a.foremanName}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-[11px] text-[var(--muted-foreground)] italic opacity-70">Brak przypisanych osób</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
         </div>
       )}
 
@@ -213,7 +210,7 @@ export function ProjectDepartmentsTab({ projectId, canEditProject }: ProjectDepa
 
       {deletingDept && (() => {
         const isLinkedToWorks = workTypes.some(wt => wt.departmentId === deletingDept)
-        return (
+        const modalContent = (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/45 p-3 backdrop-blur-sm animate-fade-in">
             <div className="w-full max-w-sm rounded-xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-2xl motion-safe:animate-[auth-rise_320ms_ease-out]">
               <div className="flex items-start gap-3">
@@ -261,6 +258,7 @@ export function ProjectDepartmentsTab({ projectId, canEditProject }: ProjectDepa
             </div>
           </div>
         )
+        return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent
       })()}
     </div>
   )

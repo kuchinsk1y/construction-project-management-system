@@ -258,31 +258,7 @@ export function InvoiceFormDrawer({
             </div>
           </form>
           
-          {milestone.invoices && milestone.invoices.length > 0 && (
-            <div className="mt-8 pt-4 space-y-3 border-t border-[var(--sidebar-primary)]/10">
-              <h4 className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider mb-2">Historia zafakturowana</h4>
-              <div className="space-y-2">
-                {milestone.invoices.map((inv) => {
-                  const pct = milestoneTotal > 0 ? ((inv.netValue / milestoneTotal) * 100).toFixed(1) : '0.0'
-                  return (
-                    <div key={inv.id} className="p-3.5 bg-[var(--card)] border border-[var(--border)] rounded-xl flex flex-col gap-1.5 text-sm shadow-sm transition-colors hover:border-zinc-300 dark:hover:border-zinc-700">
-                      <div className="flex justify-between items-start">
-                        <span className="font-semibold text-[var(--sidebar-primary)]">{inv.invoiceNumber}</span>
-                        <span className="text-xs text-[var(--muted-foreground)] bg-[var(--background)] px-2 py-0.5 rounded-md border border-[var(--border)]">
-                          {inv.issuedDate ? new Date(inv.issuedDate).toLocaleDateString('pl-PL') : 'Brak daty'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center text-xs mt-1">
-                        <span className="text-[var(--foreground)] font-medium">Netto: {inv.netValue.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} PLN</span>
-                        <span className="text-[var(--muted-foreground)] font-bold">{pct}%</span>
-                      </div>
-                      {inv.note && <p className="text-xs text-[var(--muted-foreground)] bg-zinc-50 dark:bg-zinc-800/50 p-2 rounded-md mt-1 italic">{inv.note}</p>}
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
+
         </div>
 
         {/* Footer */}

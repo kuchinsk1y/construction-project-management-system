@@ -464,26 +464,38 @@ export function WorksTab({ projectId, milestones, canEditProject }: WorksTabProp
             <table className="w-full border-collapse text-left text-xs">
               <thead className="sticky top-0 z-20 border-b-[3px] border-zinc-300 dark:border-zinc-700 bg-[var(--background)]/95 backdrop-blur-md text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
                 <tr>
-                  <th className="px-2 py-2 text-center border-r border-[var(--border)] whitespace-nowrap w-14">Typ</th>
-                  <th className="px-3 py-2 border-r border-[var(--border)] w-[160px]">Etap</th>
-                  <th className="px-2 py-2 border-r border-[var(--border)] min-w-[160px]">Rodzaj robot</th>
-                  <th className="px-2 py-2 text-center border-r border-[var(--border)] w-24">
+                  <th className="px-2 py-2 text-center whitespace-nowrap w-14">Typ</th>
+                  <th className="px-3 py-2 w-[160px]">Etap</th>
+                  <th className="px-2 py-2 min-w-[160px]">Rodzaj robot</th>
+                  <th className="px-2 py-2 text-center w-24">
                     <div className="flex items-center justify-center gap-1">
                       <span>% w etapie</span>
                     </div>
                   </th>
-                  <th className="px-2 py-2 border-r border-[var(--border)] whitespace-nowrap w-28">Start</th>
-                  <th className="px-2 py-2 border-r border-[var(--border)] whitespace-nowrap w-28">Koniec</th>
-                  <th className="px-2 py-2 text-right border-r border-[var(--border)] whitespace-nowrap w-20">Ilość</th>
-                  <th className="px-2 py-2 text-center border-r border-[var(--border)] w-20">Jm.</th>
-                  <th className={`px-3 py-2 min-w-[140px] ${isEditMode ? 'border-r border-[var(--border)]' : ''}`}>Dział</th>
+                  {isEditMode ? (
+                    <>
+                      <th className="px-2 py-2 whitespace-nowrap w-28">Start</th>
+                      <th className="px-2 py-2 whitespace-nowrap w-28">Koniec</th>
+                    </>
+                  ) : (
+                    <th className="px-2 py-2 text-center whitespace-nowrap w-40">Termin</th>
+                  )}
+                  {isEditMode ? (
+                    <>
+                      <th className="px-2 py-2 text-right whitespace-nowrap w-20">Ilość</th>
+                      <th className="px-2 py-2 text-center w-20">Jm.</th>
+                    </>
+                  ) : (
+                    <th className="px-2 py-2 text-right whitespace-nowrap w-32">Ilość</th>
+                  )}
+                  <th className="px-3 py-2 min-w-[140px]">Dział</th>
                   {isEditMode && <th className="px-2 py-2 w-12"></th>}
                 </tr>
               </thead>
               {workTypesLoading ? (
                 <tbody className="font-medium">
                   <tr>
-                    <td colSpan={isEditMode ? 10 : 9} className="px-3 py-10 text-center text-[var(--muted-foreground)]">
+                    <td colSpan={isEditMode ? 10 : 7} className="px-3 py-10 text-center text-[var(--muted-foreground)]">
                       <Loader2 size={18} className="animate-spin mx-auto mb-2" />
                       Wczytywanie robót...
                     </td>
@@ -492,7 +504,7 @@ export function WorksTab({ projectId, milestones, canEditProject }: WorksTabProp
               ) : milestoneGroups.length === 0 ? (
                 <tbody className="font-medium">
                   <tr>
-                    <td colSpan={isEditMode ? 10 : 9} className="px-3 py-10 text-center text-[var(--muted-foreground)] italic text-[11px]">
+                    <td colSpan={isEditMode ? 10 : 7} className="px-3 py-10 text-center text-[var(--muted-foreground)] italic text-[11px]">
                       Brak etapów. Przejdź do zakładki „Kamienie Milowe", aby stworzyć strukturę projektu.
                     </td>
                   </tr>
@@ -568,7 +580,7 @@ function MilestoneRows({
   const milestoneCell = (span: number) => (
     <td
       rowSpan={span}
-      className="px-2 py-2 text-center border-r border-[var(--border)] align-top pt-2.5 font-bold"
+      className="px-2 py-2 text-center align-top pt-2.5 font-bold"
     >
       {isKM ? (
         <span className="inline-block rounded-md px-1.5 py-0.5 text-[11px] shadow-2xs font-extrabold bg-[var(--sidebar-primary)]/10 text-[var(--sidebar-primary)]">
@@ -585,7 +597,7 @@ function MilestoneRows({
   const descriptionCell = (span: number) => (
     <td
       rowSpan={span}
-      className="px-3 py-2 text-[var(--foreground)] font-normal leading-relaxed border-r border-[var(--border)] text-[11px] align-top pt-2.5 max-w-[160px]"
+      className="px-3 py-2 text-[var(--foreground)] font-normal leading-relaxed text-[11px] align-top pt-2.5 max-w-[160px]"
     >
       {milestone.description}
     </td>
@@ -597,7 +609,7 @@ function MilestoneRows({
       <tr className="bg-[var(--muted)]/10 align-middle border-b border-[var(--border)] last:border-b-0">
         {milestoneCell(1)}
         {descriptionCell(1)}
-        <td colSpan={isEditMode ? 7 : 8} className={`px-3 py-2 text-[var(--muted-foreground)] italic text-[10px] ${isEditMode ? 'border-r border-[var(--border)]' : ''}`}>
+        <td colSpan={isEditMode ? 7 : 5} className="px-3 py-2 text-[var(--muted-foreground)] italic text-[10px]">
           Brak robót
         </td>
         {isEditMode && (
@@ -635,21 +647,21 @@ function MilestoneRows({
             >
               {isFirst && milestoneCell(rowSpan)}
               {isFirst && descriptionCell(rowSpan)}
-              <td className="px-3 py-2 font-bold text-[var(--sidebar-primary)] border-r border-[var(--border)] whitespace-nowrap">
+              <td className="px-3 py-2 font-bold text-[var(--sidebar-primary)] whitespace-nowrap">
                 {wt.name}
               </td>
-              <td className="px-2 py-2 text-center border-r border-[var(--border)]">
+              <td className="px-2 py-2 text-center">
                 <span className="inline-block rounded-full bg-[var(--background)] px-2 py-0.5 text-[11px] font-bold border border-[var(--border)] tabular-nums">
                   {pct}%
                 </span>
               </td>
-              <td className="px-2 py-2 border-r border-[var(--border)] whitespace-nowrap text-[11px]">{formatDateLocal(wt.plannedStart)}</td>
-              <td className="px-2 py-2 border-r border-[var(--border)] whitespace-nowrap text-[11px]">{formatDateLocal(wt.plannedEnd)}</td>
-              <td className="px-2 py-2 text-right border-r border-[var(--border)] font-bold text-[11px]">
-                {wt.totalQuantity ? Number(wt.totalQuantity).toFixed(2) : '-'}
+              <td className="px-2 py-2 text-center whitespace-nowrap text-[11px]">
+                {formatDateLocal(wt.plannedStart)} - {formatDateLocal(wt.plannedEnd)}
               </td>
-              <td className="px-2 py-2 text-center border-r border-[var(--border)] text-[var(--muted-foreground)] text-[11px]">{wt.unit || '-'}</td>
-              <td className={`px-3 py-2 ${isEditMode ? 'border-r border-[var(--border)]' : ''}`}>
+              <td className="px-2 py-2 text-right font-bold text-[11px]">
+                {wt.totalQuantity ? Number(wt.totalQuantity).toFixed(2) : '-'} {wt.unit && <span className="font-normal text-[var(--muted-foreground)]">{wt.unit}</span>}
+              </td>
+              <td className="px-3 py-2">
                 <span className="inline-flex items-center rounded-md bg-[var(--sidebar-primary)]/10 px-2 py-0.5 text-[10px] font-bold text-[var(--sidebar-primary)] whitespace-nowrap">
                   {deptOptions.find(d => d.id === wt.departmentId)?.label || wt.departmentName}
                 </span>
@@ -674,7 +686,7 @@ function MilestoneRows({
               {isFirst && descriptionCell(rowSpan)}
 
               {/* Rodzaj roboty */}
-              <td className="px-1.5 py-1 border-r border-[var(--border)] relative">
+              <td className="px-1.5 py-1 relative">
                 <input
                   type="text"
                   list={`suggestions-${editRow.id}`}
@@ -697,7 +709,7 @@ function MilestoneRows({
               </td>
 
               {/* % */}
-              <td className="px-1.5 py-1 border-r border-[var(--border)]">
+              <td className="px-1.5 py-1">
                 <input
                   type="number"
                   min={0}
@@ -714,7 +726,7 @@ function MilestoneRows({
               </td>
 
               {/* Start */}
-              <td className="px-1.5 py-1 border-r border-[var(--border)]">
+              <td className="px-1.5 py-1">
                 <input
                   type="date"
                   className="w-full bg-[var(--background)] border border-[var(--border)] focus:border-[var(--sidebar-primary)] rounded-md px-1 py-1 text-[11px] outline-none"
@@ -724,7 +736,7 @@ function MilestoneRows({
               </td>
 
               {/* Koniec */}
-              <td className="px-1.5 py-1 border-r border-[var(--border)]">
+              <td className="px-1.5 py-1">
                 <input
                   type="date"
                   className="w-full bg-[var(--background)] border border-[var(--border)] focus:border-[var(--sidebar-primary)] rounded-md px-1 py-1 text-[11px] outline-none"
@@ -734,7 +746,7 @@ function MilestoneRows({
               </td>
 
               {/* Ilość */}
-              <td className="px-1.5 py-1 border-r border-[var(--border)]">
+              <td className="px-1.5 py-1">
                 <input
                   type="number"
                   min={0}
@@ -747,7 +759,7 @@ function MilestoneRows({
               </td>
 
               {/* Jm — combo */}
-              <td className="px-1.5 py-1 border-r border-[var(--border)]">
+              <td className="px-1.5 py-1">
                 <ComboBox
                   value={editRow.unit}
                   onChange={v => updateEditRow(editRow.id, 'unit', v)}
@@ -758,7 +770,7 @@ function MilestoneRows({
               </td>
 
               {/* Dział */}
-              <td className="px-1.5 py-1 border-r border-[var(--border)]">
+              <td className="px-1.5 py-1">
                 <select
                   className="w-full bg-[var(--background)] border border-[var(--border)] focus:border-[var(--sidebar-primary)] rounded-md px-1.5 py-1 text-[11px] outline-none cursor-pointer"
                   value={editRow.departmentId}

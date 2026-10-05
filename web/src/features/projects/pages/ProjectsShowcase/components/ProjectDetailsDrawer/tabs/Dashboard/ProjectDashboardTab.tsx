@@ -9,13 +9,14 @@ import {
   TrendingUp,
   UserRoundCheck,
   Zap,
-  Activity,
+  // Activity,
   PieChart,
   Briefcase,
   LayoutList,
   List
 } from 'lucide-react'
 import { ProjectActiveWorkers } from './ProjectActiveWorkers'
+import { ProjectWorksGantt } from './ProjectWorksGantt'
 import type { ApiMilestone, ApiProject } from '@/features/projects/types'
 import { useTranslation } from 'react-i18next'
 
@@ -56,7 +57,8 @@ function describeArc(x: number, y: number, radius: number, startAngle: number, e
 function FinancialDonutChart({ total, paid, invoicedNotPaid, remaining, formatBudget, currency }: FinancialDonutChartProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [tooltip, setTooltip] = useState<{ x: number, y: number, seg: DonutSegment } | null>(null)
-  const radius = 68
+  const radius = 80
+  const center = 110
 
   const segments = [
     { id: 'paid', value: paid, color: 'var(--sidebar-primary)', label: 'Zapłacono' },
@@ -72,8 +74,8 @@ function FinancialDonutChart({ total, paid, invoicedNotPaid, remaining, formatBu
   let currentAngle = 0
 
   return (
-    <div ref={containerRef} className="flex flex-col items-center w-full max-w-[280px] mx-auto relative">
-      <div className="relative w-48 h-48 flex items-center justify-center shrink-0">
+    <div ref={containerRef} className="flex flex-row items-center justify-center gap-6 w-full mx-auto relative">
+      <div className="relative w-[220px] h-[220px] flex items-center justify-center shrink-0">
         <svg
           className="w-full h-full overflow-visible drop-shadow-sm cursor-pointer"
           onMouseLeave={() => setTooltip(null)}
@@ -87,8 +89,8 @@ function FinancialDonutChart({ total, paid, invoicedNotPaid, remaining, formatBu
 
             // Calculate distance from center
             const d = Math.sqrt(dx * dx + dy * dy)
-            // Stroke radius is 68, width is 16 -> 60 to 76. Let's add some margin: 48 to 88.
-            if (d < 48 || d > 88) {
+            // Stroke radius is 80, width is 20 -> 70 to 90. Let's add some margin: 55 to 105.
+            if (d < 55 || d > 105) {
               setTooltip(null)
               return
             }
@@ -120,7 +122,7 @@ function FinancialDonutChart({ total, paid, invoicedNotPaid, remaining, formatBu
             const segDegrees = (seg.value / total) * availableDegrees
             const startAngle = currentAngle - 90
             const endAngle = currentAngle + segDegrees - 90
-            const pathData = describeArc(100, 100, radius, startAngle, endAngle)
+            const pathData = describeArc(center, center, radius, startAngle, endAngle)
 
             currentAngle += segDegrees + gapDegrees
 
@@ -132,7 +134,7 @@ function FinancialDonutChart({ total, paid, invoicedNotPaid, remaining, formatBu
                 d={pathData}
                 fill="none"
                 stroke={seg.color}
-                strokeWidth={isHovered ? 18 : 14}
+                strokeWidth={isHovered ? 20 : 16}
                 strokeLinecap="round"
                 className="transition-all duration-300 ease-out pointer-events-none"
               />
@@ -144,24 +146,24 @@ function FinancialDonutChart({ total, paid, invoicedNotPaid, remaining, formatBu
             <span className="text-xl font-extrabold text-[var(--muted-foreground)]">Brak KM</span>
           ) : (
             <>
-              <span className="text-3xl font-extrabold text-[var(--foreground)] tracking-tight leading-none">{((paid + invoicedNotPaid) / total * 100).toFixed(0)}%</span>
-              <span className="text-[9px] uppercase tracking-wider font-extrabold text-[var(--muted-foreground)] mt-1 text-center leading-tight max-w-[80px]">Zafakturowano łącznie</span>
+              <span className="text-4xl font-extrabold text-[var(--foreground)] tracking-tight leading-none">{((paid + invoicedNotPaid) / total * 100).toFixed(0)}%</span>
+              <span className="text-[10px] uppercase tracking-wider font-extrabold text-[var(--muted-foreground)] mt-1 text-center leading-tight max-w-[90px]">Zafakturowano łącznie</span>
             </>
           )}
         </div>
       </div>
 
-      <div className="flex flex-col gap-2 mt-8 w-full px-2">
+      <div className="flex flex-col gap-4 min-w-[140px]">
         {segments.map(seg => (
           <div
             key={seg.id}
-            className="flex items-center justify-between gap-2 cursor-default"
+            className="flex flex-col gap-1 cursor-default"
           >
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-full shadow-sm shrink-0" style={{ backgroundColor: seg.color }} />
-              <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--muted-foreground)] truncate max-w-[110px]">{seg.label}</span>
+              <span className="text-[11px] uppercase font-bold tracking-wider text-[var(--muted-foreground)] truncate">{seg.label}</span>
             </div>
-            <span className="text-sm font-extrabold text-[var(--foreground)] shrink-0">{formatBudget(seg.value, currency || undefined)}</span>
+            <span className="text-sm lg:text-base font-extrabold text-[var(--foreground)] pl-5">{formatBudget(seg.value, currency || undefined)}</span>
           </div>
         ))}
       </div>
@@ -251,7 +253,7 @@ export function ProjectDashboardTab({ project, milestones, formatBudget }: Proje
 
         let mInvoiced = 0
         let mPaid = 0
-        
+
         if (m.invoices && m.invoices.length > 0) {
           m.invoices.forEach(inv => {
             mInvoiced += inv.netValue
@@ -268,11 +270,11 @@ export function ProjectDashboardTab({ project, milestones, formatBudget }: Proje
         paid += mPaid
       })
     }
-    
+
     // Safety boundaries
     invoiced = Math.min(invoiced, total)
     paid = Math.min(paid, invoiced)
-    
+
     return {
       totalKmNet: total,
       paidKmNet: paid,
@@ -302,105 +304,91 @@ export function ProjectDashboardTab({ project, milestones, formatBudget }: Proje
 
   return (
     <div className="w-full flex flex-col gap-1.5 animate-tab-content">
-      {/* TOP ROW: Progress Card */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-        <div className="flex items-center gap-3 shrink-0">
-          <div className="p-2 rounded-lg bg-[var(--sidebar-primary)]/10 text-[var(--sidebar-primary)]">
-            <TrendingUp size={16} />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--foreground)]">Postęp Projektu</span>
-              <span className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md border ${overallProgress === 100
-                ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
-                : 'bg-[var(--sidebar-primary)]/10 text-[var(--sidebar-primary)] border-[var(--sidebar-primary)]/20'
-                }`}>
-                {overallProgress === 100 ? 'Zakończono' : 'W Trakcie'}
-              </span>
+      {/* TOP ROW: Progress Card & KPIs */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-1.5">
+
+        {/* Left: Progress Card */}
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2.5 shadow-sm flex flex-col justify-center gap-2">
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="p-1.5 rounded-lg bg-[var(--sidebar-primary)]/10 text-[var(--sidebar-primary)]">
+              <TrendingUp size={15} />
             </div>
-            <p className="text-[10px] font-medium text-[var(--muted-foreground)] mt-0.5">
-              Na podstawie zafakturowanych etapów
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--foreground)]">Postęp Projektu</span>
+                <span className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md border ${overallProgress === 100
+                  ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                  : 'bg-[var(--sidebar-primary)]/10 text-[var(--sidebar-primary)] border-[var(--sidebar-primary)]/20'
+                  }`}>
+                  {overallProgress === 100 ? 'Zakończono' : 'W Trakcie'}
+                </span>
+              </div>
+              <p className="text-[10px] font-medium text-[var(--muted-foreground)] mt-0.5">
+                Na podstawie zafakturowanych etapów
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 w-full">
+            <div className="h-2 flex-1 bg-[var(--border)] rounded-full overflow-hidden shadow-inner">
+              <div
+                className="h-full bg-[var(--sidebar-primary)] relative"
+                style={{ width: `${overallProgress}%`, transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)' }}
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent to-white/20" />
+              </div>
+            </div>
+            <span className="text-lg font-extrabold text-[var(--foreground)] w-12 text-right">{overallProgress}%</span>
+          </div>
+        </div>
+
+        {/* Right: KPIs Card with dividers */}
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-sm flex items-center divide-x divide-[var(--border)]">
+          <div className="flex-1 px-3 py-2 hover:bg-[var(--sidebar-primary)]/5 transition-colors h-full relative flex flex-col justify-center items-start pt-6">
+            <div className="absolute top-2 left-3 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
+              <CircleDollarSign size={14} className="text-[var(--sidebar-primary)]" />
+              <span>Wartość</span>
+            </div>
+            <p className="text-[14px] font-extrabold text-[var(--foreground)] truncate">
+              {budgetValue > 0 ? formatBudget(budgetValue, project.currency || 'PLN') : '-'}
+            </p>
+          </div>
+          <div className="flex-1 px-3 py-2 hover:bg-[var(--sidebar-primary)]/5 transition-colors h-full relative flex flex-col justify-center items-start pt-6">
+            <div className="absolute top-2 left-3 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
+              <CheckCircle2 size={14} className="text-[var(--sidebar-primary)]" />
+              <span>Zamknięte Etapy</span>
+            </div>
+            <div className="flex items-baseline gap-1">
+              <span className="text-[14px] font-extrabold text-[var(--foreground)]">{completedMilestones}</span>
+              <span className="text-[11px] font-semibold text-[var(--muted-foreground)]">/ {totalMilestones}</span>
+            </div>
+          </div>
+          <div className="flex-1 px-3 py-2 hover:bg-[var(--sidebar-primary)]/5 transition-colors h-full relative flex flex-col justify-center items-start pt-6">
+            <div className="absolute top-2 left-3 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
+              <Zap size={14} className="text-[var(--sidebar-primary)]" />
+              <span>Moc</span>
+            </div>
+            <p className="text-[14px] font-extrabold text-[var(--foreground)] truncate">
+              {project.power ? `${project.power} MW` : '-'}
+            </p>
+          </div>
+          <div className="flex-1 px-3 py-2 hover:bg-[var(--sidebar-primary)]/5 transition-colors h-full relative flex flex-col justify-center items-start pt-6">
+            <div className="absolute top-2 left-3 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
+              <Clock size={14} className="text-[var(--sidebar-primary)]" />
+              <span>Termin</span>
+            </div>
+            <p className="text-[14px] font-extrabold text-[var(--foreground)] truncate">
+              {formatDate(project.end_date_contract)}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3 w-full md:flex-1">
-          <div className="h-2 flex-1 bg-[var(--border)] rounded-full overflow-hidden shadow-inner">
-            <div
-              className="h-full bg-[var(--sidebar-primary)] relative"
-              style={{ width: `${overallProgress}%`, transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)' }}
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent to-white/20" />
-            </div>
-          </div>
-          <span className="text-lg font-extrabold text-[var(--foreground)] w-12 text-right">{overallProgress}%</span>
-        </div>
+
       </div>
 
-      {/* SECOND ROW: TOP GRID (KPIs, Donut, Project Info / Workers) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-1.5 items-stretch lg:h-[340px]">
+      {/* SECOND ROW: TOP GRID (Donut, Project Info / Workers) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-1.5 items-stretch lg:h-[290px]">
 
-        {/* LEFT COLUMN: KPIs (col-span-3) */}
-        <div className="lg:col-span-3 flex flex-col gap-1.5">
-          <div className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-sm flex flex-col transition-colors hover:border-[var(--sidebar-primary)]/50">
-            <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
-              <div className="rounded bg-[var(--sidebar-primary)]/10 text-[var(--sidebar-primary)] p-1 shrink-0">
-                <CircleDollarSign size={14} />
-              </div>
-              <span>Wartość</span>
-            </div>
-            <div className="flex-1 flex items-center justify-start w-full mt-1">
-              <p className="text-base font-extrabold text-[var(--foreground)] truncate">
-                {budgetValue > 0 ? formatBudget(budgetValue, project.currency || 'PLN') : '-'}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-sm flex flex-col transition-colors hover:border-[var(--sidebar-primary)]/50">
-            <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
-              <div className="rounded bg-[var(--sidebar-primary)]/10 text-[var(--sidebar-primary)] p-1 shrink-0">
-                <CheckCircle2 size={14} />
-              </div>
-              <span>Zamknięte Etapy</span>
-            </div>
-            <div className="flex-1 flex items-center justify-start w-full mt-1">
-              <div className="flex items-baseline gap-1">
-                <span className="text-base font-extrabold text-[var(--foreground)]">{completedMilestones}</span>
-                <span className="text-[11px] font-semibold text-[var(--muted-foreground)]">/ {totalMilestones}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-sm flex flex-col transition-colors hover:border-[var(--sidebar-primary)]/50">
-            <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
-              <div className="rounded bg-[var(--sidebar-primary)]/10 text-[var(--sidebar-primary)] p-1 shrink-0">
-                <Zap size={14} />
-              </div>
-              <span>Moc</span>
-            </div>
-            <div className="flex-1 flex items-center justify-start w-full mt-1">
-              <p className="text-base font-extrabold text-[var(--foreground)] truncate">
-                {project.power ? `${project.power} MW` : '-'}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-sm flex flex-col transition-colors hover:border-[var(--sidebar-primary)]/50">
-            <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
-              <div className="rounded bg-[var(--sidebar-primary)]/10 text-[var(--sidebar-primary)] p-1 shrink-0">
-                <Clock size={14} />
-              </div>
-              <span>Termin</span>
-            </div>
-            <div className="flex-1 flex items-center justify-start w-full mt-1">
-              <p className="text-base font-extrabold text-[var(--foreground)] truncate">
-                {formatDate(project.end_date_contract)}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* MIDDLE COLUMN: Donut Chart (col-span-4) */}
-        <div className="lg:col-span-4 rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-sm flex flex-col h-full relative overflow-hidden">
+        {/* LEFT COLUMN: Donut Chart (col-span-7) */}
+        <div className="lg:col-span-7 rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-sm flex flex-col h-full relative overflow-hidden">
           <div className="flex items-center justify-between border-b border-[var(--border)] p-2 shrink-0">
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--foreground)]">
               <div className="rounded p-1 bg-[var(--sidebar-primary)]/10 text-[var(--sidebar-primary)]">
@@ -529,92 +517,10 @@ export function ProjectDashboardTab({ project, milestones, formatBudget }: Proje
         </div>
       </div>
 
-      {/* THIRD ROW: Work Statistics (Full width, columns layout) */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-sm flex flex-col overflow-hidden max-h-[500px]">
-        <div className="flex items-center justify-between border-b border-[var(--border)] p-3 shrink-0">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--foreground)]">
-            <div className="rounded p-1 bg-[var(--sidebar-primary)]/10 text-[var(--sidebar-primary)]">
-              <Activity size={14} />
-            </div>
-            <span className='text-[var(--muted-foreground)]'>Statystyki Robót</span>
-          </div>
-        </div>
 
-        <div className="p-3 overflow-y-auto custom-scrollbar flex-1">
-          {workTypes.length === 0 ? (
-            <div className="text-center text-xs text-[var(--muted-foreground)] py-8 font-medium">Brak zdefiniowanych robót</div>
-          ) : (
-            (() => {
-              const groups: Record<string, typeof workTypes> = {}
-              workTypes.forEach(wt => {
-                const km = wt.milestoneNo || 'RD'
-                if (!groups[km]) groups[km] = []
-                groups[km].push(wt)
-              })
 
-              const sortedGroups = Object.keys(groups).sort((a, b) => {
-                if (a === 'RD') return 1
-                if (b === 'RD') return -1
-                return a.localeCompare(b, undefined, { numeric: true })
-              }).map(key => ({ km: key, works: groups[key] }))
-
-              return (
-                <div className="flex flex-col divide-y divide-[var(--border)]">
-                  {sortedGroups.map(group => (
-                    <div key={group.km} className="flex flex-col md:flex-row items-stretch gap-4 p-3 hover:bg-[var(--background)]/30 transition-colors">
-                      {/* Left side: KM Badge (vertically centered) */}
-                      <div className="md:w-16 flex items-center justify-center shrink-0 border-b md:border-b-0 md:border-r border-[var(--border)] pb-2 md:pb-0 md:pr-4">
-                        <div className="text-[12px] font-extrabold uppercase tracking-widest text-[var(--sidebar-primary)] text-center">
-                          {group.km}
-                        </div>
-                      </div>
-
-                      {/* Right side: Works Grid */}
-                      <div className="flex-1 grid grid-cols-1 xl:grid-cols-2 gap-x-6 gap-y-1">
-                        {group.works.map(wt => {
-                          const actual = wt.actualQuantity || 0
-                          const total = wt.totalQuantity || 0
-                          const progress = total > 0 ? Math.min(100, Math.round((actual / total) * 100)) : 0
-
-                          let progressColor = 'bg-blue-500'
-                          if (progress === 100) progressColor = 'bg-emerald-500'
-                          else if (progress > 0) progressColor = 'bg-amber-500'
-
-                          return (
-                            <div key={wt.id} className="group flex items-center justify-between gap-2 p-1.5 rounded-lg hover:bg-[var(--sidebar-primary)]/5 transition-all border border-transparent hover:border-[var(--sidebar-primary)]/10">
-                              <span className="text-[11px] font-bold text-[var(--foreground)] truncate flex-1 group-hover:text-[var(--sidebar-primary)] transition-colors" title={wt.name}>
-                                {wt.name}
-                              </span>
-
-                              <div className="w-24 shrink-0 flex justify-end items-baseline gap-1">
-                                <span className="text-[11px] font-extrabold text-[var(--foreground)]">{actual}</span>
-                                <span className="text-[9px] font-semibold text-[var(--muted-foreground)]">/ {total} <span className="text-[8px] uppercase">{wt.unit}</span></span>
-                              </div>
-
-                              <div className="w-24 shrink-0 flex items-center gap-2">
-                                <div className="h-1.5 flex-1 bg-[var(--border)] rounded-full overflow-hidden shadow-inner">
-                                  <div
-                                    className={`h-full ${progressColor} transition-all duration-1000 ease-out relative`}
-                                    style={{ width: `${progress}%` }}
-                                  >
-                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent to-white/20" />
-                                  </div>
-                                </div>
-                                <span className="text-[10px] font-bold text-[var(--foreground)] w-7 text-right">{progress}%</span>
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )
-            })()
-          )}
-        </div>
-      </div>
+      {/* FOURTH ROW: Gantt Chart */}
+      <ProjectWorksGantt works={workTypes} />
     </div>
   )
 }
-

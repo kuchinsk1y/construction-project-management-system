@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { HardHat, User, Clock, Loader2, AlertCircle, ChevronDown } from 'lucide-react'
+import { HardHat, User, Clock, Loader2, AlertCircle, ChevronDown, Coffee } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 
 type WorkerAttendance = {
@@ -88,8 +88,16 @@ export function ProjectActiveWorkers({ viewMode }: ProjectActiveWorkersProps) {
             <span className="text-[10px]">Błąd pobierania danych</span>
           </div>
         ) : workers.length === 0 ? (
-          <div className="flex items-center justify-center h-20 text-[10px] text-[var(--muted-foreground)]">
-            Brak osób na budowie
+          <div className="flex flex-col items-center justify-center h-full min-h-[160px] gap-3 text-[var(--muted-foreground)] p-4 text-center animate-in fade-in duration-300">
+            <div className="bg-[var(--sidebar-primary)]/10 text-[var(--sidebar-primary)] p-4 rounded-full shadow-sm">
+              <Coffee size={28} strokeWidth={2.5} />
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-extrabold uppercase tracking-wider text-[var(--foreground)]">Brak pracowników</span>
+              <span className="text-[11px] font-medium leading-relaxed max-w-[200px]">
+                Aktualnie nikt nie jest odbity na budowie. Czas na odpoczynek!
+              </span>
+            </div>
           </div>
         ) : viewMode === 'list' ? (
           workers.map((worker) => renderWorkerItem(worker, true))

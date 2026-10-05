@@ -1,6 +1,6 @@
 import { useState } from 'react' // React,
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2, Edit2, Wallet, Coins } from 'lucide-react'
+import { Plus, Trash2, Edit2, Wallet, Coins, FileText, ShieldCheck, Calculator } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   getCostCategories,
@@ -93,48 +93,61 @@ export function PlannedExpensesTab({ project }: PlannedExpensesTabProps) {
     <div className="w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-sm space-y-4 animate-tab-content">
       {/* Header Action Bar & Summary Stats */}
       <div className="flex flex-col gap-3">
-        {/* Overall Allocation Progress Bar */}
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/30 p-3 space-y-2 shadow-2xs">
-          <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
-            <span className="flex items-center gap-1.5">
-              <Wallet size={14} className="text-[var(--sidebar-primary)]" />
-              Suma rozdysponowanych wydatków z budżetu ({formatBudget(availableBudget, currency)})
-            </span>
-            <span className={`font-extrabold ${totalPercentUsed === 100 ? 'text-emerald-500' : totalPercentUsed > 100 ? 'text-rose-500' : 'text-amber-500'}`}>
-              {totalPercentUsed.toFixed(2)}% / 100%
-            </span>
-          </div>
-          <div className="relative h-3.5 w-full bg-[var(--muted)]/50 rounded-full overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-500 ${totalPercentUsed === 100 ? 'bg-emerald-500' : totalPercentUsed > 100 ? 'bg-rose-500' : 'bg-amber-500'}`}
-              style={{ width: `${Math.min(totalPercentUsed, 100)}%` }}
-            />
-          </div>
-        </div>
 
-        {/* Top KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/35 p-2.5 space-y-1 shadow-xs">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">Wartość kontraktu netto</span>
-            <p className="text-sm font-extrabold text-[var(--foreground)]">{formatBudget(contractValue, currency)}</p>
+        {/* Top Stats & Progress Bar in a row */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+
+          {/* Left: Progress Bar */}
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/30 p-3 shadow-2xs flex flex-col justify-center gap-2">
+            <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
+              <span className="flex items-center gap-1.5">
+                <Wallet size={14} className="text-[var(--sidebar-primary)]" />
+                Suma wydatków z budżetu
+              </span>
+              <span className={`font-extrabold ${totalPercentUsed === 100 ? 'text-[var(--sidebar-primary)]' : totalPercentUsed > 100 ? 'text-rose-500' : 'text-amber-500'}`}>
+                {totalPercentUsed.toFixed(2)}% / 100%
+              </span>
+            </div>
+            <div className="relative h-3 w-full bg-[var(--muted)]/50 rounded-full overflow-hidden mt-0.5">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${totalPercentUsed === 100 ? 'bg-[var(--sidebar-primary)]' : totalPercentUsed > 100 ? 'bg-rose-500' : 'bg-amber-500'}`}
+                style={{ width: `${Math.min(totalPercentUsed, 100)}%` }}
+              />
+            </div>
           </div>
 
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/35 p-2.5 space-y-1 shadow-xs">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">Gwarancja ({warrantyPercent}%)</span>
-            <p className="text-sm font-extrabold text-[var(--foreground)]">{formatBudget(contractValue * (warrantyPercent / 100), currency)}</p>
+          {/* Right: KPI Card with dividers */}
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/35 shadow-xs flex items-center divide-x divide-[var(--border)] overflow-hidden">
+            <div className="flex-[1.3] p-3 space-y-1 min-w-0">
+              <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] whitespace-nowrap truncate">
+                <FileText size={12} className="text-[var(--sidebar-primary)] shrink-0" />
+                Wartość kontraktu netto
+              </span>
+              <p className="text-sm font-extrabold text-[var(--foreground)] truncate">{formatBudget(contractValue, currency)}</p>
+            </div>
+            <div className="flex-1 p-3 space-y-1 min-w-0">
+              <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] whitespace-nowrap truncate">
+                <ShieldCheck size={12} className="text-[var(--sidebar-primary)] shrink-0" />
+                Gwarancja ({warrantyPercent}%)
+              </span>
+              <p className="text-sm font-extrabold text-[var(--foreground)] truncate">{formatBudget(contractValue * (warrantyPercent / 100), currency)}</p>
+            </div>
+            <div className="flex-1 p-3 space-y-1 min-w-0">
+              <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] whitespace-nowrap truncate">
+                <Calculator size={12} className="text-[var(--sidebar-primary)] shrink-0" />
+                Budżet
+              </span>
+              <p className="text-sm font-extrabold text-[var(--foreground)] truncate">{formatBudget(availableBudget, currency)}</p>
+            </div>
           </div>
 
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/35 p-2.5 space-y-1 shadow-xs">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">Budżet</span>
-            <p className="text-sm font-extrabold text-[var(--foreground)]">{formatBudget(availableBudget, currency)}</p>
-          </div>
         </div>
 
         {/* Header controls */}
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-3 pt-1">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
             <Coins size={14} className="text-[var(--sidebar-primary)]" />
-            <span>Tabela rodzajów wydatków</span>
+            <span>Planowane wydatki według kategorii</span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -159,13 +172,12 @@ export function PlannedExpensesTab({ project }: PlannedExpensesTabProps) {
                 <th className="px-4 py-2 border-r border-[var(--border)] min-w-[200px]">Rodzaj wydatku</th>
                 <th className="px-4 py-2 text-center border-r border-[var(--border)] w-28">Udział (%)</th>
                 <th className="px-4 py-2 text-right border-r border-[var(--border)] w-36">Wartość</th>
-                <th className="px-3 py-2 w-20 text-center">Akcje</th>
               </tr>
             </thead>
             {isLoading ? (
               <tbody className="font-medium">
                 <tr>
-                  <td colSpan={4} className="px-3 py-10 text-center text-[var(--muted-foreground)]">
+                  <td colSpan={3} className="px-3 py-10 text-center text-[var(--muted-foreground)]">
                     Ładowanie wydatków...
                   </td>
                 </tr>
@@ -173,7 +185,7 @@ export function PlannedExpensesTab({ project }: PlannedExpensesTabProps) {
             ) : expenses.length === 0 ? (
               <tbody className="font-medium">
                 <tr>
-                  <td colSpan={4} className="px-3 py-10 text-center text-[var(--muted-foreground)] italic text-[11px]">
+                  <td colSpan={3} className="px-3 py-10 text-center text-[var(--muted-foreground)] italic text-[11px]">
                     Brak zaplanowanych wydatków. Kliknij „Dodaj / Edytuj”, aby rozpocząć planowanie budżetu.
                   </td>
                 </tr>
@@ -194,30 +206,6 @@ export function PlannedExpensesTab({ project }: PlannedExpensesTabProps) {
                       </td>
                       <td className="px-4 py-2 text-right border-r border-[var(--border)] tabular-nums font-semibold text-[11px]">
                         {formatBudget(val, currency)}
-                      </td>
-                      <td className="px-3 py-1.5 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => openEditDrawer(expense)}
-                            className="flex h-6 w-6 items-center justify-center rounded-md text-[var(--sidebar-primary)] hover:bg-[var(--sidebar-primary)]/10"
-                            title="Edytuj"
-                          >
-                            <Edit2 size={13} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (confirm('Czy na pewno chcesz usunąć ten wydatek?')) {
-                                deleteExpenseMut.mutate(expense.id)
-                              }
-                            }}
-                            className="flex h-6 w-6 items-center justify-center rounded-md text-rose-500 hover:bg-rose-500/10"
-                            title="Usuń"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
                       </td>
                     </tr>
                   )

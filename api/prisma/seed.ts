@@ -415,25 +415,25 @@ async function main() {
   console.log('Seeding project work types...');
   const worksToSeed = [
     // KM 1: Prace przygotowawcze (100% completed) - 1 work type
-    { name: 'Montaż kontenerów i tablic', unit: 'szt', qty: 6, actual: 6, dept: 'Montaż', km: 'KM 1', start: '2026-02-01', end: '2026-02-12', perc: 100 },
+    { name: 'Montaż kontenerów i tablic', unit: 'szt', qty: 6, actual: 6, dept: 'Montaż', km: 'KM 1', start: '2026-09-20', end: '2026-09-25', perc: 100 },
 
     // KM 2: Wykonanie ogrodzenia (100% completed) - 3 work types
-    { name: 'Wbijanie kafarów', unit: 'szt', qty: 2000, actual: 2000, dept: 'Kafar', km: 'KM 2', start: '2026-02-15', end: '2026-03-01', perc: 30 },
-    { name: 'Montaż słupków', unit: 'szt', qty: 2000, actual: 2000, dept: 'Montaż', km: 'KM 2', start: '2026-03-02', end: '2026-03-10', perc: 30 },
-    { name: 'Rozciągnięcie siatki', unit: 'mb', qty: 5000, actual: 5000, dept: 'Montaż', km: 'KM 2', start: '2026-03-11', end: '2026-03-20', perc: 40 },
+    { name: 'Wbijanie kafarów', unit: 'szt', qty: 2000, actual: 2000, dept: 'Kafar', km: 'KM 2', start: '2026-09-25', end: '2026-09-28', perc: 100 },
+    { name: 'Montaż słupków', unit: 'szt', qty: 2000, actual: 2000, dept: 'Montaż', km: 'KM 2', start: '2026-09-28', end: '2026-10-01', perc: 100 },
+    { name: 'Rozciągnięcie siatki', unit: 'mb', qty: 5000, actual: 5000, dept: 'Montaż', km: 'KM 2', start: '2026-10-01', end: '2026-10-04', perc: 100 },
 
     // KM 3: Wykonanie prac wodociągowych (100% completed) - 2 work types
-    { name: 'Wykopy pod rury', unit: 'mb', qty: 800, actual: 800, dept: 'Kafar', km: 'KM 3', start: '2026-03-21', end: '2026-03-28', perc: 40 },
-    { name: 'Montaż instalacji wodnej', unit: 'mb', qty: 800, actual: 800, dept: 'Montaż', km: 'KM 3', start: '2026-03-25', end: '2026-04-05', perc: 60 },
+    { name: 'Wykopy pod rury', unit: 'mb', qty: 800, actual: 800, dept: 'Kafar', km: 'KM 3', start: '2026-10-03', end: '2026-10-05', perc: 100 },
+    { name: 'Montaż instalacji wodnej', unit: 'mb', qty: 800, actual: 800, dept: 'Montaż', km: 'KM 3', start: '2026-10-05', end: '2026-10-08', perc: 100 },
 
     // KM 4: Wykonanie fundamentów pod stacje (In progress) - 2 work types
-    { name: 'Wykopy pod fundamenty', unit: 'm3', qty: 500, actual: 100, dept: 'Kafar', km: 'KM 4', start: '2026-04-01', end: '2026-04-15', perc: 30 },
-    { name: 'Wylanie betonu', unit: 'm3', qty: 300, actual: 0, dept: 'Montaż', km: 'KM 4', start: '2026-04-16', end: '2026-04-30', perc: 70 },
+    { name: 'Wykopy pod fundamenty', unit: 'm3', qty: 500, actual: 100, dept: 'Kafar', km: 'KM 4', start: '2026-10-06', end: '2026-10-15', perc: 30 },
+    { name: 'Wylanie betonu', unit: 'm3', qty: 300, actual: 0, dept: 'Montaż', km: 'KM 4', start: '2026-10-10', end: '2026-10-20', perc: 0 },
 
     // KM 6: Wykonanie połączeń kablowych (Not started) - 3 work types
-    { name: 'Wykop pod kable AC/DC', unit: 'mb', qty: 1500, actual: 0, dept: 'Kable AC', km: 'KM 6', start: '2026-05-02', end: '2026-05-15', perc: 30 },
-    { name: 'Układanie kabli', unit: 'mb', qty: 25000, actual: 0, dept: 'Elektryka', km: 'KM 6', start: '2026-05-16', end: '2026-06-15', perc: 40 },
-    { name: 'Zasypywanie wykopów', unit: 'mb', qty: 1500, actual: 0, dept: 'Kable AC', km: 'KM 6', start: '2026-06-16', end: '2026-07-01', perc: 30 },
+    { name: 'Wykop pod kable AC/DC', unit: 'mb', qty: 1500, actual: 0, dept: 'Kable AC', km: 'KM 6', start: '2026-10-15', end: '2026-10-25', perc: 0 },
+    { name: 'Układanie kabli', unit: 'mb', qty: 25000, actual: 0, dept: 'Elektryka', km: 'KM 6', start: '2026-10-20', end: '2026-11-05', perc: 0 },
+    { name: 'Zasypywanie wykopów', unit: 'mb', qty: 1500, actual: 0, dept: 'Kable AC', km: 'KM 6', start: '2026-11-01', end: '2026-11-10', perc: 0 },
   ];
 
   for (const work of worksToSeed) {
