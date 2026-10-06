@@ -4,3 +4,6 @@ node_modules
 google-credentials.json
 
 /generated/prisma
+
+# Build output
+/dist
