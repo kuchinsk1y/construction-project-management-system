@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate, useLocation } from 'react-router-dom'
 
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, THEME_KEY, THEME_PRESET_KEY } from '@/constants/storage'
 import { AuthScreen } from '@/features/auth/AuthScreen'
@@ -54,7 +55,29 @@ function App() {
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
+  const navigate = useNavigate()
+  const location = useLocation()
+
   const normalizedEmail = useMemo(() => email.trim().toLowerCase(), [email])
+
+  // Sync state to URL
+  useEffect(() => {
+    if (screen === 'email' && location.pathname !== '/login') {
+      navigate('/login', { replace: true })
+    } else if (screen === 'code' && location.pathname !== '/login/verify') {
+      navigate('/login/verify', { replace: true })
+    } else if (screen === 'projects' && location.pathname.startsWith('/login')) {
+      navigate('/', { replace: true })
+    }
+  }, [screen])
+
+  // Handle back button from /login/verify to /login
+  useEffect(() => {
+    if (location.pathname === '/login' && screen === 'code') {
+      setScreen('email')
+      setCode('')
+    }
+  }, [location.pathname])
 
   useEffect(() => {
     applyTheme(theme, themePreset)

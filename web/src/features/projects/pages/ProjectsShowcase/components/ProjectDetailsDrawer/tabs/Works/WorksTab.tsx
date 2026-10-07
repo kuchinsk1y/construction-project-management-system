@@ -429,7 +429,7 @@ export function WorksTab({ projectId, milestones, canEditProject }: WorksTabProp
               ) : (
                 <Button
                   onClick={enterEditMode}
-                  className="text-[11px] h-8 px-4 rounded-xl flex items-center gap-1.5 font-bold shadow-sm bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] hover:bg-[var(--sidebar-primary)]/90 shadow-[0_4px_14px_color-mix(in_oklch,var(--sidebar-primary),transparent_65%)]"
+                  className="text-[11px] h-8 px-4 rounded-md flex items-center gap-1.5 transition font-bold shadow-sm bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] hover:bg-[var(--sidebar-primary)]/90"
                 >
                   <Edit2 size={13} />
                   <span>Dodaj / Edytuj</span>
@@ -462,7 +462,7 @@ export function WorksTab({ projectId, milestones, canEditProject }: WorksTabProp
         <div className="w-full overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-xs">
           <div className="max-h-[600px] overflow-auto custom-scrollbar">
             <table className="w-full border-collapse text-left text-xs">
-              <thead className="sticky top-0 z-20 border-b-[3px] border-zinc-300 dark:border-zinc-700 bg-[var(--background)]/95 backdrop-blur-md text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
+              <thead className="sticky top-0 z-20 border-b border-[var(--border)] bg-[var(--background)]/95 backdrop-blur-md text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
                 <tr>
                   <th className="px-2 py-2 text-center whitespace-nowrap w-14">Typ</th>
                   <th className="px-3 py-2 w-[160px]">Etap</th>
@@ -518,7 +518,7 @@ export function WorksTab({ projectId, milestones, canEditProject }: WorksTabProp
                   const rowSpan = Math.max(1, visibleRows.length)
 
                   return (
-                    <tbody key={milestone.id} className="font-medium border-b-[3px] border-zinc-200 dark:border-zinc-800 last:border-b-0">
+                    <tbody key={milestone.id} className="font-medium border-b-2 border-[var(--border)] last:border-b-0">
                       <MilestoneRows
                         key={milestone.id}
                         milestone={milestone}
@@ -792,7 +792,7 @@ function MilestoneRows({
               {/* Akcje */}
               <td className="px-1.5 py-1 text-center">
                 <div className="flex items-center justify-center gap-1">
-                  {isLast && canEdit && (
+                  {isFirst && canEdit && (
                     <button
                       type="button"
                       onClick={() => addSubRow(milestone.id)}
@@ -802,14 +802,16 @@ function MilestoneRows({
                       <Plus size={12} />
                     </button>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => updateEditRow(editRow.id, 'markedForDelete', true)}
-                    className="p-1 rounded-md text-rose-400 hover:bg-rose-500/10 hover:text-rose-500 transition-colors shrink-0"
-                    title="Usuń tę robotę"
-                  >
-                    <Trash2 size={12} />
-                  </button>
+                  {!isFirst && (
+                    <button
+                      type="button"
+                      onClick={() => updateEditRow(editRow.id, 'markedForDelete', true)}
+                      className="p-1 rounded-md text-rose-400 hover:bg-rose-500/10 hover:text-rose-500 transition-colors shrink-0"
+                      title="Usuń tę robotę"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  )}
                 </div>
               </td>
             </tr>

@@ -66,6 +66,9 @@ let ProjectsController = class ProjectsController {
     createMilestoneInvoice(milestoneId, dto) {
         return this.projectsService.createMilestoneInvoice(milestoneId, dto);
     }
+    updateMilestoneInvoice(milestoneId, invoiceId, dto) {
+        return this.projectsService.updateMilestoneInvoice(milestoneId, invoiceId, dto);
+    }
     deleteMilestoneInvoice(milestoneId, invoiceId) {
         return this.projectsService.deleteMilestoneInvoice(milestoneId, invoiceId);
     }
@@ -107,6 +110,12 @@ let ProjectsController = class ProjectsController {
     }
     deleteResourcePlan(id) {
         return this.projectsService.deleteResourcePlan(id);
+    }
+    getHoursPlan(projectId) {
+        return this.projectsService.getHoursPlan(projectId);
+    }
+    updateHoursPlan(projectId, body) {
+        return this.projectsService.updateHoursPlan(projectId, body);
     }
 };
 exports.ProjectsController = ProjectsController;
@@ -200,6 +209,15 @@ __decorate([
     __metadata("design:paramtypes", [String, create_milestone_invoice_dto_1.CreateMilestoneInvoiceDto]),
     __metadata("design:returntype", void 0)
 ], ProjectsController.prototype, "createMilestoneInvoice", null);
+__decorate([
+    (0, common_1.Put)('milestones/:milestoneId/invoices/:invoiceId'),
+    __param(0, (0, common_1.Param)('milestoneId')),
+    __param(1, (0, common_1.Param)('invoiceId')),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, create_milestone_invoice_dto_1.CreateMilestoneInvoiceDto]),
+    __metadata("design:returntype", void 0)
+], ProjectsController.prototype, "updateMilestoneInvoice", null);
 __decorate([
     (0, common_1.Delete)('milestones/:milestoneId/invoices/:invoiceId'),
     __param(0, (0, common_1.Param)('milestoneId')),
@@ -306,6 +324,21 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], ProjectsController.prototype, "deleteResourcePlan", null);
+__decorate([
+    (0, common_1.Get)(':projectId/hours-plan'),
+    __param(0, (0, common_1.Param)('projectId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], ProjectsController.prototype, "getHoursPlan", null);
+__decorate([
+    (0, common_1.Put)(':projectId/hours-plan'),
+    __param(0, (0, common_1.Param)('projectId')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], ProjectsController.prototype, "updateHoursPlan", null);
 exports.ProjectsController = ProjectsController = __decorate([
     (0, common_1.Controller)('projects'),
     __metadata("design:paramtypes", [projects_service_1.ProjectsService])

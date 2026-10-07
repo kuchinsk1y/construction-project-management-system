@@ -2,15 +2,17 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { X, Loader2, FileText, Calendar, Banknote, Save, Percent, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import type { ApiMilestone } from '@/features/projects/types'
+import type { ApiMilestone, ApiMilestoneInvoice } from '@/features/projects/types'
 
 type InvoiceFormDrawerProps = {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (data: { invoiceNumber: string; netValue: number; issuedDate: string; note?: string }) => void
+  onSubmit: (data: { invoiceNumber?: string; netValue: number; issuedDate?: string; note?: string; link?: string; status?: string }) => void
   isSubmitting: boolean
   milestone: ApiMilestone | null
   contractVal: number
+  initialData?: ApiMilestoneInvoice | null
+  canManageInvoiceDetails?: boolean
 }
 
 export function InvoiceFormDrawer({
@@ -20,26 +22,41 @@ export function InvoiceFormDrawer({
   isSubmitting,
   milestone,
   contractVal,
+  initialData,
+  canManageInvoiceDetails = false,
 }: InvoiceFormDrawerProps) {
   const [invoiceNumber, setInvoiceNumber] = useState('')
   const [netValue, setNetValue] = useState('')
   const [percentage, setPercentage] = useState('')
-  const [issuedDate, setIssuedDate] = useState(() => new Date().toISOString().split('T')[0])
+  const [issuedDate, setIssuedDate] = useState('')
   const [note, setNote] = useState('')
+  const [link, setLink] = useState('')
+  const [status, setStatus] = useState('OCZEKUJE')
   const [error, setError] = useState('')
 
   // Reset form when opened with a new milestone
   useEffect(() => {
     if (isOpen && milestone) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setInvoiceNumber('')
-      setNetValue('')
-      setPercentage('')
-      setIssuedDate(new Date().toISOString().split('T')[0])
-      setNote('')
+      if (initialData) {
+        setInvoiceNumber(initialData.invoiceNumber || '')
+        setNetValue(initialData.netValue.toString())
+        setPercentage('')
+        setIssuedDate(initialData.issuedDate || '')
+        setNote(initialData.note || '')
+        setLink(initialData.link || '')
+        setStatus(initialData.status || 'OCZEKUJE')
+      } else {
+        setInvoiceNumber('')
+        setNetValue('')
+        setPercentage('')
+        setIssuedDate(new Date().toISOString().split('T')[0])
+        setNote('')
+        setLink('')
+        setStatus('OCZEKUJE')
+      }
       setError('')
     }
-  }, [isOpen, milestone])
+  }, [isOpen, milestone, initialData])
 
   if (!isOpen || !milestone) return null
 
@@ -80,9 +97,8 @@ export function InvoiceFormDrawer({
     e.preventDefault()
     setError('')
     
-    if (!invoiceNumber.trim()) {
-      setError('Numer faktury jest wymagany.')
-      return
+    if (canManageInvoiceDetails && !invoiceNumber.trim()) {
+      // Optional: Maybe even for admins it's optional? Let's make it optional.
     }
     
     const parsedValue = parseFloat(netValue)
@@ -91,17 +107,28 @@ export function InvoiceFormDrawer({
       return
     }
 
-    if (parsedValue > maxRemainingNet + 0.1) {
+    if (!initialData && parsedValue > maxRemainingNet + 0.1) {
       if (!confirm('Kwota faktury przekracza pozostałą kwotę etapu. Czy na pewno chcesz kontynuować?')) {
         return
       }
     }
+    
+    let finalStatus = status
+    if (canManageInvoiceDetails) {
+      if (status === 'OCZEKUJE' && invoiceNumber.trim()) {
+        finalStatus = 'WYSTAWIONA'
+      }
+    } else {
+      finalStatus = 'OCZEKUJE'
+    }
 
     onSubmit({
-      invoiceNumber: invoiceNumber.trim(),
+      invoiceNumber: invoiceNumber.trim() || undefined,
       netValue: parsedValue,
-      issuedDate,
+      issuedDate: issuedDate || undefined,
       note: note.trim() || undefined,
+      link: link.trim() || undefined,
+      status: finalStatus,
     })
   }
 
@@ -122,7 +149,7 @@ export function InvoiceFormDrawer({
               <FileText className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-base text-[var(--foreground)] leading-tight">Nowa faktura</h3>
+              <h3 className="font-bold text-base text-[var(--foreground)] leading-tight">{initialData ? 'Edytuj fakturę' : 'Nowa faktura'}</h3>
               <p className="text-xs text-[var(--muted-foreground)] mt-0.5 truncate max-w-[250px]">
                 {milestone.milestoneNo} - {milestone.description}
               </p>
@@ -164,22 +191,24 @@ export function InvoiceFormDrawer({
               </div>
             )}
 
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 transition-colors block mb-1">
-                Numer faktury <span className="text-rose-500">*</span>
-              </label>
-              <div className="relative">
-                <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-                <input
-                  type="text"
-                  value={invoiceNumber}
-                  onChange={e => setInvoiceNumber(e.target.value)}
-                  placeholder="np. FV/10/2026"
-                  className="h-10 w-full pl-10 pr-3 rounded-xl border border-[var(--border)] bg-[var(--background)] text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60"
-                  autoFocus
-                />
+            {canManageInvoiceDetails && (
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 transition-colors block mb-1">
+                  Numer faktury
+                </label>
+                <div className="relative">
+                  <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                  <input
+                    type="text"
+                    value={invoiceNumber}
+                    onChange={e => setInvoiceNumber(e.target.value)}
+                    placeholder="np. FV/10/2026"
+                    className="h-10 w-full pl-10 pr-3 rounded-xl border border-[var(--border)] bg-[var(--background)] text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60"
+                    autoFocus
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
@@ -232,7 +261,7 @@ export function InvoiceFormDrawer({
 
             <div className="space-y-1">
               <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 transition-colors block mb-1">
-                Data wystawienia <span className="text-rose-500">*</span>
+                Data wniosku / wystawienia
               </label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
@@ -244,6 +273,45 @@ export function InvoiceFormDrawer({
                 />
               </div>
             </div>
+            
+            {canManageInvoiceDetails && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 transition-colors block mb-1">
+                    Status
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={status}
+                      onChange={e => setStatus(e.target.value)}
+                      className="h-10 w-full px-3 rounded-xl border border-[var(--border)] bg-[var(--background)] text-sm outline-none transition duration-150 ease-in-out focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 appearance-none"
+                    >
+                      <option value="OCZEKUJE">Oczekuje</option>
+                      <option value="WYSTAWIONA">Wystawiona</option>
+                      <option value="ZAPŁACONE">Zapłacone</option>
+                    </select>
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <svg className="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 transition-colors block mb-1">
+                    Link do faktury
+                  </label>
+                  <div className="relative">
+                    <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                    <input
+                      type="url"
+                      value={link}
+                      onChange={e => setLink(e.target.value)}
+                      placeholder="https://link-do-dysku..."
+                      className="h-10 w-full pl-10 pr-3 rounded-xl border border-[var(--border)] bg-[var(--background)] text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-1">
               <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 transition-colors block mb-1">

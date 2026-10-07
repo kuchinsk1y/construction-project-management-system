@@ -1,6 +1,6 @@
 import { useState } from 'react' // React,
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2, Edit2, Wallet, Coins, FileText, ShieldCheck, Calculator } from 'lucide-react'
+import { Plus, Wallet, Coins, FileText, ShieldCheck, Calculator } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   getCostCategories,
@@ -10,7 +10,7 @@ import {
   updatePlannedExpense,
   deletePlannedExpense
 } from '@/features/projects/api'
-import type { ApiProject, ApiPlannedExpense } from '@/features/projects/types'
+import type { ApiProject } from '@/features/projects/types'
 import { PlannedExpenseFormDrawer } from '@/features/projects/pages/ProjectsShowcase/components/ProjectDetailsDrawer/tabs/PlannedExpenses/PlannedExpenseFormDrawer'
 
 interface PlannedExpensesTabProps {
@@ -73,19 +73,17 @@ export function PlannedExpensesTab({ project }: PlannedExpensesTabProps) {
   const totalPercentUsed = expenses.reduce((sum, e) => sum + e.plannedPercent, 0)
 
   const formatBudget = (val: number, curr?: string) => {
-    return new Intl.NumberFormat('pl-PL', {
-      style: 'currency',
-      currency: curr || 'PLN',
+    if (val == null) return '-'
+    const formatted = new Intl.NumberFormat('pl-PL', {
+      style: 'decimal',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(val)
+    return `${formatted} ${curr || 'PLN'}`
   }
 
   const openAddDrawer = () => {
     setEditingExpenseId(null)
-    setIsDrawerOpen(true)
-  }
-
-  const openEditDrawer = (expense: ApiPlannedExpense) => {
-    setEditingExpenseId(expense.id)
     setIsDrawerOpen(true)
   }
 
@@ -105,10 +103,10 @@ export function PlannedExpensesTab({ project }: PlannedExpensesTabProps) {
                 Suma wydatków z budżetu
               </span>
               <span className={`font-extrabold ${totalPercentUsed === 100 ? 'text-[var(--sidebar-primary)]' : totalPercentUsed > 100 ? 'text-rose-500' : 'text-amber-500'}`}>
-                {totalPercentUsed.toFixed(2)}% / 100%
+                {totalPercentUsed % 1 === 0 ? totalPercentUsed : totalPercentUsed.toFixed(2)}%
               </span>
             </div>
-            <div className="relative h-3 w-full bg-[var(--muted)]/50 rounded-full overflow-hidden mt-0.5">
+            <div className="relative h-3 w-full bg-[var(--muted)]/30 border border-[var(--border)] shadow-inner rounded-full overflow-hidden mt-0.5">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${totalPercentUsed === 100 ? 'bg-[var(--sidebar-primary)]' : totalPercentUsed > 100 ? 'bg-rose-500' : 'bg-amber-500'}`}
                 style={{ width: `${Math.min(totalPercentUsed, 100)}%` }}
@@ -154,10 +152,10 @@ export function PlannedExpensesTab({ project }: PlannedExpensesTabProps) {
             <Button
               type="button"
               onClick={openAddDrawer}
-              className="h-8 rounded-xl bg-[var(--sidebar-primary)] px-3 text-xs font-bold text-[var(--sidebar-primary-foreground)] shadow-[0_2px_10px_color-mix(in_oklch,var(--sidebar-primary),transparent_70%)] hover:bg-[var(--sidebar-primary)]/90"
+              className="text-[11px] h-8 px-4 rounded-md flex items-center gap-1.5 transition font-bold shadow-sm bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] hover:bg-[var(--sidebar-primary)]/90"
             >
-              <Plus size={14} className="mr-1.5" />
-              Dodaj / Edytuj
+              <Plus size={13} />
+              <span>Dodaj / Edytuj</span>
             </Button>
           </div>
         </div>
@@ -167,7 +165,7 @@ export function PlannedExpensesTab({ project }: PlannedExpensesTabProps) {
       <div className="w-full overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-xs">
         <div className="max-h-[500px] overflow-auto custom-scrollbar">
           <table className="w-full border-collapse text-left text-xs">
-            <thead className="sticky top-0 z-20 border-b-[3px] border-zinc-300 dark:border-zinc-700 bg-[var(--background)]/95 backdrop-blur-md text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
+            <thead className="sticky top-0 z-20 border-b border-[var(--border)] bg-[var(--background)]/95 backdrop-blur-md text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
               <tr>
                 <th className="px-4 py-2 border-r border-[var(--border)] min-w-[200px]">Rodzaj wydatku</th>
                 <th className="px-4 py-2 text-center border-r border-[var(--border)] w-28">Udział (%)</th>

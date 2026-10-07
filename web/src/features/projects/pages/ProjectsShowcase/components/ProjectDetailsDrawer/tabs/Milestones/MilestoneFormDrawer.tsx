@@ -273,7 +273,7 @@ export function MilestoneFormDrawer({
                   if (row.type !== 'KM') return null
                   const computedNet = kmNetAmount(row.percentage)
                   return (
-                    <div key={row.id || `new-${index}`} className="relative py-3 border-b border-zinc-200 dark:border-zinc-400/60 last:border-0 group">
+                    <div key={row.id || `new-${index}`} className="relative py-3 border-b border-[var(--border)] last:border-0 group">
                       <div className="grid grid-cols-12 gap-2.5 items-end">
                         <div className="col-span-2 space-y-1">
                           <label className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Nr</label>
@@ -331,7 +331,7 @@ export function MilestoneFormDrawer({
               {rows.map((row, index) => {
                 if (row.type !== 'roboty_dodatkowe') return null
                 return (
-                  <div key={row.id || `new-${index}`} className="relative py-3 border-b border-zinc-200 dark:border-zinc-800/60 last:border-0 group">
+                  <div key={row.id || `new-${index}`} className="relative py-3 border-b border-[var(--border)] last:border-0 group">
                     <div className="grid grid-cols-12 gap-2.5 items-end">
                       <div className="col-span-2 space-y-1">
                         <label className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Nr</label>

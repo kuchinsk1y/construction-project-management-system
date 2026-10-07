@@ -95,6 +95,15 @@ export class ProjectsController {
     return this.projectsService.createMilestoneInvoice(milestoneId, dto);
   }
 
+  @Put('milestones/:milestoneId/invoices/:invoiceId')
+  updateMilestoneInvoice(
+    @Param('milestoneId') milestoneId: string,
+    @Param('invoiceId') invoiceId: string,
+    @Body() dto: CreateMilestoneInvoiceDto,
+  ) {
+    return this.projectsService.updateMilestoneInvoice(milestoneId, invoiceId, dto);
+  }
+
   @Delete('milestones/:milestoneId/invoices/:invoiceId')
   deleteMilestoneInvoice(
     @Param('milestoneId') milestoneId: string,
@@ -198,5 +207,20 @@ export class ProjectsController {
   @Delete('resource-plans/:id')
   deleteResourcePlan(@Param('id') id: string) {
     return this.projectsService.deleteResourcePlan(id);
+  }
+
+  // --- Hours Plan ---
+
+  @Get(':projectId/hours-plan')
+  getHoursPlan(@Param('projectId') projectId: string) {
+    return this.projectsService.getHoursPlan(projectId);
+  }
+
+  @Put(':projectId/hours-plan')
+  updateHoursPlan(
+    @Param('projectId') projectId: string,
+    @Body() body: { averageHourlyRate: number; distributions: { workTypeId: string; percentage: number }[] },
+  ) {
+    return this.projectsService.updateHoursPlan(projectId, body);
   }
 }

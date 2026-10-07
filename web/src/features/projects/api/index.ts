@@ -76,6 +76,14 @@ export function createMilestoneInvoice(
   return apiPost<ApiMilestoneInvoice>(`/projects/milestones/${milestoneId}/invoices`, payload)
 }
 
+export function updateMilestoneInvoice(
+  milestoneId: string,
+  invoiceId: string,
+  payload: Partial<CreateMilestoneInvoicePayload>,
+): Promise<ApiMilestoneInvoice> {
+  return apiPut<ApiMilestoneInvoice>(`/projects/milestones/${milestoneId}/invoices/${invoiceId}`, payload)
+}
+
 export function deleteMilestoneInvoice(
   milestoneId: string,
   invoiceId: string,
@@ -196,4 +204,24 @@ export function updatePlannedExpense(projectId: string, id: string, payload: Par
 
 export function deletePlannedExpense(projectId: string, id: string): Promise<void> {
   return apiDelete<void>(`/projects/${projectId}/planned-expenses/${id}`)
+}
+
+// --- Hours Plan ---
+
+export type HoursPlanResponse = {
+  averageHourlyRate: number | null
+  plannedHoursTotal: number | null
+  totalSalaryBudget: number
+  distributions: { workTypeId: string; percentage: number }[]
+}
+
+export function fetchHoursPlan(projectId: string): Promise<HoursPlanResponse> {
+  return apiGet<HoursPlanResponse>(`/projects/${projectId}/hours-plan`)
+}
+
+export function updateHoursPlan(
+  projectId: string,
+  payload: { averageHourlyRate: number; distributions: { workTypeId: string; percentage: number }[] }
+): Promise<HoursPlanResponse> {
+  return apiPut<HoursPlanResponse>(`/projects/${projectId}/hours-plan`, payload)
 }

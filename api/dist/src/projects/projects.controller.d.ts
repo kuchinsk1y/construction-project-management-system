@@ -78,11 +78,13 @@ export declare class ProjectsController {
         updatedAt: Date | null;
         invoices: {
             id: string;
-            invoiceNumber: string;
+            invoiceNumber: string | null;
             netValue: number;
             note: string;
-            issuedDate: string;
+            issuedDate: string | null;
             paidAt: string | null;
+            status: string;
+            link: string | null;
         }[];
     }[]>;
     createMilestone(projectId: string, dto: CreateMilestoneDto): Promise<{
@@ -110,10 +112,21 @@ export declare class ProjectsController {
     }>;
     createMilestoneInvoice(milestoneId: string, dto: CreateMilestoneInvoiceDto): Promise<{
         id: string;
-        invoiceNumber: string;
+        invoiceNumber: string | null;
         netValue: number;
         note: string;
-        issuedDate: string;
+        issuedDate: string | null;
+        status: string;
+        link: string | null;
+    }>;
+    updateMilestoneInvoice(milestoneId: string, invoiceId: string, dto: CreateMilestoneInvoiceDto): Promise<{
+        id: string;
+        invoiceNumber: string | null;
+        netValue: number;
+        note: string;
+        issuedDate: string | null;
+        status: string;
+        link: string | null;
     }>;
     deleteMilestoneInvoice(milestoneId: string, invoiceId: string): Promise<{
         success: boolean;
@@ -218,5 +231,31 @@ export declare class ProjectsController {
     }>;
     deleteResourcePlan(id: string): Promise<{
         success: boolean;
+    }>;
+    getHoursPlan(projectId: string): Promise<{
+        averageHourlyRate: number | null;
+        plannedHoursTotal: number | null;
+        totalSalaryBudget: number;
+        distributions: {
+            id: string;
+            workTypeId: string;
+            percentage: number;
+        }[];
+    }>;
+    updateHoursPlan(projectId: string, body: {
+        averageHourlyRate: number;
+        distributions: {
+            workTypeId: string;
+            percentage: number;
+        }[];
+    }): Promise<{
+        averageHourlyRate: number | null;
+        plannedHoursTotal: number | null;
+        totalSalaryBudget: number;
+        distributions: {
+            id: string;
+            workTypeId: string;
+            percentage: number;
+        }[];
     }>;
 }

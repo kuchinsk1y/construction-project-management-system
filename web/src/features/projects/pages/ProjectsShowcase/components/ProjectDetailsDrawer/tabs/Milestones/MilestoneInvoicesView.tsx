@@ -1,16 +1,21 @@
-import { ArrowLeft, FileText, Plus, Trash2, CheckCircle2, AlertTriangle, Calculator, PieChart, Banknote } from 'lucide-react'
+import { useState } from 'react'
+import { ArrowLeft, FileText, Plus, Trash2, CheckCircle2, AlertTriangle, Calculator, PieChart, Banknote, Edit3, Link as LinkIcon, Layers } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import type { ApiMilestone } from '@/features/projects/types'
+import type { ApiMilestone, ApiMilestoneInvoice, ApiWorkType } from '@/features/projects/types'
+import { MilestoneInvoiceDonut } from './MilestoneInvoiceDonut'
 
 type MilestoneInvoicesViewProps = {
   milestone: ApiMilestone
   contractVal: number
   currency: string
   canEditProject: boolean
+  canManageInvoiceDetails?: boolean
   onClose: () => void
   onAddInvoiceClick: (milestone: ApiMilestone) => void
+  onEditInvoiceClick?: (milestone: ApiMilestone, invoice: ApiMilestoneInvoice) => void
   onRemoveInvoiceClick: (milestoneId: string, invoiceId: string) => void
   formatBudget: (val: number, currency?: string) => string
+  works?: ApiWorkType[]
 }
 
 export function MilestoneInvoicesView({
@@ -18,19 +23,32 @@ export function MilestoneInvoicesView({
   contractVal,
   currency,
   canEditProject,
+  canManageInvoiceDetails = false,
   onClose,
   onAddInvoiceClick,
+  onEditInvoiceClick,
   onRemoveInvoiceClick,
   formatBudget,
+  works = [],
 }: MilestoneInvoicesViewProps) {
+  const [invoiceToDelete, setInvoiceToDelete] = useState<string | null>(null)
+
   // Calculations
   const milestoneTotal = Math.round((contractVal ? (milestone.percentage / 100) * contractVal : 0) * 100) / 100
   const invoicedNet = milestone.invoices?.reduce((sum, inv) => sum + inv.netValue, 0) || 0
-  const remainingNet = Math.max(0, milestoneTotal - invoicedNet)
+  
+  const paidNet = milestone.invoices?.filter(i => i.status === 'ZAPŁACONE').reduce((sum, inv) => sum + inv.netValue, 0) || 0
+  const invoicedNotPaidNet = invoicedNet - paidNet
+
+  let remainingNet = Math.max(0, Math.round((milestoneTotal - invoicedNet) * 100) / 100)
+  if (remainingNet < 0.1) remainingNet = 0
+  
   const invoicedPct = milestoneTotal > 0 ? (invoicedNet / milestoneTotal) * 100 : 0
   
-  const isSettled = invoicedPct >= 100
-  const isOverbudget = invoicedPct > 100
+  const isSettled = invoicedNet >= milestoneTotal - 0.1
+  const isOverbudget = invoicedNet > milestoneTotal + 0.1
+
+  const milestoneWorks = works.filter(w => w.milestoneId === milestone.id)
 
   return (
     <div className="w-full flex-1 flex flex-col min-h-0 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-sm gap-4 animate-tab-content relative">
@@ -65,54 +83,37 @@ export function MilestoneInvoicesView({
         </div>
       </div>
       
-      {/* 2. KPI Cards & Progress Bar */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 shrink-0">
-          {/* Progress Bar Container */}
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/30 p-3 shadow-2xs flex flex-col justify-center gap-2">
-            <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
-              <span className="flex items-center gap-1.5">
-                <PieChart size={14} className="text-[var(--sidebar-primary)]" />
-                Postęp fakturowania
-              </span>
-              <span className={`font-extrabold ${isSettled ? 'text-[var(--sidebar-primary)]' : isOverbudget ? 'text-rose-500' : 'text-amber-500'}`}>
-                {invoicedPct.toFixed(1)}% / 100%
-              </span>
-            </div>
-            <div className="relative h-3 w-full bg-[var(--muted)]/50 rounded-full overflow-hidden mt-0.5">
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${isSettled ? 'bg-[var(--sidebar-primary)]' : isOverbudget ? 'bg-rose-500' : 'bg-amber-500'}`}
-                style={{ width: `${Math.min(invoicedPct, 100)}%` }}
-              />
-            </div>
+      {/* 2. Donut & Works List Combined Card */}
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/30 p-4 shadow-2xs flex flex-col md:flex-row items-stretch gap-6 shrink-0 divide-y md:divide-y-0 md:divide-x divide-[var(--border)]">
+          {/* Donut Chart */}
+          <div className="flex-1 flex justify-center md:justify-center items-center py-2 md:py-0">
+            <MilestoneInvoiceDonut 
+              total={milestoneTotal}
+              paid={paidNet}
+              invoicedNotPaid={invoicedNotPaidNet}
+              remaining={remainingNet}
+              currency={currency}
+            />
           </div>
           
-          {/* KPI Dividers */}
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/35 shadow-xs flex items-center divide-x divide-[var(--border)] overflow-hidden">
-            <div className="flex-[1.2] p-3 space-y-1 min-w-0">
-              <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] whitespace-nowrap truncate">
-                <Calculator size={12} className="text-[var(--sidebar-primary)] shrink-0" />
-                Wartość etapu
-              </span>
-              <p className="text-sm font-extrabold text-[var(--foreground)] truncate">{formatBudget(milestoneTotal, currency)}</p>
-            </div>
-            <div className="flex-1 p-3 space-y-1 min-w-0">
-              <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] whitespace-nowrap truncate">
-                <FileText size={12} className="text-[var(--sidebar-primary)] shrink-0" />
-                Zafakturowano
-              </span>
-              <p className={`text-sm font-extrabold truncate ${isSettled ? 'text-[var(--sidebar-primary)]' : isOverbudget ? 'text-rose-500' : 'text-amber-500'}`}>
-                {formatBudget(invoicedNet, currency)}
-              </p>
-            </div>
-            <div className="flex-1 p-3 space-y-1 min-w-0">
-              <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] whitespace-nowrap truncate">
-                <Banknote size={12} className="text-[var(--sidebar-primary)] shrink-0" />
-                Pozostało
-              </span>
-              <p className="text-sm font-extrabold text-[var(--foreground)] truncate">
-                {isOverbudget ? formatBudget(0, currency) : formatBudget(remainingNet, currency)}
-              </p>
-            </div>
+          {/* Works List */}
+          <div className="flex-1 flex flex-col min-h-[100px] max-h-[140px] md:pl-6 pt-4 md:pt-0 overflow-hidden">
+            <h4 className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] mb-3 flex items-center gap-1.5 shrink-0">
+              <Layers size={12} className="text-[var(--sidebar-primary)]" />
+              Roboty w tym etapie ({milestoneWorks.length})
+            </h4>
+            {milestoneWorks.length === 0 ? (
+              <p className="text-xs text-[var(--muted-foreground)] italic flex-1 flex items-center justify-center text-center">Brak przypisanych robót</p>
+            ) : (
+              <ul className="space-y-1.5 overflow-y-auto pr-2 custom-scrollbar">
+                {milestoneWorks.map((w, idx) => (
+                  <li key={w.id} className="text-[11px] font-medium text-[var(--foreground)] flex items-start gap-2 leading-snug">
+                    <span className="text-[var(--muted-foreground)] font-bold shrink-0">{idx + 1}.</span>
+                    <span className="line-clamp-2" title={w.name}>{w.name}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
       </div>
       
@@ -135,49 +136,71 @@ export function MilestoneInvoicesView({
       </div>
 
       {/* 4. Data Table */}
-      <div className="flex-1 overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 bg-[var(--card)] shadow-xs flex flex-col">
+      <div className="flex-1 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-xs flex flex-col">
         {milestone.invoices && milestone.invoices.length > 0 ? (
           <div className="flex-1 overflow-auto custom-scrollbar">
            <table className="w-full text-left text-xs border-collapse">
-              <thead className="sticky top-0 z-10 border-b border-zinc-200 dark:border-zinc-800 bg-[var(--background)]/90 backdrop-blur-md text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
-                 <tr>
-                    <th className="px-3 py-1.5 border-r border-zinc-200/70 dark:border-zinc-800/70 whitespace-nowrap">Nr faktury</th>
-                    <th className="px-3 py-1.5 border-r border-zinc-200/70 dark:border-zinc-800/70 text-center w-40 whitespace-nowrap">Data wystawienia</th>
-                    <th className="px-3 py-1.5 border-r border-zinc-200/70 dark:border-zinc-800/70 w-1/3">Uwagi</th>
-                    <th className="px-3 py-1.5 border-r border-zinc-200/70 dark:border-zinc-800/70 text-right w-44 whitespace-nowrap">Kwota netto</th>
-                    {canEditProject && <th className="px-2 py-1.5 text-right w-16">Akcje</th>}
+              <thead className="sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--background)]/90 backdrop-blur-md text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
+                  <tr>
+                    <th className="px-3 py-1.5 border-r border-[var(--border)] whitespace-nowrap">Nr faktury</th>
+                    <th className="px-3 py-1.5 border-r border-[var(--border)] text-center w-40 whitespace-nowrap">Data wniosku/wyst.</th>
+                    <th className="px-3 py-1.5 border-r border-[var(--border)] text-right w-44 whitespace-nowrap">Kwota netto</th>
+                    <th className="px-3 py-1.5 border-r border-[var(--border)] text-center whitespace-nowrap">Status</th>
+                    <th className="px-3 py-1.5 border-r border-[var(--border)] w-1/3">Uwagi</th>
+                    {canManageInvoiceDetails && <th className="px-2 py-1.5 text-right w-16">Akcje</th>}
                  </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800/80 font-medium">
+              <tbody className="divide-y divide-[var(--border)] font-medium">
                  {milestone.invoices.map((inv, index) => (
                    <tr 
                      key={inv.id} 
                      style={{ animationDelay: `${index * 25}ms` }}
                      className="group transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/40 align-middle cursor-default"
                    >
-                      <td className="px-3 py-2 border-r border-zinc-200/60 dark:border-zinc-800/60 text-[var(--foreground)] font-bold">{inv.invoiceNumber}</td>
-                      <td className="px-3 py-2 border-r border-zinc-200/60 dark:border-zinc-800/60 text-[var(--muted-foreground)] text-center whitespace-nowrap">
-                        <span className="inline-block rounded-md bg-zinc-100 dark:bg-zinc-800/60 px-2 py-0.5 border border-zinc-200/60 dark:border-zinc-700/60">
-                          {inv.issuedDate ? new Date(inv.issuedDate).toLocaleDateString('pl-PL') : '-'}
+                      <td className="px-3 py-2 border-r border-[var(--border)] text-[var(--foreground)] font-bold">
+                        {inv.invoiceNumber || <span className="text-zinc-400 font-normal italic">Brak numeru</span>}
+                        {inv.link && (
+                          <a href={inv.link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center ml-2 text-[var(--sidebar-primary)] hover:underline" title="Link do faktury">
+                            <LinkIcon className="w-3 h-3" />
+                          </a>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 border-r border-[var(--border)] text-[var(--foreground)] text-center whitespace-nowrap font-medium">
+                        {inv.issuedDate ? new Date(inv.issuedDate).toLocaleDateString('pl-PL') : '-'}
+                      </td>
+                      <td className="px-3 py-2 border-r border-[var(--border)] text-right text-[var(--foreground)] font-bold">{formatBudget(inv.netValue, currency)}</td>
+                      <td className="px-3 py-2 border-r border-[var(--border)] text-center whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
+                          inv.status === 'ZAPŁACONE'
+                            ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20'
+                            : inv.status === 'WYSTAWIONA' 
+                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' 
+                              : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                        }`}>
+                          {inv.status || 'OCZEKUJE'}
                         </span>
                       </td>
-                      <td className="px-3 py-2 border-r border-zinc-200/60 dark:border-zinc-800/60 text-[var(--muted-foreground)] text-[10px] leading-snug">
+                      <td className="px-3 py-2 border-r border-[var(--border)] text-[var(--muted-foreground)] text-[10px] leading-snug">
                         {inv.note ? <span className="line-clamp-2" title={inv.note}>{inv.note}</span> : '-'}
                       </td>
-                      <td className="px-3 py-2 border-r border-zinc-200/60 dark:border-zinc-800/60 text-right text-[var(--foreground)] font-bold">{formatBudget(inv.netValue, currency)}</td>
-                      {canEditProject && (
+                      {canManageInvoiceDetails && (
                          <td className="px-2 py-2 text-right">
-                           <button
-                              onClick={() => {
-                                if (confirm('Czy na pewno chcesz usunąć tę fakturę?')) {
-                                  onRemoveInvoiceClick(milestone.id, inv.id)
-                                }
-                              }}
-                              className="p-1 text-red-400 hover:text-red-500 hover:bg-red-500/10 rounded-md transition-all"
-                              title="Usuń fakturę"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                           <div className="flex items-center justify-end gap-1">
+                             <button
+                                onClick={() => onEditInvoiceClick && onEditInvoiceClick(milestone, inv)}
+                                className="p-1.5 text-zinc-400 hover:text-[var(--sidebar-primary)] hover:bg-[var(--sidebar-primary)]/10 rounded-md transition-all"
+                                title="Edytuj fakturę"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                             <button
+                                onClick={() => setInvoiceToDelete(inv.id)}
+                                className="p-1.5 text-red-400 hover:text-red-500 hover:bg-red-500/10 rounded-md transition-all"
+                                title="Usuń fakturę"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                           </div>
                          </td>
                       )}
                    </tr>
@@ -196,6 +219,47 @@ export function MilestoneInvoicesView({
            </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {invoiceToDelete && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/45 p-3 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-sm rounded-xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-2xl motion-safe:animate-[auth-rise_320ms_ease-out]">
+            <div className="flex items-start gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-rose-500/10 text-rose-500">
+                <AlertTriangle size={20} />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-sm font-bold text-[var(--foreground)]">Usuń fakturę</h4>
+                <p className="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                  Czy na pewno chcesz usunąć tę fakturę? Tej operacji nie można cofnąć.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setInvoiceToDelete(null)}
+                className="h-8 text-xs rounded-xl"
+              >
+                Anuluj
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => {
+                  onRemoveInvoiceClick(milestone.id, invoiceToDelete)
+                  setInvoiceToDelete(null)
+                }}
+                className="h-8 text-xs rounded-xl"
+              >
+                Usuń fakturę
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

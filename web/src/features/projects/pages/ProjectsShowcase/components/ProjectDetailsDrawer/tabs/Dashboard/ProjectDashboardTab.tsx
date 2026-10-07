@@ -18,7 +18,7 @@ import {
 import { ProjectActiveWorkers } from './ProjectActiveWorkers'
 import { ProjectWorksGantt } from './ProjectWorksGantt'
 import type { ApiMilestone, ApiProject } from '@/features/projects/types'
-import { useTranslation } from 'react-i18next'
+
 
 type FinancialDonutChartProps = {
   total: number;
@@ -163,7 +163,7 @@ function FinancialDonutChart({ total, paid, invoicedNotPaid, remaining, formatBu
               <span className="w-3 h-3 rounded-full shadow-sm shrink-0" style={{ backgroundColor: seg.color }} />
               <span className="text-[11px] uppercase font-bold tracking-wider text-[var(--muted-foreground)] truncate">{seg.label}</span>
             </div>
-            <span className="text-sm lg:text-base font-extrabold text-[var(--foreground)] pl-5">{formatBudget(seg.value, currency || undefined)}</span>
+            <span className="text-sm lg:text-base font-extrabold text-[var(--foreground)] pl-5 tabular-nums">{formatBudget(seg.value, currency || undefined)}</span>
           </div>
         ))}
       </div>
@@ -178,7 +178,7 @@ function FinancialDonutChart({ total, paid, invoicedNotPaid, remaining, formatBu
             <span className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: tooltip.seg.color }} />
             {tooltip.seg.label}
           </div>
-          <div className="font-extrabold text-[15px] text-[var(--foreground)] pl-4.5 flex items-baseline gap-1.5">
+          <div className="font-extrabold text-[15px] text-[var(--foreground)] pl-4.5 flex items-baseline gap-1.5 tabular-nums">
             <span>{formatBudget(tooltip.seg.value, currency || undefined)}</span>
             <span className="text-xs text-[var(--muted-foreground)] font-semibold">
               ({(tooltip.seg.value / total * 100).toFixed(0)}%)
@@ -197,7 +197,6 @@ type ProjectDashboardTabProps = {
 }
 
 export function ProjectDashboardTab({ project, milestones, formatBudget }: ProjectDashboardTabProps) {
-  const { t } = useTranslation()
   const [workersViewMode, setWorkersViewMode] = useState<'grouped' | 'list'>('grouped')
 
   const { data: workTypes = [] } = useQuery({
@@ -274,26 +273,19 @@ export function ProjectDashboardTab({ project, milestones, formatBudget }: Proje
     // Safety boundaries
     invoiced = Math.min(invoiced, total)
     paid = Math.min(paid, invoiced)
+    
+    let remaining = Math.round((total - invoiced) * 100) / 100
+    if (remaining < 0.1) remaining = 0
 
     return {
       totalKmNet: total,
       paidKmNet: paid,
       invoicedNotPaidKmNet: invoiced - paid,
-      remainingKmNet: total - invoiced
+      remainingKmNet: remaining
     }
   }, [milestones])
 
   const budgetValue = project.contract_net_value ? Number(project.contract_net_value) : 0
-
-  const statusTone = (status: string) => {
-    switch (status?.toUpperCase()) {
-      case 'ACTIVE': return 'bg-emerald-500/15 text-emerald-500 border-emerald-500/20'
-      case 'COMPLETED': return 'bg-blue-500/15 text-blue-500 border-blue-500/20'
-      case 'ON_HOLD': return 'bg-amber-500/15 text-amber-500 border-amber-500/20'
-      case 'CANCELLED': return 'bg-rose-500/15 text-rose-500 border-rose-500/20'
-      default: return 'bg-zinc-500/15 text-zinc-500 border-zinc-500/20'
-    }
-  }
 
   const managerName = project.manager
     ? `${project.manager.firstName} ${project.manager.lastName}`
@@ -303,7 +295,7 @@ export function ProjectDashboardTab({ project, milestones, formatBudget }: Proje
     dateStr ? new Date(dateStr).toLocaleDateString('pl-PL', { month: 'short', year: 'numeric', day: 'numeric' }) : '-'
 
   return (
-    <div className="w-full flex flex-col gap-1.5 animate-tab-content">
+    <div className="w-full min-w-0 flex flex-col gap-1.5 animate-tab-content">
       {/* TOP ROW: Progress Card & KPIs */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-1.5">
 
@@ -348,7 +340,7 @@ export function ProjectDashboardTab({ project, milestones, formatBudget }: Proje
               <CircleDollarSign size={14} className="text-[var(--sidebar-primary)]" />
               <span>Wartość</span>
             </div>
-            <p className="text-[14px] font-extrabold text-[var(--foreground)] truncate">
+            <p className="text-[14px] font-extrabold text-[var(--foreground)] truncate tabular-nums">
               {budgetValue > 0 ? formatBudget(budgetValue, project.currency || 'PLN') : '-'}
             </p>
           </div>
@@ -459,9 +451,6 @@ export function ProjectDashboardTab({ project, milestones, formatBudget }: Proje
                   </button>
                 </div>
               )}
-              <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold border ${statusTone(project.status || '')}`}>
-                {t(`projects.form.statuses.${project.status}`)}
-              </span>
             </div>
           </div>
 
@@ -476,7 +465,7 @@ export function ProjectDashboardTab({ project, milestones, formatBudget }: Proje
                       <CircleDollarSign size={14} />
                       <span className="text-[10px] font-bold uppercase tracking-wider">Budżet</span>
                     </div>
-                    <span className="text-sm font-extrabold text-[var(--foreground)]">
+                    <span className="text-sm font-extrabold text-[var(--foreground)] tabular-nums">
                       {formatBudget(budgetValue, project.currency || undefined)}
                     </span>
                   </div>
@@ -520,7 +509,9 @@ export function ProjectDashboardTab({ project, milestones, formatBudget }: Proje
 
 
       {/* FOURTH ROW: Gantt Chart */}
-      <ProjectWorksGantt works={workTypes} />
+      <div className="w-full min-w-0 overflow-hidden">
+        <ProjectWorksGantt works={workTypes} />
+      </div>
     </div>
   )
 }

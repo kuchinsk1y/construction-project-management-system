@@ -1,6 +1,8 @@
 export declare class CreateMilestoneInvoiceDto {
-    invoiceNumber: string;
+    invoiceNumber?: string;
     netValue: number;
     note?: string;
-    issuedDate: string;
+    issuedDate?: string;
+    link?: string;
+    status?: string;
 }

@@ -518,6 +518,8 @@ export class ProjectsService {
         note: inv.note,
         issuedDate: inv.issued_date?.toISOString().split('T')[0] ?? null,
         paidAt: inv.paid_at?.toISOString().split('T')[0] ?? null,
+        status: inv.status,
+        link: inv.link,
       }))
     }));
   }
@@ -736,11 +738,13 @@ export class ProjectsService {
     const invoice = await this.prisma.milestones_invoices.create({
       data: {
         milestone_id: milestoneId,
-        invoice_number: dto.invoiceNumber,
+        invoice_number: dto.invoiceNumber || null,
         net_value: dto.netValue,
-        issued_date: new Date(dto.issuedDate),
-        paid_at: new Date(dto.issuedDate), // Assuming paid_at same as issued_date for now since it's required
+        issued_date: dto.issuedDate ? new Date(dto.issuedDate) : null,
+        paid_at: dto.issuedDate ? new Date(dto.issuedDate) : null,
         note: dto.note ?? '',
+        status: dto.status || 'OCZEKUJE',
+        link: dto.link || null,
       }
     });
 
@@ -752,6 +756,46 @@ export class ProjectsService {
       netValue: Number(invoice.net_value),
       note: invoice.note,
       issuedDate: invoice.issued_date?.toISOString().split('T')[0] ?? null,
+      status: invoice.status,
+      link: invoice.link,
+    };
+  }
+
+  async updateMilestoneInvoice(milestoneId: string, invoiceId: string, dto: CreateMilestoneInvoiceDto) {
+    const invoice = await this.prisma.milestones_invoices.findUnique({
+      where: { id: invoiceId, milestone_id: milestoneId },
+    });
+    if (!invoice) {
+      throw new NotFoundException('Invoice not found');
+    }
+
+    const updated = await this.prisma.milestones_invoices.update({
+      where: { id: invoiceId },
+      data: {
+        invoice_number: dto.invoiceNumber ?? invoice.invoice_number,
+        net_value: dto.netValue ?? invoice.net_value,
+        note: dto.note ?? invoice.note,
+        issued_date: dto.issuedDate ? new Date(dto.issuedDate) : invoice.issued_date,
+        status: dto.status ?? invoice.status,
+        link: dto.link ?? invoice.link,
+      }
+    });
+
+    const milestone = await this.prisma.milestones.findUnique({
+      where: { id: milestoneId },
+    });
+    if (milestone) {
+      await this.recalculateMilestoneInvoicing(milestoneId, Number(milestone.net_amount));
+    }
+
+    return {
+      id: updated.id,
+      invoiceNumber: updated.invoice_number,
+      netValue: Number(updated.net_value),
+      note: updated.note,
+      issuedDate: updated.issued_date?.toISOString().split('T')[0] ?? null,
+      status: updated.status,
+      link: updated.link,
     };
   }
 
@@ -1243,5 +1287,154 @@ export class ProjectsService {
       where: { id },
     });
     return { success: true };
+  }
+
+  // --- Hours Plan ---
+  async getHoursPlan(projectId: string) {
+    const plan = await this.prisma.project_hours_plan.findUnique({
+      where: { project_id: projectId },
+    });
+
+    const distributions = await this.prisma.work_type_hours_distribution.findMany({
+      where: { project_id: projectId },
+    });
+
+    const salaryExpenses = await this.prisma.planned_expenses.findMany({
+      where: {
+        project_id: projectId,
+        cost_categories: {
+          is_salary: true,
+        },
+      },
+      include: { cost_categories: true },
+    });
+
+    const project = await this.prisma.projects.findUnique({
+      where: { id: projectId },
+    });
+    const projectBudget = project?.contract_net_value
+      ? Number(project.contract_net_value)
+      : 0;
+
+    const budgetItems = await this.prisma.project_budget_items.findMany({
+      where: {
+        project_id: projectId,
+        cost_categories: { is_salary: true },
+      },
+    });
+
+    let totalSalaryBudget = 0;
+    for (const item of budgetItems) {
+      if (item.planned_amount) {
+        totalSalaryBudget += Number(item.planned_amount);
+      }
+    }
+
+    if (totalSalaryBudget === 0 && salaryExpenses.length > 0 && projectBudget > 0) {
+      for (const exp of salaryExpenses) {
+        if (exp.planned_percent) {
+          totalSalaryBudget += (Number(exp.planned_percent) / 100) * projectBudget;
+        }
+      }
+    }
+
+    return {
+      averageHourlyRate: plan?.average_hourly_rate ? Number(plan.average_hourly_rate) : null,
+      plannedHoursTotal: plan?.planned_hours_total ? Number(plan.planned_hours_total) : null,
+      totalSalaryBudget,
+      distributions: distributions.map((d) => ({
+        id: d.id,
+        workTypeId: d.work_type_id,
+        percentage: d.percentage ? Number(d.percentage) : 0,
+      })),
+    };
+  }
+
+  async updateHoursPlan(
+    projectId: string,
+    dto: {
+      averageHourlyRate: number;
+      distributions: { workTypeId: string; percentage: number }[];
+    },
+  ) {
+    const salaryExpenses = await this.prisma.planned_expenses.findMany({
+      where: {
+        project_id: projectId,
+        cost_categories: {
+          is_salary: true,
+        },
+      },
+      include: { cost_categories: true },
+    });
+
+    const project = await this.prisma.projects.findUnique({
+      where: { id: projectId },
+    });
+    const projectBudget = project?.contract_net_value
+      ? Number(project.contract_net_value)
+      : 0;
+
+    const budgetItems = await this.prisma.project_budget_items.findMany({
+      where: {
+        project_id: projectId,
+        cost_categories: { is_salary: true },
+      },
+    });
+
+    let totalSalaryBudget = 0;
+    for (const item of budgetItems) {
+      if (item.planned_amount) {
+        totalSalaryBudget += Number(item.planned_amount);
+      }
+    }
+
+    if (
+      totalSalaryBudget === 0 &&
+      salaryExpenses.length > 0 &&
+      projectBudget > 0
+    ) {
+      for (const exp of salaryExpenses) {
+        if (exp.planned_percent) {
+          totalSalaryBudget +=
+            (Number(exp.planned_percent) / 100) * projectBudget;
+        }
+      }
+    }
+
+    const plannedHoursTotal =
+      dto.averageHourlyRate > 0
+        ? totalSalaryBudget / dto.averageHourlyRate
+        : 0;
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.project_hours_plan.upsert({
+        where: { project_id: projectId },
+        update: {
+          average_hourly_rate: dto.averageHourlyRate,
+          planned_hours_total: plannedHoursTotal,
+        },
+        create: {
+          project_id: projectId,
+          average_hourly_rate: dto.averageHourlyRate,
+          planned_hours_total: plannedHoursTotal,
+        },
+      });
+
+      await tx.work_type_hours_distribution.deleteMany({
+        where: { project_id: projectId },
+      });
+
+      if (dto.distributions && dto.distributions.length > 0) {
+        await tx.work_type_hours_distribution.createMany({
+          data: dto.distributions.map((d) => ({
+            project_id: projectId,
+            work_type_id: d.workTypeId,
+            percentage: d.percentage,
+          })),
+        });
+      }
+    });
+
+    return this.getHoursPlan(projectId);
   }
 }

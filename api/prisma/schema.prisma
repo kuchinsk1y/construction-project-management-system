@@ -139,11 +139,13 @@ model milestones {
 model milestones_invoices {
   id             String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   milestone_id   String     @db.Uuid
-  invoice_number String     @db.VarChar(100)
+  invoice_number String?    @db.VarChar(100)
   net_value      Decimal    @db.Decimal(8, 2)
   note           String
-  issued_date    DateTime   @db.Date
+  issued_date    DateTime?  @db.Date
   paid_at        DateTime?  @db.Date
+  status         String     @default("OCZEKUJE") @db.VarChar(50)
+  link           String?    @db.VarChar(500)
   milestones     milestones @relation(fields: [milestone_id], references: [id], onDelete: Cascade)
 }
 

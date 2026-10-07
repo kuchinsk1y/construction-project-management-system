@@ -22,6 +22,7 @@ const departments_module_1 = require("./departments/departments.module");
 const cost_categories_module_1 = require("./cost-categories/cost-categories.module");
 const planned_expenses_module_1 = require("./planned-expenses/planned-expenses.module");
 const integration_module_1 = require("./integration/integration.module");
+const feedback_module_1 = require("./feedback/feedback.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -48,6 +49,7 @@ exports.AppModule = AppModule = __decorate([
             cost_categories_module_1.CostCategoriesModule,
             planned_expenses_module_1.PlannedExpensesModule,
             integration_module_1.IntegrationModule,
+            feedback_module_1.FeedbackModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],

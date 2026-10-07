@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { AlertTriangle, ArrowLeft, CalendarRange, Coins, Edit, ExternalLink, FileText, Loader2, MapPin, Trash2, UserRoundCheck, X, LayoutDashboard, Settings, Milestone, Users, Wrench } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, CalendarRange, Coins, Edit, ExternalLink, FileText, Loader2, MapPin, Trash2, UserRoundCheck, X, LayoutDashboard, Settings, Milestone, Users, Wrench, Clock } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import type { UseMutationResult } from '@tanstack/react-query'
+import { useQuery, type UseMutationResult } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
+import { fetchWorkTypes } from '@/features/projects/api'
 import type {
   ApiContractor,
   ApiMilestone,
@@ -19,6 +20,7 @@ import { WorksTab } from '@/features/projects/pages/ProjectsShowcase/components/
 import { ProjectDepartmentsTab } from '@/features/projects/pages/ProjectsShowcase/components/ProjectDetailsDrawer/tabs/Departments/ProjectDepartmentsTab'
 import { PlannedExpensesTab } from '@/features/projects/pages/ProjectsShowcase/components/ProjectDetailsDrawer/tabs/PlannedExpenses/PlannedExpensesTab'
 import { ProjectDashboardTab } from '@/features/projects/pages/ProjectsShowcase/components/ProjectDetailsDrawer/tabs/Dashboard/ProjectDashboardTab'
+import { HoursPlanTab } from '@/features/projects/pages/ProjectsShowcase/components/ProjectDetailsDrawer/tabs/HoursPlan/HoursPlanTab'
 type ProjectDetailsDrawerProps = {
   isOpen?: boolean
   editingProject: ApiProject | null
@@ -30,6 +32,7 @@ type ProjectDetailsDrawerProps = {
   formError: string
   setFormError: (err: string) => void
   canEditProject: boolean
+  canManageInvoiceDetails?: boolean
   canDeleteProject: boolean
   handleCloseDrawer: () => void
   handleCreate: (e: React.FormEvent) => void
@@ -55,8 +58,8 @@ type ProjectDetailsDrawerProps = {
   contractorRef: React.RefObject<HTMLDivElement | null>
 
   // Milestones & Works props
-  activeTab: 'dashboard' | 'details' | 'expenses' | 'milestones' | 'departments' | 'works'
-  setActiveTab: (tab: 'dashboard' | 'details' | 'expenses' | 'milestones' | 'departments' | 'works') => void
+  activeTab: 'dashboard' | 'details' | 'expenses' | 'milestones' | 'departments' | 'works' | 'hours-plan'
+  setActiveTab: (tab: 'dashboard' | 'details' | 'expenses' | 'milestones' | 'departments' | 'works' | 'hours-plan') => void
   milestones: ApiMilestone[]
   milestonesLoading: boolean
   showMilestoneForm: boolean
@@ -91,6 +94,7 @@ export function ProjectDetailsDrawer({
   formError,
   setFormError,
   canEditProject,
+  canManageInvoiceDetails = false,
   canDeleteProject,
   handleCloseDrawer,
   handleCreate,
@@ -136,6 +140,12 @@ export function ProjectDetailsDrawer({
   setShowDeleteConfirm,
 }: ProjectDetailsDrawerProps) {
   const { t } = useTranslation()
+
+  const { data: workTypes = [] } = useQuery({
+    queryKey: ['work-types', editingProject?.id],
+    queryFn: () => editingProject?.id ? fetchWorkTypes(editingProject.id) : Promise.resolve([]),
+    enabled: !!editingProject?.id,
+  })
 
   const [isBulkEditMilestones, setIsBulkEditMilestones] = useState(false)
 
@@ -544,7 +554,7 @@ export function ProjectDetailsDrawer({
 
   return (
     <>
-      <section className="flex flex-col gap-3 p-3 select-none w-full">
+      <section className="flex flex-col gap-3 p-3 select-none w-full max-w-full min-w-0 overflow-x-hidden">
         {/* Header */}
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] pb-3.5">
           <div className="flex items-center gap-2.5">
@@ -567,6 +577,18 @@ export function ProjectDetailsDrawer({
               </p>
             </div>
           </div>
+          
+          {editingProject?.dokumentationUrl && (
+            <a 
+              href={editingProject.dokumentationUrl} 
+              target="_blank" 
+              rel="noreferrer" 
+              className="flex items-center justify-center h-8 w-8 rounded-xl bg-[var(--sidebar-primary)]/10 text-[var(--sidebar-primary)] hover:bg-[var(--sidebar-primary)]/20 transition-all ml-auto shrink-0"
+              title="Otwórz dokumentację projektu"
+            >
+              <ExternalLink size={18} />
+            </a>
+          )}
         </header>
 
         {/* Tab navigation */}
@@ -583,7 +605,7 @@ export function ProjectDetailsDrawer({
                 : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
                 }`}
             >
-              <LayoutDashboard size={14} className="text-lime-600 dark:text-lime-400" />
+              <LayoutDashboard size={14} className="text-[var(--sidebar-primary)]" />
               <span>Pulpit</span>
             </button>
             <button
@@ -597,7 +619,7 @@ export function ProjectDetailsDrawer({
                 : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
                 }`}
             >
-              <Settings size={14} className="text-lime-600 dark:text-lime-400" />
+              <Settings size={14} className="text-[var(--sidebar-primary)]" />
               <span>Ogólne</span>
             </button>
             {!isContractor && (
@@ -612,7 +634,7 @@ export function ProjectDetailsDrawer({
                   : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
                   }`}
               >
-                <Coins size={14} className="text-lime-600 dark:text-lime-400" />
+                <Coins size={14} className="text-[var(--sidebar-primary)]" />
                 <span>Rodzaje wydatków</span>
               </button>
             )}
@@ -627,7 +649,7 @@ export function ProjectDetailsDrawer({
                 : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
                 }`}
             >
-              <Milestone size={14} className="text-lime-600 dark:text-lime-400" />
+              <Milestone size={14} className="text-[var(--sidebar-primary)]" />
               <span>Kamienie milowe</span>
             </button>
             {(milestones.length > 0 || milestonesLoading) && (
@@ -644,7 +666,7 @@ export function ProjectDetailsDrawer({
                       : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
                       }`}
                   >
-                    <Users size={14} className="text-lime-600 dark:text-lime-400" />
+                    <Users size={14} className="text-[var(--sidebar-primary)]" />
                     <span>Działy</span>
                   </button>
                 )}
@@ -659,16 +681,32 @@ export function ProjectDetailsDrawer({
                     : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
                     }`}
                 >
-                  <Wrench size={14} className="text-lime-600 dark:text-lime-400" />
+                  <Wrench size={14} className="text-[var(--sidebar-primary)]" />
                   <span>Roboty</span>
                 </button>
+                {workTypes.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('hours-plan')
+                      setMilestoneError('')
+                    }}
+                    className={`flex items-center gap-1.5 pb-2 px-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${activeTab === 'hours-plan'
+                      ? 'border-[var(--sidebar-primary)] text-[var(--sidebar-primary)]'
+                      : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                      }`}
+                  >
+                    <Clock size={14} className="text-[var(--sidebar-primary)]" />
+                    <span>Planowane godziny</span>
+                  </button>
+                )}
               </>
             )}
           </div>
         )}
 
         {/* Main Details and Milestones View */}
-        <div className="w-full">
+        <div className="w-full min-w-0">
           {activeTab === 'details' ? (
             <>
               {/* Read-only view */}
@@ -1227,13 +1265,13 @@ export function ProjectDetailsDrawer({
           )}
 
           {activeTab === 'dashboard' && editingProject && (
-            <div className="animate-tab-content h-full">
+            <div className="animate-tab-content h-full min-w-0">
               <ProjectDashboardTab project={editingProject} milestones={milestones} formatBudget={formatBudget} />
             </div>
           )}
 
           {activeTab === 'expenses' && editingProject && (
-            <div className="animate-tab-content h-full">
+            <div className="animate-tab-content h-full min-w-0">
               <PlannedExpensesTab project={editingProject} />
             </div>
           )}
@@ -1245,6 +1283,7 @@ export function ProjectDetailsDrawer({
               milestonesLoading={milestonesLoading}
               editingProject={editingProject}
               canEditProject={canEditProject}
+              canManageInvoiceDetails={canManageInvoiceDetails}
               editingMilestoneId={editingMilestoneId}
               handleMilestoneSubmit={handleMilestoneSubmit}
               createMilestoneMutation={createMilestoneMutation}
@@ -1253,6 +1292,7 @@ export function ProjectDetailsDrawer({
               handleCloseDrawer={handleCloseDrawer}
               formatBudget={formatBudget}
               onBulkEdit={handleOpenBulkEdit}
+              works={workTypes}
             />
           )}
 
@@ -1271,6 +1311,16 @@ export function ProjectDetailsDrawer({
               formatBudget={formatBudget}
               canEditProject={canEditProject}
             />
+          )}
+
+          {activeTab === 'hours-plan' && editingProject && (
+            <div className="animate-tab-content h-full min-w-0">
+              <HoursPlanTab
+                projectId={editingProject.id}
+                works={workTypes}
+                canEditProject={canEditProject}
+              />
+            </div>
           )}
         </div>
       </section>

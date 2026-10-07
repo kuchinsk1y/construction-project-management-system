@@ -16,11 +16,13 @@ class CreateMilestoneInvoiceDto {
     netValue;
     note;
     issuedDate;
+    link;
+    status;
 }
 exports.CreateMilestoneInvoiceDto = CreateMilestoneInvoiceDto;
 __decorate([
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
 ], CreateMilestoneInvoiceDto.prototype, "invoiceNumber", void 0);
 __decorate([
@@ -35,7 +37,17 @@ __decorate([
 ], CreateMilestoneInvoiceDto.prototype, "note", void 0);
 __decorate([
     (0, class_validator_1.IsDateString)(),
-    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
 ], CreateMilestoneInvoiceDto.prototype, "issuedDate", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateMilestoneInvoiceDto.prototype, "link", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateMilestoneInvoiceDto.prototype, "status", void 0);
 //# sourceMappingURL=create-milestone-invoice.dto.js.map
