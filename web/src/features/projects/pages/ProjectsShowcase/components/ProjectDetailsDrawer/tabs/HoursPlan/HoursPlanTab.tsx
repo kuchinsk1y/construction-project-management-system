@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Loader2, Save, Clock, Percent, Info, Edit2, X, Check } from 'lucide-react'
+import { Loader2, Clock, Edit2, X, Check } from 'lucide-react' // Save, Percent, Info, 
 import { Button } from '@/components/ui/button'
 import type { ApiWorkType } from '@/features/projects/types'
 import { fetchHoursPlan, updateHoursPlan } from '@/features/projects/api'
