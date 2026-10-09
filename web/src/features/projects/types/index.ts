@@ -2,11 +2,13 @@ export type ProjectStatus = 'planning' | 'active' | 'blocked' | 'done'
 
 export type ApiMilestoneInvoice = {
   id: string
-  invoiceNumber: string
+  invoiceNumber: string | null
   netValue: number
   note: string
   issuedDate: string | null
   paidAt?: string | null
+  status?: string
+  link?: string | null
 }
 
 export type ApiMilestone = {
@@ -33,10 +35,12 @@ export type CreateMilestonePayload = {
 }
 
 export type CreateMilestoneInvoicePayload = {
-  invoiceNumber: string
+  invoiceNumber?: string | null
   netValue: number
   note?: string
-  issuedDate: string
+  issuedDate?: string | null
+  status?: string
+  link?: string | null
 }
 
 export type ApiDepartment = {

@@ -2,8 +2,8 @@ import { IsNotEmpty, IsNumber, IsOptional, IsString, IsDateString } from 'class-
 
 export class CreateMilestoneInvoiceDto {
   @IsString()
-  @IsNotEmpty()
-  invoiceNumber: string;
+  @IsOptional()
+  invoiceNumber?: string;
 
   @IsNumber()
   @IsNotEmpty()
@@ -14,6 +14,14 @@ export class CreateMilestoneInvoiceDto {
   note?: string;
 
   @IsDateString()
-  @IsNotEmpty()
-  issuedDate: string;
+  @IsOptional()
+  issuedDate?: string;
+
+  @IsString()
+  @IsOptional()
+  link?: string;
+  
+  @IsString()
+  @IsOptional()
+  status?: string;
 }

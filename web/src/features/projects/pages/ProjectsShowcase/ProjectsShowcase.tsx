@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
@@ -55,11 +55,13 @@ function parseDateValue(value: string): Date | null {
 }
 
 function formatBudget(value: number, currencyCode = 'PLN'): string {
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency: currencyCode || 'PLN',
-    maximumFractionDigits: 0,
+  if (value == null) return '-'
+  const formatted = new Intl.NumberFormat('pl-PL', {
+    style: 'decimal',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(value)
+  return `${formatted} ${currencyCode || 'PLN'}`
 }
 
 function statusTone(status: string): string {
@@ -156,6 +158,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
   const normalizedRoles = (profile?.roles ?? []).map((entry) => entry.toLowerCase())
   const hasRole = (role: string) => normalizedRole === role || normalizedRoles.includes(role)
   const isContractor = hasRole('contractor') && !hasRole('admin') && !hasRole('administrator') && !hasRole('operational_director') && !hasRole('project_manager')
+  const canManageInvoiceDetails = hasRole('admin') || hasRole('administrator') || hasRole('financial_director')
 
   const projects = useMemo(() => {
     if (!rawProjects) return []
@@ -167,28 +170,96 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
   }, [rawProjects, isContractor, profile?.contractor_id])
 
   // Filters and sorting
-  const [searchQuery, setSearchQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState<'all' | ProjectStatus>('active')
-  const handleSetStatusFilter = (val: 'all' | ProjectStatus) => {
-    setStatusFilter(val)
+  // Filters and sorting from URL
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  const searchQuery = searchParams.get('q') || ''
+  const setSearchQuery = (val: string) => {
+    setSearchParams(prev => { 
+      if (val) prev.set('q', val); else prev.delete('q')
+      prev.delete('page')
+      return prev 
+    }, { replace: true })
   }
-  const [managerFilter, setManagerFilter] = useState('all')
-  const [dateFilter, setDateFilter] = useState('')
-  const [yearFilter, setYearFilter] = useState('all')
-  const [sortColumn, setSortColumn] = useState<SortColumn>('schedule')
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
-  const [viewMode, setViewMode] = useState<ViewMode>('table')
+
+  const statusFilter = (searchParams.get('status') as 'all' | ProjectStatus) || 'active'
+  const handleSetStatusFilter = (val: 'all' | ProjectStatus) => {
+    setSearchParams(prev => { 
+      if (val !== 'active') prev.set('status', val); else prev.delete('status')
+      prev.delete('page')
+      return prev 
+    }, { replace: true })
+  }
+
+  const managerFilter = searchParams.get('manager') || 'all'
+  const setManagerFilter = (val: string) => {
+    setSearchParams(prev => { 
+      if (val !== 'all') prev.set('manager', val); else prev.delete('manager')
+      prev.delete('page')
+      return prev 
+    }, { replace: true })
+  }
+
+  const dateFilter = searchParams.get('date') || ''
+  const setDateFilter = (val: string) => {
+    setSearchParams(prev => { 
+      if (val) prev.set('date', val); else prev.delete('date')
+      prev.delete('page')
+      return prev 
+    }, { replace: true })
+  }
+
+  const yearFilter = searchParams.get('year') || 'all'
+  const setYearFilter = (val: string) => {
+    setSearchParams(prev => { 
+      if (val !== 'all') prev.set('year', val); else prev.delete('year')
+      prev.delete('page')
+      return prev 
+    }, { replace: true })
+  }
+
+  const sortColumn = (searchParams.get('sort') as SortColumn) || 'schedule'
+  const sortDirection = (searchParams.get('dir') as SortDirection) || 'asc'
+  
+  const handleSort = (column: SortColumn) => {
+    setSearchParams(prev => {
+      if (sortColumn === column) {
+        const nextDir = sortDirection === 'asc' ? 'desc' : 'asc'
+        if (nextDir !== 'asc') prev.set('dir', nextDir); else prev.delete('dir')
+      } else {
+        if (column !== 'schedule') prev.set('sort', column); else prev.delete('sort')
+        prev.delete('dir')
+      }
+      return prev
+    }, { replace: true })
+  }
+
+  const viewMode = (searchParams.get('view') as ViewMode) || 'table'
+  const setViewMode = (val: ViewMode) => {
+    setSearchParams(prev => { 
+      if (val !== 'table') prev.set('view', val); else prev.delete('view')
+      return prev 
+    }, { replace: true })
+  }
+
+  const page = parseInt(searchParams.get('page') || '1', 10)
+  const setPage = (p: number) => {
+    setSearchParams(prev => { 
+      if (p > 1) prev.set('page', String(p)); else prev.delete('page')
+      return prev 
+    }, { replace: true })
+  }
 
   const navigate = useNavigate()
   const { "*": urlPath } = useParams()
   const pathParts = urlPath ? urlPath.split('/') : []
   const projectIdStr = pathParts[0] || null
-  const tabId = (pathParts[1] || 'details') as 'dashboard' | 'details' | 'expenses' | 'milestones' | 'departments' | 'works'
+  const tabId = (pathParts[1] || 'details') as 'dashboard' | 'details' | 'expenses' | 'milestones' | 'departments' | 'works' | 'hours-plan'
 
   // Drawer / Form state
   const drawerOpen = !!projectIdStr
   const activeTab = tabId
-  const setActiveTab = (tab: 'dashboard' | 'details' | 'expenses' | 'milestones' | 'departments' | 'works') => {
+  const setActiveTab = (tab: 'dashboard' | 'details' | 'expenses' | 'milestones' | 'departments' | 'works' | 'hours-plan') => {
     if (projectIdStr) navigate(`/projects/${projectIdStr}/${tab}`)
   }
 
@@ -511,14 +582,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
     setContractorSearch('')
   }
 
-  const handleSort = (column: SortColumn) => {
-    if (sortColumn === column) {
-      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))
-      return
-    }
-    setSortColumn(column)
-    setSortDirection('asc')
-  }
+
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -622,6 +686,13 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
     return sorted
   }, [projects, searchQuery, statusFilter, managerFilter, dateFilter, yearFilter, sortColumn, sortDirection])
 
+  // Pagination logic
+  const itemsPerPage = 50
+  const totalPages = Math.ceil(filteredProjects.length / itemsPerPage)
+  const projectsToRender = useMemo(() => {
+    return filteredProjects.slice((page - 1) * itemsPerPage, page * itemsPerPage)
+  }, [filteredProjects, page, itemsPerPage])
+
   // Timeline bounds calculation for Gantt view
   const timelineBounds = useMemo(() => {
     let minTime = Number.POSITIVE_INFINITY
@@ -695,6 +766,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
         formError={formError}
         setFormError={setFormError}
         canEditProject={canEditProject}
+        canManageInvoiceDetails={canManageInvoiceDetails}
         canDeleteProject={canDeleteProject}
         handleCloseDrawer={handleCloseDrawer}
         handleCreate={handleCreate}
@@ -830,7 +902,8 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
           {/* Main Content View (Table or Gantt) */}
           {viewMode === 'table' ? (
             <ProjectsTableView
-              filteredProjects={filteredProjects}
+              allFilteredProjects={filteredProjects}
+              projectsToRender={projectsToRender}
               totalProjectsCount={projects.length}
               sortColumn={sortColumn}
               sortDirection={sortDirection}
@@ -844,6 +917,9 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
               formatDate={formatDate}
               statusTone={statusTone}
               statusLabel={statusLabel}
+              page={page}
+              setPage={setPage}
+              totalPages={totalPages}
             />
           ) : (
             <ProjectsGanttView
@@ -876,6 +952,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
         formError={formError}
         setFormError={setFormError}
         canEditProject={canEditProject}
+        canManageInvoiceDetails={canManageInvoiceDetails}
         canDeleteProject={canDeleteProject}
         handleCloseDrawer={handleCloseDrawer}
         handleCreate={handleCreate}

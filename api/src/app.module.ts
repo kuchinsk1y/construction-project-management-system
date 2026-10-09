@@ -13,6 +13,7 @@ import { DepartmentsModule } from './departments/departments.module';
 import { CostCategoriesModule } from './cost-categories/cost-categories.module';
 import { PlannedExpensesModule } from './planned-expenses/planned-expenses.module';
 import { IntegrationModule } from './integration/integration.module';
+import { FeedbackModule } from './feedback/feedback.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { IntegrationModule } from './integration/integration.module';
     CostCategoriesModule,
     PlannedExpensesModule,
     IntegrationModule,
+    FeedbackModule,
   ],
   controllers: [AppController],
   providers: [AppService],

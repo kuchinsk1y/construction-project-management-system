@@ -114,7 +114,7 @@ export function ProjectDepartmentsTab({ projectId, canEditProject }: ProjectDepa
         {canEditProject && (
           <Button
             onClick={() => setIsDrawerOpen(true)}
-            className="text-[11px] h-8 px-4 rounded-xl flex items-center gap-1.5 transition font-bold shadow-sm bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] hover:bg-[var(--sidebar-primary)]/90"
+            className="text-[11px] h-8 px-4 rounded-md flex items-center gap-1.5 transition font-bold shadow-sm bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] hover:bg-[var(--sidebar-primary)]/90"
           >
             <Plus size={14} />
             <span>Dodaj / Edytuj</span>

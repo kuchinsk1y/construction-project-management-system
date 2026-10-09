@@ -1,18 +1,19 @@
 import { useState } from 'react'
-import { Layers, Loader2, Plus, Trash2, FileText, Calculator, PieChart, ArrowLeft } from 'lucide-react'
+import { Layers, Loader2, Plus, FileText, Calculator, PieChart } from 'lucide-react'
 import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/react-query'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { createMilestoneInvoice, deleteMilestoneInvoice } from '@/features/projects/api'
+import { createMilestoneInvoice, deleteMilestoneInvoice, updateMilestoneInvoice } from '@/features/projects/api'
 import { InvoiceFormDrawer } from './InvoiceFormDrawer'
 import { MilestoneInvoicesView } from './MilestoneInvoicesView'
-import type { ApiMilestone, CreateMilestonePayload, ApiProject } from '@/features/projects/types'
+import type { ApiMilestone, CreateMilestoneInvoicePayload, CreateMilestonePayload, ApiProject, ApiMilestoneInvoice, ApiWorkType } from '@/features/projects/types'
 
 type MilestonesTabProps = {
   milestones: ApiMilestone[]
   milestonesLoading: boolean
   editingProject: ApiProject | null
   canEditProject: boolean
+  canManageInvoiceDetails?: boolean
   editingMilestoneId: string | null
   handleMilestoneSubmit: (e: React.FormEvent) => void
   createMilestoneMutation: UseMutationResult<ApiMilestone, Error, CreateMilestonePayload, unknown>
@@ -22,6 +23,7 @@ type MilestonesTabProps = {
   formatBudget: (val: number, currency?: string) => string
   /** Called when user clicks "Edytuj" to open bulk-edit drawer */
   onBulkEdit: () => void
+  works?: ApiWorkType[]
 }
 
 export function MilestonesTab({
@@ -29,10 +31,12 @@ export function MilestonesTab({
   milestonesLoading,
   editingProject,
   canEditProject,
+  canManageInvoiceDetails = false,
   // deleteMilestoneMutation,
   handleCloseDrawer,
   formatBudget,
   onBulkEdit,
+  works = [],
 }: MilestonesTabProps) {
   const contractVal = editingProject?.contract_net_value ? Number(editingProject.contract_net_value) : 0
   const currency = editingProject?.currency || 'PLN'
@@ -42,10 +46,10 @@ export function MilestonesTab({
   const rdMilestones = milestones.filter((m) => m.type === 'roboty_dodatkowe')
   const totalPct = kmMilestones.reduce((s, m) => s + (m.percentage || 0), 0)
   const totalNet = Math.round(milestones.reduce((s, m) => s + (m.netAmount || (m.type === 'KM' ? contractVal * (m.percentage / 100) : 0)), 0) * 100) / 100
-  const diffNet = Math.round((contractVal - totalNet) * 100) / 100
 
   const queryClient = useQueryClient()
   const [activeInvoiceMilestone, setActiveInvoiceMilestone] = useState<ApiMilestone | null>(null)
+  const [editingInvoice, setEditingInvoice] = useState<ApiMilestoneInvoice | null>(null)
   
   const { "*": urlPath } = useParams()
   const navigate = useNavigate()
@@ -56,11 +60,22 @@ export function MilestonesTab({
   const detailedMilestone = milestones.find(m => m.id === detailedMilestoneId) || null
 
   const addInvoiceMutation = useMutation({
-    mutationFn: (data: { invoiceNumber: string; netValue: number; issuedDate: string; note?: string }) =>
+    mutationFn: (data: CreateMilestoneInvoicePayload) =>
       createMilestoneInvoice(activeInvoiceMilestone!.id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['milestones', editingProject?.id] })
       setActiveInvoiceMilestone(null)
+      setEditingInvoice(null)
+    },
+  })
+
+  const editInvoiceMutation = useMutation({
+    mutationFn: (data: Partial<CreateMilestoneInvoicePayload>) =>
+      updateMilestoneInvoice(activeInvoiceMilestone!.id, editingInvoice!.id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['milestones', editingProject?.id] })
+      setActiveInvoiceMilestone(null)
+      setEditingInvoice(null)
     },
   })
 
@@ -80,24 +95,42 @@ export function MilestonesTab({
           contractVal={contractVal}
           currency={currency}
           canEditProject={canEditProject}
+          canManageInvoiceDetails={canManageInvoiceDetails}
           onClose={() => navigate(`/projects/${projectId}/milestones`)}
-          onAddInvoiceClick={setActiveInvoiceMilestone}
+          onAddInvoiceClick={(m) => {
+            setEditingInvoice(null)
+            setActiveInvoiceMilestone(m)
+          }}
+          onEditInvoiceClick={(m, inv) => {
+            setEditingInvoice(inv)
+            setActiveInvoiceMilestone(m)
+          }}
           onRemoveInvoiceClick={(milestoneId, invoiceId) => {
             removeInvoiceMutation.mutate({ milestoneId, invoiceId })
           }}
           formatBudget={formatBudget}
+          works={works}
         />
         
         {/* Render InvoiceDrawer over this nested view too */}
         {activeInvoiceMilestone && (
           <InvoiceFormDrawer
             isOpen={true}
-            onClose={() => setActiveInvoiceMilestone(null)}
-            milestone={activeInvoiceMilestone}
-            onSubmit={(data) => {
-              addInvoiceMutation.mutate(data)
+            onClose={() => {
+              setActiveInvoiceMilestone(null)
+              setEditingInvoice(null)
             }}
-            isSubmitting={addInvoiceMutation.isPending}
+            milestone={activeInvoiceMilestone}
+            initialData={editingInvoice}
+            canManageInvoiceDetails={canManageInvoiceDetails}
+            onSubmit={(data) => {
+              if (editingInvoice) {
+                editInvoiceMutation.mutate(data)
+              } else {
+                addInvoiceMutation.mutate(data)
+              }
+            }}
+            isSubmitting={addInvoiceMutation.isPending || editInvoiceMutation.isPending}
             contractVal={contractVal}
           />
         )}
@@ -120,10 +153,10 @@ export function MilestonesTab({
                 Przypisano z kontraktu
               </span>
               <span className={`font-extrabold ${totalPct === 100 ? 'text-[var(--sidebar-primary)]' : totalPct > 100 ? 'text-rose-500' : 'text-amber-500'}`}>
-                {totalPct.toFixed(2)}% / 100%
+                {totalPct % 1 === 0 ? totalPct : totalPct.toFixed(2)}%
               </span>
             </div>
-            <div className="relative h-3 w-full bg-[var(--muted)]/50 rounded-full overflow-hidden mt-0.5">
+            <div className="relative h-3 w-full bg-[var(--muted)]/30 border border-[var(--border)] shadow-inner rounded-full overflow-hidden mt-0.5">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${totalPct === 100 ? 'bg-[var(--sidebar-primary)]' : totalPct > 100 ? 'bg-rose-500' : 'bg-amber-500'}`}
                 style={{ width: `${Math.min(totalPct, 100)}%` }}
@@ -153,7 +186,7 @@ export function MilestonesTab({
                 Przypisano
               </span>
               <p className={`text-sm font-extrabold truncate ${totalPct === 100 ? 'text-[var(--sidebar-primary)]' : totalPct > 100 ? 'text-rose-500' : 'text-amber-500'}`}>
-                {totalPct.toFixed(1)}%
+                {totalPct % 1 === 0 ? totalPct : totalPct.toFixed(1)}%
               </p>
             </div>
           </div>
@@ -172,12 +205,11 @@ export function MilestonesTab({
               {/* Dodaj / Edytuj etapy */}
               <Button
                 type="button"
-                size="sm"
                 onClick={onBulkEdit}
-                className="rounded-xl text-xs h-8 bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] hover:bg-[var(--sidebar-primary)]/90 shadow-[0_4px_12px_color-mix(in_oklch,var(--sidebar-primary),transparent_75%)]"
+                className="text-[11px] h-8 px-4 rounded-md flex items-center gap-1.5 transition font-bold shadow-sm bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] hover:bg-[var(--sidebar-primary)]/90"
               >
-                <Plus size={13} className="mr-1" />
-                Dodaj / Edytuj etapy
+                <Plus size={13} />
+                <span>Dodaj / Edytuj etapy</span>
               </Button>
             </div>
           )}
@@ -196,19 +228,19 @@ export function MilestonesTab({
             <h3 className="text-sm font-bold text-[var(--sidebar-primary)] px-1 mb-2 flex items-center gap-2 shrink-0">
               Kamienie Milowe (KM)
             </h3>
-            <div className="flex-1 overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 bg-[var(--card)] shadow-xs flex flex-col">
+            <div className="flex-1 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-xs flex flex-col">
               <div className="flex-1 overflow-auto custom-scrollbar">
                 <table className="w-full border-collapse text-left text-xs">
-                  <thead className="sticky top-0 z-10 border-b border-zinc-200 dark:border-zinc-800 bg-[var(--background)]/90 backdrop-blur-md text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
+                  <thead className="sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--background)]/90 backdrop-blur-md text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
                     <tr>
-                      <th className="px-2 py-1.5 text-center w-24 border-r border-zinc-200/70 dark:border-zinc-800/70">Nr</th>
-                      <th className="px-3 py-1.5 border-r border-zinc-200/70 dark:border-zinc-800/70">Etap / Opis prac</th>
-                      <th className="px-2 py-1.5 text-center w-28 border-r border-zinc-200/70 dark:border-zinc-800/70">% Udziału</th>
-                      <th className="px-3 py-1.5 text-right w-32 border-r border-zinc-200/70 dark:border-zinc-800/70">Kwota netto</th>
-                      <th className="px-3 py-1.5 text-right w-44 border-r border-zinc-200/70 dark:border-zinc-800/70">Fakturowanie</th>
+                      <th className="px-2 py-1.5 text-center w-24 border-r border-[var(--border)]">Nr</th>
+                      <th className="px-3 py-1.5 border-r border-[var(--border)]">Etap / Opis prac</th>
+                      <th className="px-2 py-1.5 text-center w-28 border-r border-[var(--border)]">% Udziału</th>
+                      <th className="px-3 py-1.5 text-right w-32 border-r border-[var(--border)]">Kwota netto</th>
+                      <th className="px-3 py-1.5 text-right w-44 border-r border-[var(--border)]">Fakturowanie</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800/80 font-medium">
+                  <tbody className="divide-y divide-[var(--border)] font-medium">
                     {kmMilestones.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="text-center py-6 text-xs text-[var(--muted-foreground)]">
@@ -223,32 +255,32 @@ export function MilestonesTab({
                             key={m.id}
                             style={{ animationDelay: `${index * 25}ms` }}
                             onDoubleClick={() => navigate(`/projects/${projectId}/milestones/faktury/${m.id}`)}
-                            className="group transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/40 align-middle cursor-pointer"
+                            className="group align-middle cursor-pointer"
                           >
-                            <td className="px-2 py-2 text-center border-r border-zinc-200/60 dark:border-zinc-800/60 font-bold">
+                            <td className="px-2 py-2 text-center border-r border-[var(--border)] font-bold">
                               <span className="inline-block rounded-md px-1.5 py-0.5 text-[11px] shadow-2xs font-extrabold bg-[var(--sidebar-primary)]/10 text-[var(--sidebar-primary)]">
                                 {m.milestoneNo}
                               </span>
                             </td>
-                            <td className="px-3 py-2 border-r border-zinc-200/60 dark:border-zinc-800/60 text-[var(--foreground)] font-normal leading-relaxed">
+                            <td className="px-3 py-2 border-r border-[var(--border)] text-[var(--foreground)] font-normal leading-relaxed">
                               {m.description}
                             </td>
-                            <td className="px-2 py-2 text-center border-r border-zinc-200/60 dark:border-zinc-800/60 font-bold">
-                              <span className="inline-block rounded-full bg-[var(--background)] px-2 py-0.5 text-[11px] border border-zinc-200 dark:border-zinc-700/60">
-                                {m.percentage.toFixed(1)}%
+                            <td className="px-2 py-2 text-center border-r border-[var(--border)] font-bold">
+                              <span className="inline-block rounded-full bg-[var(--background)] px-2 py-0.5 text-[11px] border border-[var(--border)]">
+                                {m.percentage % 1 === 0 ? m.percentage : m.percentage.toFixed(1)}%
                               </span>
                             </td>
-                            <td className="px-3 py-2 text-right border-r border-zinc-200/60 dark:border-zinc-800/60 font-bold text-[var(--foreground)]">
+                            <td className="px-3 py-2 text-right border-r border-[var(--border)] font-bold text-[var(--foreground)]">
                               {formatBudget(netValue, currency)}
                             </td>
-                            <td className="px-3 py-2 border-r border-zinc-200/60 dark:border-zinc-800/60 align-middle">
+                            <td className="px-3 py-2 border-r border-[var(--border)] align-middle">
                               <div className="flex flex-col gap-1.5 justify-center mt-1">
                                 <div className="flex justify-end items-center text-[10px] font-bold">
                                   <span className={m.invoicingPercentage === 100 ? 'text-[var(--sidebar-primary)]' : (m.invoicingPercentage && m.invoicingPercentage > 0 ? 'text-amber-500' : 'text-zinc-400')}>
-                                    {m.invoicingPercentage ? m.invoicingPercentage.toFixed(1) : '0.0'}%
+                                    {m.invoicingPercentage ? (m.invoicingPercentage % 1 === 0 ? m.invoicingPercentage : m.invoicingPercentage.toFixed(1)) : '0'}%
                                   </span>
                                 </div>
-                                <div className="relative h-1.5 w-full bg-[var(--muted)]/50 rounded-full overflow-hidden">
+                                <div className="relative h-1.5 w-full bg-[var(--muted)]/30 border border-[var(--border)] shadow-inner rounded-full overflow-hidden">
                                   <div
                                     className={`h-full rounded-full transition-all duration-500 ${m.invoicingPercentage === 100 ? 'bg-[var(--sidebar-primary)]' : (m.invoicingPercentage && m.invoicingPercentage > 0 ? 'bg-amber-500' : 'bg-transparent')}`}
                                     style={{ width: `${Math.min(m.invoicingPercentage || 0, 100)}%` }}
@@ -262,7 +294,7 @@ export function MilestonesTab({
                     )}
                   </tbody>
                   {kmMilestones.length > 0 && (
-                    <tfoot className="sticky bottom-0 z-10 border-t-2 border-zinc-200 dark:border-zinc-800 bg-[var(--background)]/90 backdrop-blur-md font-bold text-xs shadow-[0_-1px_3px_rgba(0,0,0,0.05)]">
+                    <tfoot className="sticky bottom-0 z-10 border-t-2 border-[var(--border)] bg-[var(--background)]/90 backdrop-blur-md font-bold text-xs shadow-[0_-1px_3px_rgba(0,0,0,0.05)]">
                       <tr>
                         <td className="px-2 py-2.5 text-center text-[var(--sidebar-primary)]">
                           Razem
@@ -271,7 +303,7 @@ export function MilestonesTab({
                           Suma KM
                         </td>
                         <td className="px-2 py-2.5 text-center text-[var(--foreground)]">
-                          {totalPct.toFixed(1)}%
+                          {totalPct % 1 === 0 ? totalPct : totalPct.toFixed(1)}%
                         </td>
                         <td className="px-3 py-2.5 text-right text-[var(--foreground)]">
                           <span className="underline underline-offset-4 decoration-zinc-300 dark:decoration-zinc-700 decoration-2">
@@ -319,7 +351,7 @@ export function MilestonesTab({
                             key={m.id}
                             style={{ animationDelay: `${index * 25}ms` }}
                             onDoubleClick={() => navigate(`/projects/${projectId}/milestones/faktury/${m.id}`)}
-                            className="group transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/40 align-middle cursor-pointer"
+                            className="group align-middle cursor-pointer"
                           >
                             <td className="px-2 py-2 text-center border-r border-amber-500/10 dark:border-amber-500/10 font-bold">
                               <span className="inline-block rounded-md px-1.5 py-0.5 text-[11px] shadow-2xs font-extrabold bg-amber-500/10 text-amber-600 dark:text-amber-400">

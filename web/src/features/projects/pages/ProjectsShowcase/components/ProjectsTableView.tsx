@@ -1,4 +1,4 @@
-import { ArrowUpDown, BarChart3, Calendar, ChevronRight, LayoutList, MapPin, Plus, User } from 'lucide-react'
+import { ArrowUpDown, BarChart3, Calendar, ChevronRight, LayoutList, MapPin, Plus, User, Download, ChevronLeft } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { Button } from '@/components/ui/button'
@@ -18,7 +18,6 @@ export type SortColumn =
 export type SortDirection = 'asc' | 'desc'
 
 type ProjectsTableViewProps = {
-  filteredProjects: ProjectItem[]
   totalProjectsCount: number
   sortColumn: SortColumn
   sortDirection: SortDirection
@@ -32,10 +31,14 @@ type ProjectsTableViewProps = {
   formatDate: (val: string, fallback?: string) => string
   statusTone: (status: ProjectStatus) => string
   statusLabel: (status: ProjectStatus, t: TFunction) => string
+  page: number
+  setPage: (p: number) => void
+  totalPages: number
+  allFilteredProjects: ProjectItem[]
+  projectsToRender: ProjectItem[]
 }
 
 export function ProjectsTableView({
-  filteredProjects,
   totalProjectsCount,
   sortColumn,
   onSort,
@@ -48,8 +51,41 @@ export function ProjectsTableView({
   formatDate,
   statusTone,
   statusLabel,
+  page,
+  setPage,
+  totalPages,
+  allFilteredProjects,
+  projectsToRender,
 }: ProjectsTableViewProps) {
   const { t } = useTranslation()
+
+  const handleExportCSV = () => {
+    const headers = ['Projekt', 'Status', 'Kierownik', 'Wykonawca', 'Moc', 'Lokalizacja', 'Termin (od)', 'Termin (do)']
+    const rows = allFilteredProjects.map(p => {
+      const start = p.startDateFact || p.startDate || '-'
+      const end = p.endDateFact || p.endDate || '-'
+      return [
+        `"${p.name.replace(/"/g, '""')}"`,
+        `"${statusLabel(p.status, t)}"`,
+        `"${p.owner}"`,
+        `"${p.contractor}"`,
+        `"${p.power || '-'}"`,
+        `"${p.location.replace(/"/g, '""')}"`,
+        `"${start}"`,
+        `"${end}"`
+      ].join(',')
+    })
+    
+    const csvContent = [headers.join(','), ...rows].join('\n')
+    const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.setAttribute('href', url)
+    link.setAttribute('download', `projekty_${new Date().toISOString().split('T')[0]}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
 
   return (
     <article className="w-full overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-2xs">
@@ -58,7 +94,7 @@ export function ProjectsTableView({
         <div>
           <p className="text-sm font-bold tracking-tight text-[var(--foreground)]">{t('projects.table.title')}</p>
           <p className="text-xs text-[var(--muted-foreground)]">
-            {t('projects.table.rows', { filtered: filteredProjects.length, total: totalProjectsCount })}
+            {t('projects.table.rows', { filtered: allFilteredProjects.length, total: totalProjectsCount })}
           </p>
         </div>
 
@@ -93,6 +129,18 @@ export function ProjectsTableView({
             </button>
           </div>
 
+          {allFilteredProjects.length > 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleExportCSV}
+              className="h-9 px-3 gap-1.5"
+            >
+              <Download size={15} />
+              <span className="hidden sm:inline">Eksport</span>
+            </Button>
+          )}
+
           {canCreateProject ? (
             <Button
               type="button"
@@ -109,13 +157,13 @@ export function ProjectsTableView({
 
       {/* MOBILE & TABLET CARD GRID (< 1024px) */}
       <div className="block lg:hidden p-3 space-y-3">
-        {filteredProjects.length === 0 ? (
+        {projectsToRender.length === 0 ? (
           <div className="py-8 text-center text-sm text-[var(--muted-foreground)]">
             {t('projects.states.noResults')}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {filteredProjects.map((project, index) => {
+            {projectsToRender.map((project, index) => {
               const hasFactDates = Boolean(project.startDateFact || project.endDateFact)
               const startPlan = formatDate(project.startDate, '–')
               const endPlan = formatDate(project.endDate, '–')
@@ -251,7 +299,7 @@ export function ProjectsTableView({
           </thead>
 
           <tbody>
-            {filteredProjects.map((project, index) => {
+            {projectsToRender.map((project, index) => {
               const hasFactDates = Boolean(project.startDateFact || project.endDateFact)
               const startPlan = formatDate(project.startDate, '–')
               const endPlan = formatDate(project.endDate, '–')
@@ -322,12 +370,44 @@ export function ProjectsTableView({
           </tbody>
         </table>
 
-        {filteredProjects.length === 0 ? (
+        {projectsToRender.length === 0 ? (
           <div className="border-t border-[var(--border)] px-3 py-6 text-center text-sm text-[var(--muted-foreground)]">
             {t('projects.states.noResults')}
           </div>
         ) : null}
       </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between border-t border-[var(--border)] px-4 py-3 bg-[var(--card)]">
+          <p className="text-sm text-[var(--muted-foreground)] hidden sm:block">
+            Strona <span className="font-medium text-[var(--foreground)]">{page}</span> z <span className="font-medium text-[var(--foreground)]">{totalPages}</span>
+          </p>
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage(page - 1)}
+              disabled={page === 1}
+              className="h-8 gap-1"
+            >
+              <ChevronLeft size={14} />
+              Poprzednia
+            </Button>
+            <span className="text-sm font-medium sm:hidden">{page} / {totalPages}</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage(page + 1)}
+              disabled={page === totalPages}
+              className="h-8 gap-1"
+            >
+              Następna
+              <ChevronRight size={14} />
+            </Button>
+          </div>
+        </div>
+      )}
     </article>
   )
 }

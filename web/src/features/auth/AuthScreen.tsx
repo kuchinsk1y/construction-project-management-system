@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import type { FormEvent } from 'react'
 import { ArrowRight, Mail, ShieldCheck } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -44,10 +45,7 @@ export function AuthScreen({
       <div className="auth-orb auth-orb-c" />
 
       <div className="auth-card">
-        <div className="auth-badge mx-auto">
-          <ShieldCheck size={14} />
-          {t('auth.secureAccess')}
-        </div>
+
 
         <h1 className="mt-3 text-center text-2xl font-semibold tracking-tight text-white">{t('auth.signIn')}</h1>
         <p className="mt-2 text-center text-sm text-[var(--muted-foreground)]">
@@ -59,7 +57,6 @@ export function AuthScreen({
           <span className={screen === 'code' ? 'auth-step auth-step-active' : 'auth-step'}>{t('auth.steps.code')}</span>
         </div>
 
-        {message ? <p className="auth-alert auth-alert-success">{message}</p> : null}
         {error ? <p className="auth-alert auth-alert-error">{error}</p> : null}
 
         {screen === 'email' ? (
@@ -81,9 +78,18 @@ export function AuthScreen({
               </div>
             </div>
 
-            <Button type="submit" className="auth-submit text-white" disabled={isLoading}>
-              {isLoading ? t('auth.actions.sending') : t('auth.actions.getCode')}
-              <ArrowRight size={16} />
+            <Button type="submit" className="w-full flex items-center justify-center gap-2 h-11 bg-[var(--sidebar-primary)] hover:bg-[var(--sidebar-primary)]/90 text-white font-medium rounded-lg shadow-sm transition-all mt-6" disabled={isLoading}>
+              {isLoading ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  {t('auth.actions.sending')}
+                </div>
+              ) : (
+                <>
+                  {t('auth.actions.getCode')}
+                  <ArrowRight size={16} />
+                </>
+              )}
             </Button>
           </form>
         ) : (
@@ -95,7 +101,17 @@ export function AuthScreen({
                 <input
                   id="code"
                   value={code}
-                  onChange={(event) => onCodeChange(event.target.value.toUpperCase())}
+                  onChange={(event) => {
+                    const val = event.target.value.toUpperCase()
+                    onCodeChange(val)
+                    if (val.length === 6) {
+                      // Trigger form submission
+                      setTimeout(() => {
+                        const form = event.target.closest('form')
+                        if (form) form.requestSubmit()
+                      }, 0)
+                    }
+                  }}
                   minLength={6}
                   maxLength={6}
                   required
@@ -105,12 +121,27 @@ export function AuthScreen({
               </div>
             </div>
 
-            <Button type="submit" className="auth-submit text-white" disabled={isLoading}>
-              {isLoading ? t('auth.actions.checking') : t('auth.actions.login')}
-              <ArrowRight size={16} />
+            <Button type="submit" className="w-full flex items-center justify-center gap-2 h-11 bg-[var(--sidebar-primary)] hover:bg-[var(--sidebar-primary)]/90 text-white font-medium rounded-lg shadow-sm transition-all mt-6" disabled={isLoading}>
+              {isLoading ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  {t('auth.actions.checking')}
+                </div>
+              ) : (
+                <>
+                  {t('auth.actions.login')}
+                  <ArrowRight size={16} />
+                </>
+              )}
             </Button>
 
-            <Button type="button" variant="outline" className="w-full text-white" onClick={onBackToEmail}>{t('auth.actions.changeEmail')}</Button>
+            <button 
+              type="button" 
+              className="w-full h-11 flex items-center justify-center text-sm font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors mt-2" 
+              onClick={onBackToEmail}
+            >
+              {t('auth.actions.changeEmail')}
+            </button>
           </form>
         )}
       </div>

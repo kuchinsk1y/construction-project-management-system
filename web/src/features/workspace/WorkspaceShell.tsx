@@ -8,6 +8,7 @@ import { workspaceNavigation } from '@/features/workspace/config/navigation'
 import { WorkspaceContent } from '@/features/workspace/pages/WorkspaceContent'
 import type { WorkspaceSection } from '@/features/workspace/types'
 import type { ThemeMode, ThemePreset, UserProfile } from '@/types/auth'
+import { BugReporter } from '@/components/BugReporter'
 
 type WorkspaceShellProps = {
   onLogout: () => void
@@ -200,13 +201,13 @@ export function WorkspaceShell({ onLogout, theme, themePreset, onThemePresetChan
           {SidebarContent}
         </aside>
 
-        <main className="flex min-h-screen flex-col">
+        <main className="flex min-h-screen flex-col min-w-0">
           <header className="sticky top-0 z-10 flex shrink-0 h-14 items-center justify-between border-b border-[var(--border)] bg-[var(--card)] px-3 backdrop-blur md:px-4">
             <div className="flex items-center gap-3">
               <Button size="icon-sm" variant="outline" className="md:hidden" onClick={() => setIsMobileSidebarOpen(true)}>
                 <Menu size={16} />
               </Button>
-              <h2 className="text-base font-semibold">{titleForSection(activeSection)}</h2>
+              <h2 className="text-base font-semibold truncate">{titleForSection(activeSection)}</h2>
             </div>
 
             <div className="flex items-center gap-2">
@@ -250,6 +251,7 @@ export function WorkspaceShell({ onLogout, theme, themePreset, onThemePresetChan
           />
         </main>
       </div>
+      <BugReporter profile={profile} />
     </div>
   )
 }

@@ -12,7 +12,7 @@ const formatDate = (d: Date) => {
 
 export function ProjectWorksGantt({ works }: ProjectWorksGanttProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const [viewMode, setViewMode] = useState<'14d' | 'project'>('14d')
+  const [viewMode, setViewMode] = useState<'14d' | '30d' | 'project'>('project')
   const [tooltip, setTooltip] = useState<{ x: number, y: number, work: any } | null>(null)
 
   const handleMouseMove = (e: React.MouseEvent, work: any) => {
@@ -103,13 +103,23 @@ export function ProjectWorksGantt({ works }: ProjectWorksGanttProps) {
     if (viewMode === '14d') {
       const arr = []
       const start = new Date(today)
-      start.setDate(start.getDate() - 7)
-      for (let i = 0; i < 14; i++) {
+      start.setDate(start.getDate() - 14) // 14 days ago
+      for (let i = 0; i < 17; i++) { // 14 past + today + 2 ahead = 17
         const d = new Date(start)
         d.setDate(d.getDate() + i)
         arr.push({ date: d, label: formatDate(d), isToday: d.getTime() === today.getTime() })
       }
-      return { columns: arr, totalMs: 14 * 24 * 60 * 60 * 1000, startTime: start.getTime(), endTime: start.getTime() + 14 * 24 * 60 * 60 * 1000 }
+      return { columns: arr, totalMs: 17 * 24 * 60 * 60 * 1000, startTime: start.getTime(), endTime: start.getTime() + 17 * 24 * 60 * 60 * 1000 }
+    } else if (viewMode === '30d') {
+      const arr = []
+      const start = new Date(today)
+      start.setDate(start.getDate() - 30) // 30 days ago
+      for (let i = 0; i < 33; i++) { // 30 past + today + 2 ahead = 33
+        const d = new Date(start)
+        d.setDate(d.getDate() + i)
+        arr.push({ date: d, label: formatDate(d), isToday: d.getTime() === today.getTime() })
+      }
+      return { columns: arr, totalMs: 33 * 24 * 60 * 60 * 1000, startTime: start.getTime(), endTime: start.getTime() + 33 * 24 * 60 * 60 * 1000 }
     } else {
       if (mappedWorks.length === 0) {
         const start = new Date(today)
@@ -158,10 +168,10 @@ export function ProjectWorksGantt({ works }: ProjectWorksGanttProps) {
     }
   }, [viewMode, today, mappedWorks])
 
-  const minWidth = viewMode === '14d' ? 750 : Math.max(750, columns.length * 60 + 260)
+  const minWidth = Math.max(750, columns.length * 60 + 260)
 
   return (
-    <div ref={containerRef} className="rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-sm flex flex-col overflow-hidden relative animate-in fade-in zoom-in-95 duration-500">
+    <div ref={containerRef} className="flex flex-col rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-sm min-w-0 w-full overflow-hidden relative animate-in fade-in zoom-in-95 duration-500">
       <div className="flex items-center justify-between border-b border-[var(--border)] p-3 shrink-0 bg-[var(--background)]/50">
         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--foreground)]">
           <div className="rounded p-1 bg-[var(--sidebar-primary)]/10 text-[var(--sidebar-primary)] shadow-sm">
@@ -181,6 +191,15 @@ export function ProjectWorksGantt({ works }: ProjectWorksGanttProps) {
             14 Dni
           </button>
           <button
+            onClick={() => setViewMode('30d')}
+            className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all ${viewMode === '30d'
+              ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm'
+              : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+              }`}
+          >
+            30 Dni
+          </button>
+          <button
             onClick={() => setViewMode('project')}
             className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all ${viewMode === 'project'
               ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm'
@@ -192,8 +211,8 @@ export function ProjectWorksGantt({ works }: ProjectWorksGanttProps) {
         </div>
       </div>
 
-      <div className="p-3 overflow-x-auto overflow-y-hidden custom-scrollbar bg-white dark:bg-transparent">
-        <div style={{ minWidth: minWidth }}>
+      <div className="flex-1 min-w-0 w-full p-3 overflow-x-auto overflow-y-hidden custom-scrollbar bg-white dark:bg-transparent">
+        <div style={{ minWidth: `${minWidth}px` }}>
           {/* Header row (Days) */}
           <div className="flex items-end mb-2 relative">
             <div className="w-64 shrink-0 pb-2 text-[11px] font-extrabold uppercase tracking-wider text-[var(--muted-foreground)]">
