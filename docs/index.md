@@ -22,6 +22,9 @@ Wybierz jedną z poniższych sekcji, aby zapoznać się ze szczegółami:
 4. [**Schemat Bazy Danych (Database Schema)**](./database_schema.md)
    *Zapoznaj się z relacjami między encjami, strukturą bazy danych PostgreSQL oraz cyklem życia projektu.*
 
+5. [**Raporty dzienne i integracja z TMA**](./daily_reports_integration.md)
+   *Plan wdrożenia: raport brygadzisty, dziennik prac, API integracyjne z TMA i tryb live (dokument w języku ukraińskim).*
+
 ---
 
 ## 🎯 Główne Funkcjonalności
