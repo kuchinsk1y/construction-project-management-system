@@ -73,6 +73,7 @@ type ProjectDetailsDrawerProps = {
   createMilestoneMutation: UseMutationResult<ApiMilestone, Error, CreateMilestonePayload, unknown>
   createMilestonesBatchMutation: UseMutationResult<void, Error, CreateMilestonePayload[], unknown>
   updateMilestoneMutation: UseMutationResult<ApiMilestone, Error, { id: string; payload: Partial<CreateMilestonePayload> }, unknown>
+  updateMilestonesBatchMutation: UseMutationResult<void, Error, { id: string; payload: Partial<CreateMilestonePayload> }[], unknown>
   deleteMilestoneMutation: UseMutationResult<void, Error, string, unknown>
   isContractor?: boolean
 
@@ -131,6 +132,7 @@ export function ProjectDetailsDrawer({
   createMilestoneMutation,
   createMilestonesBatchMutation,
   updateMilestoneMutation,
+  updateMilestonesBatchMutation,
   deleteMilestoneMutation,
   isContractor = false,
   formatDate,
@@ -583,10 +585,11 @@ export function ProjectDetailsDrawer({
               href={editingProject.dokumentationUrl} 
               target="_blank" 
               rel="noreferrer" 
-              className="flex items-center justify-center h-8 w-8 rounded-xl bg-[var(--sidebar-primary)]/10 text-[var(--sidebar-primary)] hover:bg-[var(--sidebar-primary)]/20 transition-all ml-auto shrink-0"
+              className="flex items-center gap-2 h-8 px-3 rounded-xl bg-[var(--sidebar-primary)]/10 text-[var(--sidebar-primary)] font-semibold text-xs hover:bg-[var(--sidebar-primary)]/20 transition-all ml-auto shrink-0"
               title="Otwórz dokumentację projektu"
             >
-              <ExternalLink size={18} />
+              <ExternalLink size={14} />
+              Dokumentacja
             </a>
           )}
         </header>
@@ -1385,6 +1388,7 @@ export function ProjectDetailsDrawer({
         createMilestoneMutation={createMilestoneMutation}
         createMilestonesBatchMutation={createMilestonesBatchMutation}
         updateMilestoneMutation={updateMilestoneMutation}
+        updateMilestonesBatchMutation={updateMilestonesBatchMutation}
         deleteMilestoneMutation={deleteMilestoneMutation}
         contractNetValue={editingProject?.contract_net_value ? Number(editingProject.contract_net_value) : 0}
         isBulkEdit={isBulkEditMilestones}

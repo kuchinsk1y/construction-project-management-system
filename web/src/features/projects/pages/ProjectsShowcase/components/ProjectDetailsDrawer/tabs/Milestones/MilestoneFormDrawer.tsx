@@ -16,6 +16,7 @@ type MilestoneFormDrawerProps = {
   createMilestoneMutation: UseMutationResult<ApiMilestone, Error, CreateMilestonePayload, unknown>
   createMilestonesBatchMutation: UseMutationResult<void, Error, CreateMilestonePayload[], unknown>
   updateMilestoneMutation: UseMutationResult<ApiMilestone, Error, { id: string; payload: Partial<CreateMilestonePayload> }, unknown>
+  updateMilestonesBatchMutation: UseMutationResult<void, Error, { id: string; payload: Partial<CreateMilestonePayload> }[], unknown>
   deleteMilestoneMutation: UseMutationResult<void, Error, string, unknown>
   contractNetValue?: number
   isBulkEdit?: boolean
@@ -29,6 +30,7 @@ type FormRow = {
   milestoneNo: string
   description: string
   percentage: number
+  invoicingPercentage?: number | null
   netAmount: number
   isNew?: boolean
 }
@@ -43,6 +45,7 @@ export function MilestoneFormDrawer({
   createMilestoneMutation,
   createMilestonesBatchMutation,
   updateMilestoneMutation,
+  updateMilestonesBatchMutation,
   deleteMilestoneMutation,
   contractNetValue = 0,
 }: MilestoneFormDrawerProps) {
@@ -62,6 +65,7 @@ export function MilestoneFormDrawer({
           milestoneNo: m.milestoneNo,
           description: m.description,
           percentage: m.percentage || 0,
+          invoicingPercentage: m.invoicingPercentage,
           netAmount: m.netAmount || 0,
           isNew: false,
         }))
@@ -98,6 +102,7 @@ export function MilestoneFormDrawer({
         milestoneNo: `KM ${prev.filter((r) => r.type === 'KM').length + 1}`,
         description: '',
         percentage: 0,
+        invoicingPercentage: null,
         netAmount: 0,
         isNew: true,
       },
@@ -164,29 +169,32 @@ export function MilestoneFormDrawer({
       const newKMs: CreateMilestonePayload[] = []
       const newRDs: CreateMilestonePayload[] = []
 
+      const updates: { id: string; payload: Partial<CreateMilestonePayload> }[] = []
+
       for (const row of rows) {
         if (row.id && !row.isNew) {
-          await new Promise<void>((resolve, reject) => {
-            updateMilestoneMutation.mutate(
-              {
-                id: row.id!,
-                payload: {
-                  milestoneNo: row.milestoneNo.trim(),
-                  description: row.description.trim(),
-                  type: row.type,
-                  ...(row.type === 'KM' ? { percentage: Number(row.percentage) } : { netAmount: Number(row.netAmount) }),
-                },
-              },
-              { onSuccess: () => resolve(), onError: (err) => reject(err) }
-            )
+          updates.push({
+            id: row.id,
+            payload: {
+              milestoneNo: row.milestoneNo.trim(),
+              description: row.description.trim(),
+              type: row.type,
+              ...(row.type === 'KM' ? { percentage: Number(row.percentage), invoicingPercentage: row.invoicingPercentage != null ? Number(row.invoicingPercentage) : null } : { netAmount: Number(row.netAmount) }),
+            },
           })
         } else {
           if (row.type === 'KM') {
-            newKMs.push({ milestoneNo: row.milestoneNo.trim(), description: row.description.trim(), type: 'KM', percentage: Number(row.percentage) })
+            newKMs.push({ milestoneNo: row.milestoneNo.trim(), description: row.description.trim(), type: 'KM', percentage: Number(row.percentage), invoicingPercentage: row.invoicingPercentage != null ? Number(row.invoicingPercentage) : null })
           } else {
             newRDs.push({ milestoneNo: row.milestoneNo.trim(), description: row.description.trim(), type: 'roboty_dodatkowe', netAmount: Number(row.netAmount) })
           }
         }
+      }
+
+      if (updates.length > 0) {
+        await new Promise<void>((resolve, reject) => {
+          updateMilestonesBatchMutation.mutate(updates, { onSuccess: () => resolve(), onError: (err) => reject(err) })
+        })
       }
 
       const allNew = [...newKMs, ...newRDs]
@@ -205,7 +213,7 @@ export function MilestoneFormDrawer({
     }
   }
 
-  const isPending = createMilestoneMutation.isPending || createMilestonesBatchMutation.isPending || updateMilestoneMutation.isPending || deleteMilestoneMutation.isPending || isSaving
+  const isPending = createMilestoneMutation.isPending || createMilestonesBatchMutation.isPending || updateMilestoneMutation.isPending || updateMilestonesBatchMutation.isPending || deleteMilestoneMutation.isPending || isSaving
 
   const inputCls =
     'h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-2.5 text-xs outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 disabled:opacity-50 disabled:cursor-not-allowed'
@@ -301,9 +309,13 @@ export function MilestoneFormDrawer({
                           <label className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Kwota (auto)</label>
                           <div className={inputLockedCls}>{computedNet > 0 ? computedNet.toLocaleString('pl-PL', { minimumFractionDigits: 2 }) : '—'}</div>
                         </div>
-                        <div className="col-span-5 space-y-1">
+                        <div className="col-span-3 space-y-1">
                           <label className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Opis etapu</label>
                           <input value={row.description} onChange={(e) => handleUpdateRow(index, 'description', e.target.value)} placeholder="Opis..." required className={inputCls} />
+                        </div>
+                        <div className="col-span-2 space-y-1">
+                          <label className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300" title="Procent fakturowania">% Fakt.</label>
+                          <input type="number" min="0" max="100" step="0.01" value={row.invoicingPercentage ?? ''} onChange={(e) => handleUpdateRow(index, 'invoicingPercentage', e.target.value ? Number(e.target.value) : null)} placeholder="np. 90" className={inputCls} />
                         </div>
                         <div className="col-span-1 pb-1 flex justify-end">
                           {index !== firstKmIndex && (

@@ -4,5 +4,5 @@ export declare class CreateMilestoneDto {
     type?: string;
     percentage?: number;
     netAmount?: number;
-    invoicingPercentage?: number;
+    invoicingPercentage?: number | null;
 }

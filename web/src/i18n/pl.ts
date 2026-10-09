@@ -230,6 +230,10 @@ export const pl = {
           name: 'Ocean Turkus',
           desc: 'Nowa paleta turkusowo-grafitowa.',
         },
+        b3FiC8aqBc: {
+          name: 'Shadcn Default',
+          desc: 'Standardowy niebieski motyw z okLCH.',
+        },
       },
     },
   },

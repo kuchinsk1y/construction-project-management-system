@@ -117,6 +117,9 @@ let ProjectsController = class ProjectsController {
     updateHoursPlan(projectId, body) {
         return this.projectsService.updateHoursPlan(projectId, body);
     }
+    searchFakturowniaInvoices(query, country) {
+        return this.projectsService.searchFakturowniaInvoices(query || '', country);
+    }
 };
 exports.ProjectsController = ProjectsController;
 __decorate([
@@ -339,6 +342,14 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
 ], ProjectsController.prototype, "updateHoursPlan", null);
+__decorate([
+    (0, common_1.Get)('fakturownia/invoices'),
+    __param(0, (0, common_1.Query)('query')),
+    __param(1, (0, common_1.Query)('country')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", void 0)
+], ProjectsController.prototype, "searchFakturowniaInvoices", null);
 exports.ProjectsController = ProjectsController = __decorate([
     (0, common_1.Controller)('projects'),
     __metadata("design:paramtypes", [projects_service_1.ProjectsService])

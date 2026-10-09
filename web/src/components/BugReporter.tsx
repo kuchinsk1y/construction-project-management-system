@@ -96,10 +96,10 @@ export function BugReporter({ profile }: { profile: UserProfile | null }) {
         type="button"
         onClick={handleCapture}
         disabled={isCapturing}
-        className="fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--sidebar-primary)] text-white shadow-lg transition-transform hover:scale-110 active:scale-95 disabled:opacity-70 disabled:pointer-events-none"
+        className="fixed bottom-6 right-6 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--sidebar-primary)] text-white shadow-lg transition-transform hover:scale-110 active:scale-95 disabled:opacity-70 disabled:pointer-events-none"
         title="Zgłoś problem / Pomysł"
       >
-        {isCapturing ? <Loader2 size={24} className="animate-spin" /> : <Wrench size={24} />}
+        {isCapturing ? <Loader2 size={20} className="animate-spin" /> : <Wrench size={20} />}
       </button>
 
       {isOpen && (

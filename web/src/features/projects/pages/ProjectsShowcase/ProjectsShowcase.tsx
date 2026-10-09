@@ -345,7 +345,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
   const createMilestoneMutation = useMutation({
     mutationFn: (payload: CreateMilestonePayload) => createMilestone(editingProject!.id, payload),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['milestones', editingProject?.id] })
+      await queryClient.invalidateQueries({ queryKey: ['milestones'] })
       await queryClient.invalidateQueries({ queryKey: ['projects'] })
       setMilestoneForm({ milestoneNo: '', description: '', type: 'KM', percentage: 0, netAmount: 0, invoicingPercentage: undefined })
       setMilestoneError('')
@@ -363,7 +363,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
       }
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['milestones', editingProject?.id] })
+      await queryClient.invalidateQueries({ queryKey: ['milestones'] })
       await queryClient.invalidateQueries({ queryKey: ['projects'] })
       setMilestoneForm({ milestoneNo: '', description: '', type: 'KM', percentage: 0, netAmount: 0, invoicingPercentage: undefined })
       setMilestoneError('')
@@ -378,7 +378,26 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
     mutationFn: ({ id, payload }: { id: string; payload: Partial<CreateMilestonePayload> }) =>
       updateMilestone(id, payload),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['milestones', editingProject?.id] })
+      await queryClient.invalidateQueries({ queryKey: ['milestones'] })
+      await queryClient.invalidateQueries({ queryKey: ['projects'] })
+      setMilestoneForm({ milestoneNo: '', description: '', type: 'KM', percentage: 0, netAmount: 0, invoicingPercentage: undefined })
+      setEditingMilestoneId(null)
+      setMilestoneError('')
+      setShowMilestoneForm(false)
+    },
+    onError: (err: Error) => {
+      setMilestoneError(err.message)
+    },
+  })
+
+  const updateMilestonesBatchMutation = useMutation({
+    mutationFn: async (payloads: { id: string; payload: Partial<CreateMilestonePayload> }[]) => {
+      for (const { id, payload } of payloads) {
+        await updateMilestone(id, payload)
+      }
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['milestones'] })
       await queryClient.invalidateQueries({ queryKey: ['projects'] })
       setMilestoneForm({ milestoneNo: '', description: '', type: 'KM', percentage: 0, netAmount: 0, invoicingPercentage: undefined })
       setEditingMilestoneId(null)
@@ -393,7 +412,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
   const deleteMilestoneMutation = useMutation({
     mutationFn: (id: string) => deleteMilestone(id),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['milestones', editingProject?.id] })
+      await queryClient.invalidateQueries({ queryKey: ['milestones'] })
       await queryClient.invalidateQueries({ queryKey: ['projects'] })
     },
     onError: (err: Error) => {
@@ -805,6 +824,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
         createMilestoneMutation={createMilestoneMutation}
         createMilestonesBatchMutation={createMilestonesBatchMutation}
         updateMilestoneMutation={updateMilestoneMutation}
+        updateMilestonesBatchMutation={updateMilestonesBatchMutation}
         deleteMilestoneMutation={deleteMilestoneMutation}
         formatDate={formatDate}
         formatBudget={formatBudget}
@@ -991,6 +1011,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
         createMilestoneMutation={createMilestoneMutation}
         createMilestonesBatchMutation={createMilestonesBatchMutation}
         updateMilestoneMutation={updateMilestoneMutation}
+        updateMilestonesBatchMutation={updateMilestonesBatchMutation}
         deleteMilestoneMutation={deleteMilestoneMutation}
         formatDate={formatDate}
         formatBudget={formatBudget}

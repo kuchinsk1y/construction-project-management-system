@@ -258,4 +258,5 @@ export declare class ProjectsController {
             percentage: number;
         }[];
     }>;
+    searchFakturowniaInvoices(query: string, country?: string): Promise<any>;
 }

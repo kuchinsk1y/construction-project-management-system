@@ -54,6 +54,6 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.Min)(0),
     (0, class_validator_1.Max)(100),
-    __metadata("design:type", Number)
+    __metadata("design:type", Object)
 ], UpdateMilestoneDto.prototype, "invoicingPercentage", void 0);
 //# sourceMappingURL=update-milestone.dto.js.map

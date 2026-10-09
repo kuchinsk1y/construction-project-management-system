@@ -28,4 +28,4 @@ export type UserProfile = {
 
 export type ThemeMode = 'light' | 'dark'
 
-export type ThemePreset = 'lime' | 'mono' | 'ocean'
+export type ThemePreset = 'lime' | 'mono' | 'ocean' | 'b3FiC8aqBc'

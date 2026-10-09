@@ -6,6 +6,7 @@ import {
   Param,
   Post,
   Put,
+  Query,
 } from '@nestjs/common';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
@@ -222,5 +223,11 @@ export class ProjectsController {
     @Body() body: { averageHourlyRate: number; distributions: { workTypeId: string; percentage: number }[] },
   ) {
     return this.projectsService.updateHoursPlan(projectId, body);
+  }
+
+  // --- Fakturownia ---
+  @Get('fakturownia/invoices')
+  searchFakturowniaInvoices(@Query('query') query: string, @Query('country') country?: string) {
+    return this.projectsService.searchFakturowniaInvoices(query || '', country);
   }
 }

@@ -225,3 +225,11 @@ export function updateHoursPlan(
 ): Promise<HoursPlanResponse> {
   return apiPut<HoursPlanResponse>(`/projects/${projectId}/hours-plan`, payload)
 }
+
+export function searchFakturowniaInvoices(query: string, country?: string): Promise<any[]> {
+  let url = `/projects/fakturownia/invoices?query=${encodeURIComponent(query)}`
+  if (country) {
+    url += `&country=${encodeURIComponent(country)}`
+  }
+  return apiGet<any[]>(url)
+}

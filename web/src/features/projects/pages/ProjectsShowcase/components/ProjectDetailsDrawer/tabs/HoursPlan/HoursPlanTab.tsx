@@ -108,7 +108,7 @@ export function HoursPlanTab({ projectId, works, canEditProject }: HoursPlanTabP
               </div>
               <span>Planowanie godzin dla robót</span>
             </div>
-            <p className="text-[11px] font-medium text-[var(--muted-foreground)] max-w-lg">
+            <p className="text-[11px] font-medium text-[var(--muted-foreground)] whitespace-nowrap">
               Wpisz stawkę godzinową. System podzieli budżet wynagrodzeń z karty "Planowane Wydatki" przez tę stawkę.
             </p>
           </div>
@@ -158,9 +158,19 @@ export function HoursPlanTab({ projectId, works, canEditProject }: HoursPlanTabP
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="rounded-md border border-[var(--border)] bg-[var(--card)] p-3 shadow-sm flex flex-col justify-center gap-1 relative overflow-hidden">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] relative z-10">Planowany budżet wynagrodzeń</span>
+            <div className="flex items-baseline gap-1.5 relative z-10 mt-1">
+              <span className="text-2xl font-black tabular-nums text-[var(--foreground)] tracking-tight">
+                {(plan?.totalSalaryBudget || 0).toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+              <span className="text-xs font-bold text-[var(--muted-foreground)]">PLN</span>
+            </div>
+          </div>
+
           <div className="rounded-md border border-[var(--border)] bg-[var(--card)] p-3 shadow-sm flex flex-col gap-2">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">Średnia Stawka Godzinowa (PLN)</label>
+            <label className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">Planowana Śr. Stawka (PLN/h)</label>
             <div className="flex items-center gap-2">
               {isEditMode ? (
                 <input
@@ -182,11 +192,11 @@ export function HoursPlanTab({ projectId, works, canEditProject }: HoursPlanTabP
             </div>
           </div>
 
-          <div className="rounded-md border border-[var(--sidebar-primary)]/30 bg-[var(--sidebar-primary)]/5 p-3 shadow-sm flex flex-col justify-center gap-1 relative overflow-hidden">
-            <div className="absolute -right-2 -top-2 opacity-10">
+          <div className="rounded-md border border-[var(--border)] bg-[var(--card)] p-3 shadow-sm flex flex-col justify-center gap-1 relative overflow-hidden">
+            <div className="absolute -right-2 -top-2 opacity-[0.03]">
               <Clock size={64} />
             </div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--sidebar-primary)] relative z-10">Całkowita ilość godzin (Budżet / Stawka)</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--sidebar-primary)] relative z-10">Planowana ilość godzin</span>
             <div className="flex items-baseline gap-1.5 relative z-10">
               <span className="text-2xl font-black tabular-nums text-[var(--foreground)] tracking-tight">
                 {Math.round(totalHours).toLocaleString('pl-PL')}
@@ -199,18 +209,21 @@ export function HoursPlanTab({ projectId, works, canEditProject }: HoursPlanTabP
         <div className="rounded-md border border-[var(--border)] bg-[var(--card)] shadow-sm overflow-x-auto">
           <div className="min-w-[600px] flex flex-col">
             <div className="bg-[var(--sidebar-primary)]/5 px-3 py-2 border-b border-[var(--border)] grid grid-cols-12 gap-4 items-center">
-              <div className="col-span-6 lg:col-span-7 text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] border-r border-[var(--border)]">
+              <div className="col-span-4 lg:col-span-5 text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] border-r border-[var(--border)] pr-2">
                 Roboty główne
               </div>
-              <div className="col-span-3 lg:col-span-2 text-[10px] font-bold uppercase tracking-wider text-[var(--foreground)] flex flex-col gap-0.5 px-2">
+              <div className="col-span-2 lg:col-span-2 text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] border-r border-[var(--border)] px-2">
+                Oddział
+              </div>
+              <div className="col-span-3 lg:col-span-2 text-[10px] font-bold uppercase tracking-wider text-[var(--foreground)] flex flex-col items-center text-center gap-0.5 px-2 border-r border-[var(--border)]">
                 <span>Udział (%)</span>
-                <div className="flex items-center gap-1.5 text-[9px]">
+                <div className="flex items-center justify-center gap-1.5 text-[9px]">
                   <span className={`px-1 py-0.5 rounded font-black ${totalPercentage > 100.01 ? 'bg-red-500/20 text-red-500' : totalPercentage > 99.9 ? 'bg-emerald-500/20 text-emerald-500' : 'bg-amber-500/20 text-amber-500'}`}>
                     Razem: {totalPercentage.toFixed(1)}%
                   </span>
                 </div>
               </div>
-              <div className="col-span-3 lg:col-span-3 text-[10px] font-bold uppercase tracking-wider text-[var(--sidebar-primary)] px-2">
+              <div className="col-span-3 lg:col-span-3 text-[10px] font-bold uppercase tracking-wider text-[var(--sidebar-primary)] px-2 text-center">
                 Godz. (Wyliczone)
               </div>
             </div>
@@ -227,13 +240,17 @@ export function HoursPlanTab({ projectId, works, canEditProject }: HoursPlanTabP
 
                   return (
                     <div key={w.id} className="grid grid-cols-12 gap-4 items-center px-3 py-2 hover:bg-[var(--sidebar-primary)]/5 transition-colors group">
-                      <div className="col-span-6 lg:col-span-7 border-r border-[var(--border)] pr-2">
+                      <div className="col-span-4 lg:col-span-5 border-r border-[var(--border)] pr-2">
                         <div className="flex flex-col">
                           <span className="text-xs font-bold text-[var(--foreground)]">{idx + 1}. {w.name}</span>
-                          {w.departments?.name && (
-                            <span className="text-[9px] text-[var(--muted-foreground)] uppercase tracking-wider mt-0.5">{w.departments.name}</span>
-                          )}
                         </div>
+                      </div>
+                      <div className="col-span-2 lg:col-span-2 border-r border-[var(--border)] px-2 flex items-center">
+                        {w.departmentName && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-[var(--sidebar-primary)]/10 text-[var(--sidebar-primary)] border border-black/10 dark:border-white/10 uppercase whitespace-nowrap">
+                            {w.departmentName}
+                          </span>
+                        )}
                       </div>
 
                       <div className="col-span-3 lg:col-span-2 relative px-2">
@@ -255,7 +272,7 @@ export function HoursPlanTab({ projectId, works, canEditProject }: HoursPlanTabP
                         )}
                       </div>
 
-                      <div className="col-span-3 lg:col-span-3 px-2">
+                      <div className="col-span-3 lg:col-span-3 px-2 flex justify-center">
                         <div className="inline-flex min-w-[60px] justify-center items-center gap-1 rounded-md bg-[var(--sidebar-primary)]/10 px-2 py-1 font-bold text-[11px] text-[var(--sidebar-primary)] tabular-nums group-hover:bg-[var(--sidebar-primary)]/20 transition-colors">
                           {calculatedHours.toLocaleString('pl-PL')}
                         </div>

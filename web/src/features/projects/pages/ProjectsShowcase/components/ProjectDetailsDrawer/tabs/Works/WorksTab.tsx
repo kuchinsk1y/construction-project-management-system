@@ -49,12 +49,21 @@ function ComboBox({
   const [open, setOpen] = useState(false)
   const isCustom = value && !options.includes(value)
   const triggerRef = useRef<HTMLDivElement>(null)
-  const [coords, setCoords] = useState({ left: 0, top: 0, width: 0 })
+  const [coords, setCoords] = useState<{ left: number; top?: number; bottom?: number; width: number }>({ left: 0, top: 0, width: 0 })
 
   useEffect(() => {
     if (open && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect()
-      setCoords({ left: rect.left, top: rect.bottom + 2, width: rect.width })
+      const spaceBelow = window.innerHeight - rect.bottom
+      const DROPDOWN_HEIGHT = 200 // approximate max height
+      
+      if (spaceBelow < DROPDOWN_HEIGHT && rect.top > DROPDOWN_HEIGHT) {
+        // Show above
+        setCoords({ left: rect.left, bottom: window.innerHeight - rect.top + 2, width: rect.width })
+      } else {
+        // Show below
+        setCoords({ left: rect.left, top: rect.bottom + 2, width: rect.width })
+      }
     }
   }, [open])
 
@@ -78,7 +87,12 @@ function ComboBox({
           <div className="fixed inset-0 z-[9998]" onClick={() => setOpen(false)} />
           <div
             className="fixed z-[9999] rounded-md border border-[var(--border)] bg-[var(--card)] shadow-xl overflow-hidden"
-            style={{ left: coords.left, top: coords.top, width: coords.width }}
+            style={{ 
+              left: coords.left, 
+              width: coords.width,
+              ...(coords.top !== undefined ? { top: coords.top } : {}),
+              ...(coords.bottom !== undefined ? { bottom: coords.bottom } : {}),
+            }}
           >
             <input
               autoFocus
@@ -325,14 +339,14 @@ export function WorksTab({ projectId, milestones, canEditProject }: WorksTabProp
   }, [])
 
   // Add a new sub-row for a milestone
-  const addSubRow = useCallback((milestoneId: string) => {
+  const addSubRow = useCallback((milestoneId: string, isRD: boolean = false) => {
     const newRow: EditRow = {
       id: `new-${crypto.randomUUID()}`,
       milestoneId,
       departmentId: '',
       name: '',
       unit: '',
-      percentage: '0',
+      percentage: isRD ? '100' : '0',
       plannedStart: '',
       plannedEnd: '',
       totalQuantity: '',
@@ -559,7 +573,7 @@ type MilestoneRowsProps = {
   deptOptions: DeptOption[]
   workNamesByDept: Map<number, string[]>
   updateEditRow: (id: string, field: keyof EditRow, value: string | boolean) => void
-  addSubRow: (milestoneId: string) => void
+  addSubRow: (milestoneId: string, isRD: boolean) => void
   canEdit: boolean
 }
 
@@ -617,7 +631,7 @@ function MilestoneRows({
             {canEdit && (
               <button
                 type="button"
-                onClick={() => addSubRow(milestone.id)}
+                onClick={() => addSubRow(milestone.id, !isKM)}
                 className="p-1 rounded-md text-[var(--sidebar-primary)] hover:bg-[var(--sidebar-primary)]/10 transition-colors shrink-0 mx-auto block"
                 title="Dodaj robotę"
               >
@@ -792,10 +806,10 @@ function MilestoneRows({
               {/* Akcje */}
               <td className="px-1.5 py-1 text-center">
                 <div className="flex items-center justify-center gap-1">
-                  {isFirst && canEdit && (
+                  {isFirst && canEdit && isKM && (
                     <button
                       type="button"
-                      onClick={() => addSubRow(milestone.id)}
+                      onClick={() => addSubRow(milestone.id, !isKM)}
                       className="p-1 rounded-md text-[var(--sidebar-primary)] hover:bg-[var(--sidebar-primary)]/10 transition-colors shrink-0"
                       title="Dodaj robotę"
                     >

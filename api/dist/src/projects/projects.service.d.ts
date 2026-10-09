@@ -266,4 +266,5 @@ export declare class ProjectsService {
             percentage: number;
         }[];
     }>;
+    searchFakturowniaInvoices(query: string, country?: string): Promise<any>;
 }

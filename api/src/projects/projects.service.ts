@@ -1312,25 +1312,16 @@ export class ProjectsService {
     const project = await this.prisma.projects.findUnique({
       where: { id: projectId },
     });
-    const projectBudget = project?.contract_net_value
+    const contractNetValue = project?.contract_net_value
       ? Number(project.contract_net_value)
       : 0;
-
-    const budgetItems = await this.prisma.project_budget_items.findMany({
-      where: {
-        project_id: projectId,
-        cost_categories: { is_salary: true },
-      },
-    });
+    const warrantyPercent = project?.warranty_percent
+      ? Number(project.warranty_percent)
+      : 0;
+    const projectBudget = contractNetValue - (contractNetValue * (warrantyPercent / 100));
 
     let totalSalaryBudget = 0;
-    for (const item of budgetItems) {
-      if (item.planned_amount) {
-        totalSalaryBudget += Number(item.planned_amount);
-      }
-    }
-
-    if (totalSalaryBudget === 0 && salaryExpenses.length > 0 && projectBudget > 0) {
+    if (salaryExpenses.length > 0 && projectBudget > 0) {
       for (const exp of salaryExpenses) {
         if (exp.planned_percent) {
           totalSalaryBudget += (Number(exp.planned_percent) / 100) * projectBudget;
@@ -1370,33 +1361,19 @@ export class ProjectsService {
     const project = await this.prisma.projects.findUnique({
       where: { id: projectId },
     });
-    const projectBudget = project?.contract_net_value
+    const contractNetValue = project?.contract_net_value
       ? Number(project.contract_net_value)
       : 0;
-
-    const budgetItems = await this.prisma.project_budget_items.findMany({
-      where: {
-        project_id: projectId,
-        cost_categories: { is_salary: true },
-      },
-    });
+    const warrantyPercent = project?.warranty_percent
+      ? Number(project.warranty_percent)
+      : 0;
+    const projectBudget = contractNetValue - (contractNetValue * (warrantyPercent / 100));
 
     let totalSalaryBudget = 0;
-    for (const item of budgetItems) {
-      if (item.planned_amount) {
-        totalSalaryBudget += Number(item.planned_amount);
-      }
-    }
-
-    if (
-      totalSalaryBudget === 0 &&
-      salaryExpenses.length > 0 &&
-      projectBudget > 0
-    ) {
+    if (salaryExpenses.length > 0 && projectBudget > 0) {
       for (const exp of salaryExpenses) {
         if (exp.planned_percent) {
-          totalSalaryBudget +=
-            (Number(exp.planned_percent) / 100) * projectBudget;
+          totalSalaryBudget += (Number(exp.planned_percent) / 100) * projectBudget;
         }
       }
     }
@@ -1436,5 +1413,59 @@ export class ProjectsService {
     });
 
     return this.getHoursPlan(projectId);
+  }
+
+  // --- Fakturownia ---
+  async searchFakturowniaInvoices(query: string, country?: string) {
+    const apiToken = this.config.get<string>('FAKTUROWNIA_API_TOKEN');
+    if (!apiToken) {
+      throw new BadRequestException('Fakturownia API token is not configured on the server');
+    }
+
+    let subdomain = this.config.get<string>('FAKTUROWNIA_PL_SUBDOMAIN') || 'ispik';
+    if (country) {
+      const c = country.toLowerCase();
+      if (c === 'łotwa' || c === 'latvia' || c === 'lv') {
+        subdomain = this.config.get<string>('FAKTUROWNIA_LV_SUBDOMAIN') || subdomain;
+      } else if (c === 'rumunia' || c === 'romania' || c === 'ro') {
+        subdomain = this.config.get<string>('FAKTUROWNIA_RO_SUBDOMAIN') || subdomain;
+      } else if (c === 'hiszpania' || c === 'spain' || c === 'es') {
+        subdomain = this.config.get<string>('FAKTUROWNIA_ES_SUBDOMAIN') || subdomain;
+      }
+    }
+
+    const url = `https://${subdomain}.fakturownia.pl/invoices.json?api_token=${apiToken}&period=all&per_page=100`;
+
+    try {
+      const fetch = (await import('node-fetch')).default;
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new BadRequestException(`Fakturownia API returned status: ${response.status}`);
+      }
+      
+      let invoices = await response.json();
+      if (!Array.isArray(invoices)) {
+        return [];
+      }
+      
+      // Filter out negative values (corrections, refunds) to only show positive income
+      invoices = invoices.filter((inv: any) => 
+        inv.price_gross > 0 && inv.kind !== 'correction'
+      );
+      
+      if (query) {
+        const q = query.toLowerCase();
+        return invoices.filter((inv: any) => 
+          String(inv.price_gross).includes(q) || 
+          String(inv.price_net).includes(q) || 
+          (inv.number && inv.number.toLowerCase().includes(q))
+        );
+      }
+      
+      return invoices;
+    } catch (e: any) {
+      if (e instanceof BadRequestException) throw e;
+      throw new InternalServerErrorException('Failed to fetch invoices from Fakturownia: ' + e.message);
+    }
   }
 }

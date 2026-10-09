@@ -60,7 +60,7 @@ export function InvoiceFormDrawer({
 
   if (!isOpen || !milestone) return null
 
-  const milestoneTotal = milestone.type === 'KM' 
+  const milestoneTotal = milestone.type === 'KM'
     ? Math.round(((milestone.percentage / 100) * contractVal) * 100) / 100
     : (milestone.netAmount || 0)
 
@@ -96,11 +96,11 @@ export function InvoiceFormDrawer({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    
+
     if (canManageInvoiceDetails && !invoiceNumber.trim()) {
       // Optional: Maybe even for admins it's optional? Let's make it optional.
     }
-    
+
     const parsedValue = parseFloat(netValue)
     if (isNaN(parsedValue) || parsedValue <= 0) {
       setError('Kwota netto musi być większa od 0.')
@@ -112,10 +112,16 @@ export function InvoiceFormDrawer({
         return
       }
     }
-    
+
     let finalStatus = status
     if (canManageInvoiceDetails) {
-      if (status === 'OCZEKUJE' && invoiceNumber.trim()) {
+      if ((status === 'WYSTAWIONA' || status === 'ZAPŁACONE') && !link.trim()) {
+        setError('Aby ustawić status Wystawiona lub Zapłacone, musisz dodać link do faktury.')
+        return
+      }
+      
+      // Auto-update status if link is provided but they forgot to change select
+      if (status === 'OCZEKUJE' && invoiceNumber.trim() && link.trim()) {
         finalStatus = 'WYSTAWIONA'
       }
     } else {
@@ -135,13 +141,13 @@ export function InvoiceFormDrawer({
   return createPortal(
     <div className="fixed inset-0 z-[120] flex justify-end">
       {/* Backdrop */}
-      <div 
+      <div
         className="absolute inset-0 bg-black/40 backdrop-blur-[2px] animate-in fade-in duration-300"
         onClick={onClose}
       />
       {/* Drawer */}
       <div className="relative bg-[var(--card)] text-[var(--foreground)] border-l border-[var(--border)] shadow-2xl w-full max-w-md h-full flex flex-col animate-in slide-in-from-right duration-300">
-        
+
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-[var(--border)] bg-[var(--card)] shrink-0">
           <div className="flex items-center gap-3">
@@ -155,7 +161,7 @@ export function InvoiceFormDrawer({
               </p>
             </div>
           </div>
-          <button 
+          <button
             onClick={onClose}
             className="p-2 text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)] rounded-md transition-all"
           >
@@ -248,10 +254,10 @@ export function InvoiceFormDrawer({
                 </div>
               </div>
             </div>
-            
+
             <div className="flex justify-end -mt-3">
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={handleFillRemaining}
                 className="text-[11px] text-[var(--sidebar-primary)] hover:underline font-medium"
               >
@@ -273,7 +279,7 @@ export function InvoiceFormDrawer({
                 />
               </div>
             </div>
-            
+
             {canManageInvoiceDetails && (
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
@@ -325,7 +331,7 @@ export function InvoiceFormDrawer({
               />
             </div>
           </form>
-          
+
 
         </div>
 

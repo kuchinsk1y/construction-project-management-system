@@ -19,7 +19,7 @@ function resolveInitialTheme(): ThemeMode {
 
 function resolveInitialThemePreset(): ThemePreset {
   const savedPreset = localStorage.getItem(THEME_PRESET_KEY)
-  if (savedPreset === 'lime' || savedPreset === 'mono' || savedPreset === 'ocean') return savedPreset
+  if (savedPreset === 'lime' || savedPreset === 'mono' || savedPreset === 'ocean' || savedPreset === 'b3FiC8aqBc') return savedPreset as ThemePreset
   return 'lime'
 }
 

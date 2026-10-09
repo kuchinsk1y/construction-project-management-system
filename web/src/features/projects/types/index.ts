@@ -31,7 +31,7 @@ export type CreateMilestonePayload = {
   type: 'KM' | 'roboty_dodatkowe'
   percentage?: number
   netAmount?: number
-  invoicingPercentage?: number
+  invoicingPercentage?: number | null
 }
 
 export type CreateMilestoneInvoicePayload = {
