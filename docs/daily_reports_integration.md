@@ -230,13 +230,11 @@ sequenceDiagram
 |---|---|---|
 | `geofence_radius_m` | `int` NULL | Радіус (м) навколо `latitude`/`longitude` для перевірки геолокації в TMA. `NULL` → TMA використовує значення за замовчуванням. |
 
-### 4.7 `users` — зв'язок керівника проєкту з TMA (потребує рішення)
+### 4.7 Зв'язок керівника проєкту з TMA — без змін в ERP
 
-| Колонка | Тип | Опис |
-|---|---|---|
-| `tma_user_id` | `varchar(64)` UNIQUE NULL | `TMA users.id` цього користувача ERP. |
+Зіставлення користувачів зберігається **на стороні TMA**: колонка `users.erp_user_id` (= ERP `users.id`). В ERP нічого додавати не потрібно.
 
-Потрібна, щоб TMA могла показати бригадиру проєкти **його** керівника (`brigades.supervisor_id` → ERP `projects.manager_id`). Альтернатива — зіставлення за номером телефону. Див. [13](#13-відкриті-питання), п. 1.
+TMA бере `erp_user_id` керівника бригади (`brigades.supervisor_id`) і передає його в ERP як `managerId` (= `projects.manager_id`).
 
 ### 4.8 ERD (нові зв'язки)
 
@@ -259,15 +257,41 @@ erDiagram
 **Автентифікація:** один спільний ключ у заголовку `x-api-key` (`INTEGRATION_API_KEY`), перевірка — існуючий `ApiKeyGuard`.
 **Формат:** JSON, `camelCase` (як у чинному `/v1/integration/projects`). Дати — `YYYY-MM-DD`, час — ISO 8601 з часовою зоною.
 
-### 5.1 `GET /v1/integration/projects` — доопрацювання існуючого
+### 5.1 `GET /v1/integration/projects` і `GET /v1/integration/projects/:id` — ✅ реалізовано
 
-Що змінити:
+**Фільтри списку (query, усі опціональні):**
 
-- **Додати в відповідь** `location.latitude`, `location.longitude`, `geofenceRadiusM`, `pinUrl` — потрібні TMA для перевірки геолокації.
-- **Фільтри (query):**
-  - `status` — напр. `ACTIVE` (за замовчуванням повертати лише `ACTIVE`; зараз повертаються всі не видалені);
-  - `managerExternalId` — лише проєкти керівника з `users.tma_user_id = :managerExternalId` (для вибору проєкту бригадиром).
-- **Розглянути полегшену відповідь** для списку (без `financials`, `plannedExpenses`): TMA фінансові дані не потрібні.
+| Параметр | Опис |
+|---|---|
+| `status` | Напр. `ACTIVE` (без урахування регістру). Без параметра — усі не видалені проєкти, як і раніше. |
+| `managerId` | Ціле число — ERP `users.id` керівника (`projects.manager_id`). TMA бере його зі свого `users.erp_user_id`. Якщо у керівника немає проєктів — порожній список. Не число → `400`. |
+
+**Вибір полів — `fields` (для списку і для одного проєкту):** перелік через кому, вкладені поля — через крапку. Без параметра повертається повна відповідь. Невідоме поле → `400` з переліком дозволених (`allowedFields`). Зв'язані таблиці підвантажуються лише тоді, коли їх запитано.
+
+Дозволені поля: `id`, `name`, `status`, `type`, `location` (`.country`, `.city`, `.latitude`, `.longitude`), `dates` (`.contractStart`, `.contractEnd`, `.factStart`, `.factEnd`), `financials` (`.netValue`, `.currency`), `contractor` (`.id`, `.name`), `manager` (`.id`, `.firstName`, `.lastName`, `.email`), `power`, `milestones`, `works`, `plannedExpenses`, `departments`.
+
+```
+GET /v1/integration/projects?status=ACTIVE&managerId=34&fields=id,name,status,location.city,location.latitude,location.longitude
+```
+```json
+[
+  {
+    "id": "1c2d…",
+    "name": "Farma PV Domanowo",
+    "status": "ACTIVE",
+    "location": { "city": "Domanowo", "latitude": 52.7431, "longitude": 22.9012 }
+  }
+]
+```
+
+```
+GET /v1/integration/projects/1c2d…?fields=name,dates.factEnd
+```
+```json
+{ "name": "Farma PV Domanowo", "dates": { "factEnd": null } }
+```
+
+**Ще не зроблено:** `geofenceRadiusM` (з'явиться разом із колонкою `projects.geofence_radius_m`).
 
 ### 5.2 `GET /v1/integration/projects/:projectId/work-types` — новий
 
@@ -373,7 +397,7 @@ Query (хоча б один із перших двох):
 | Параметр | Опис |
 |---|---|
 | `projectId` | Бригади, які **сьогодні** працюють на цьому проєкті (за `attendance_sessions.project_id` / `work_days.project_id`). |
-| `managerExternalId` | Усі бригади керівника (`brigades.supervisor_id`), включно з тими, що ще не відкрили сесію. |
+| `managerErpId` | ERP `users.id` керівника; TMA шукає його за `users.erp_user_id`. Усі бригади керівника (`brigades.supervisor_id`), включно з тими, що ще не відкрили сесію. |
 | `date` | За замовчуванням — сьогодні (Europe/Warsaw). |
 
 **Відповідь (контракт, який очікує ERP):**
@@ -426,7 +450,7 @@ Query (хоча б один із перших двох):
 
 | Метод | Шлях | Ролі | Опис |
 |---|---|---|---|
-| `GET` | `/attendance/live?projectId=` / `?mine=true` | admin, operational_director, project_manager (лише свої проєкти) | Проксі до TMA (6) з кешем. `mine=true` → по `tma_user_id` поточного користувача. |
+| `GET` | `/attendance/live?projectId=` / `?mine=true` | admin, operational_director, project_manager (лише свої проєкти) | Проксі до TMA (6) з кешем. `mine=true` → `managerErpId` = `id` поточного користувача ERP. |
 | `GET` | `/projects/:projectId/reports?dateFrom=&dateTo=&authorExternalId=` | admin, operational_director, project_manager, financial_director, viewer | Список рапортів проєкту. |
 | `GET` | `/reports/:id` | ті ж | Рапорт з журналом, підсумком та історією редагувань. |
 | `PUT` | `/reports/:id` | **admin** | Повна заміна `works` + `journal` + обов'язкове `reason`. |
@@ -515,7 +539,7 @@ Soft delete: в одній транзакції `deleted_at = now()` для `for
 **Реалізація в ERP:**
 
 - `AttendanceModule` з `TmaClient` (`@nestjs/axios`, вже є в залежностях): таймаут 5 с, заголовок `x-api-key`.
-- Кеш відповіді на 15 с за ключем `(projectId | managerExternalId, date)` — в Redis (вже є в стеку) або в пам'яті. Захищає TMA, коли кілька людей одночасно дивляться один проєкт.
+- Кеш відповіді на 15 с за ключем `(projectId | managerErpId, date)` — в Redis (вже є в стеку) або в пам'яті. Захищає TMA, коли кілька людей одночасно дивляться один проєкт.
 - Права: `project_manager` бачить лише проєкти, де `projects.manager_id = currentUser.id`; admin / operational_director — усі.
 - Якщо TMA недоступна → `502` з `{ "code": "TMA_UNAVAILABLE" }`; фронтенд показує останні отримані дані з позначкою часу.
 - Фронтенд опитує кожні ~30 с лише поки вкладка активна (`refetchInterval` + `refetchIntervalInBackground: false` у TanStack Query).
@@ -580,7 +604,7 @@ Soft delete: в одній транзакції `deleted_at = now()` для `for
 | # | Етап | Залежить від |
 |---|---|---|
 | 1 | **Безпека:** `JwtAuthGuard`, `RolesGuard`, `timingSafeEqual` в `ApiKeyGuard` | — |
-| 2 | **Міграція БД:** `foreman_reports`, `work_journal_entries`, зміни `daily_reports`, `foreman_report_revisions`, `integration_events`, `projects.geofence_radius_m`, `users.tma_user_id` | рішення з 13 |
+| 2 | **Міграція БД:** `foreman_reports`, `work_journal_entries`, зміни `daily_reports`, `foreman_report_revisions`, `integration_events`, `projects.geofence_radius_m` | рішення з 13 |
 | 3 | **Інтеграційне API для довідників:** доопрацювання `GET /projects` (5.1), `GET /projects/:id/work-types` (5.2) | 2 |
 | 4 | **Прийом рапортів:** `POST /reports` з валідацією, ідемпотентністю, транзакцією; `GET /reports`, `GET /reports/:id` | 2 |
 | 5 | **Внутрішні ендпоінти рапортів:** список, перегляд, редагування / видалення адміном з ревізіями | 1, 4 |
@@ -596,8 +620,7 @@ Soft delete: в одній транзакції `deleted_at = now()` для `for
 ## 13. Відкриті питання
 
 1. **Вибір проєкту при відкритті сесії.** Бригада не прив'язана до проєкту, тож бригадир обирає проєкт зі списку проєктів свого керівника. Для цього треба зіставити `TMA brigades.supervisor_id` з ERP `projects.manager_id`:
-   - **варіант А (рекомендовано):** `users.tma_user_id` в ERP, заповнюється адміном;
-   - **варіант Б:** зіставлення за номером телефону (є в обох системах, але менш надійно).
+   - ✅ **вирішено:** `users.erp_user_id` у TMA; в ERP TMA приходить зі звичайним `managerId`;
 2. **Статус проєкту для рапортів.** Поки життєвий цикл статусів (ТЗ 4.11) не реалізований, приймаємо рапорти лише для `ACTIVE`. Чи потрібно дозволяти рапорти для `ON_HOLD` (напр. роботи з консервації)?
 3. **Глибина подання рапорту в минуле** (`REPORT_MAX_AGE_DAYS`) — 7 днів підходить?
 4. **Крок годин** — 0.25 год (15 хв) чи 0.5 год?
