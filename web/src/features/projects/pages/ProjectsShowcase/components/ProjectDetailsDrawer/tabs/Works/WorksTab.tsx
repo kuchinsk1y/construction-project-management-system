@@ -421,12 +421,10 @@ export function WorksTab({ projectId, milestones, formatBudget, currency, canEdi
         key={detailedWork.id}
         work={detailedWork}
         milestone={milestone}
-        siblings={workTypes.filter(wt => wt.milestoneId === detailedWork.milestoneId && wt.id !== detailedWork.id)}
         departmentLabel={dept?.name ?? detailedWork.departmentName}
         foremanName={foreman?.foremanName ?? null}
         formatBudget={(val) => formatBudget(val, currency)}
         onClose={() => navigate(`/projects/${projectId}/works`)}
-        onSelectWork={openWork}
       />
     )
   }

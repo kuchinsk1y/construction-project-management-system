@@ -5,6 +5,7 @@ import {
   Get,
   Headers,
   Param,
+  ParseUUIDPipe,
   Post,
   Put,
   Query,
@@ -164,7 +165,7 @@ export class ProjectsController {
   }
 
   @Get('work-types/:id/daily-reports')
-  listWorkTypeDailyReports(@Param('id') id: string) {
+  listWorkTypeDailyReports(@Param('id', ParseUUIDPipe) id: string) {
     return this.projectsService.listWorkTypeDailyReports(id);
   }
 

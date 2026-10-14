@@ -1,31 +1,36 @@
-import { useMemo, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
-  AlertTriangle, ArrowLeft, CalendarRange, CheckCircle2, ChevronRight, CircleDashed, ClipboardList,
-  HardHat, Layers, Loader2, Timer,
+  AlertTriangle, ArrowLeft, BarChart3, CalendarClock, CalendarRange, CheckCircle2, CircleDashed,
+  Gauge, HardHat, Layers, Loader2, PieChart, Timer, Wallet,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { fetchWorkTypeDailyReports } from '@/features/projects/api'
-import type { ApiMilestone, ApiWorkType } from '@/features/projects/types'
+import type { ApiMilestone, ApiWorkType, ApiWorkTypeDailyReport } from '@/features/projects/types'
 import { formatAmount } from '@/lib/format'
 
 type WorkTypeDetailsViewProps = {
   work: ApiWorkType
   milestone: ApiMilestone | null
-  siblings: ApiWorkType[]
   departmentLabel: string
   foremanName: string | null
   formatBudget: (val: number, currency?: string) => string
   onClose: () => void
-  onSelectWork: (workId: string) => void
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000
+// Longest period drawn in the daily chart
+const MAX_CHART_DAYS = 90
 
 function parseDate(value: string | null): Date | null {
   if (!value) return null
   const date = new Date(`${value}T00:00:00`)
   return Number.isNaN(date.getTime()) ? null : date
+}
+
+function toIsoDate(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
 function formatDate(value: string | null | Date, fallback = '—'): string {
@@ -34,28 +39,47 @@ function formatDate(value: string | null | Date, fallback = '—'): string {
   return date.toLocaleDateString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
+function formatShortDate(date: Date): string {
+  return `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth() + 1).padStart(2, '0')}`
+}
+
 function daysLabel(days: number): string {
   return days === 1 ? '1 dzień' : `${formatAmount(days, 0)} dni`
+}
+
+/** Quantity with up to two decimals, no trailing zeros ("100", "12,5") */
+function qty(value: number): string {
+  return formatAmount(value, 0, 2)
 }
 
 type WorkStatus = 'not_started' | 'in_progress' | 'completed'
 
 const STATUS_META: Record<WorkStatus, { label: string; className: string; icon: typeof CheckCircle2 }> = {
   not_started: { label: 'Nierozpoczęte', className: 'bg-[var(--muted)] text-[var(--muted-foreground)] border-[var(--border)]', icon: CircleDashed },
-  in_progress: { label: 'W trakcie', className: 'bg-[var(--sidebar-primary)]/10 text-[var(--sidebar-primary)] border-[var(--sidebar-primary)]/25', icon: Timer },
+  in_progress: { label: 'W trakcie', className: 'bg-[color-mix(in_oklch,var(--sidebar-primary)_10%,transparent)] text-[var(--sidebar-primary)] border-[color-mix(in_oklch,var(--sidebar-primary)_25%,transparent)]', icon: Timer },
   completed: { label: 'Zakończone', className: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/25', icon: CheckCircle2 },
 }
 
-/** Compact circular progress ring */
-function ProgressRing({ value, color }: { value: number; color: string }) {
-  const size = 84
-  const stroke = 8
+/** Progress donut: shows "done / total" in the middle, percentage on hover */
+function ProgressDonut({ actual, total, unit, progress, color }: {
+  actual: number
+  total: number
+  unit: string
+  progress: number
+  color: string
+}) {
+  const size = 116
+  const stroke = 10
   const radius = (size - stroke) / 2
   const circumference = 2 * Math.PI * radius
-  const clamped = Math.min(100, Math.max(0, value))
+  const clamped = Math.min(100, Math.max(0, progress))
 
   return (
-    <div className="relative shrink-0" style={{ width: size, height: size }}>
+    <div
+      className="group relative shrink-0 cursor-default"
+      style={{ width: size, height: size }}
+      title={`Wykonano ${formatAmount(progress, 0)}%`}
+    >
       <svg width={size} height={size} className="-rotate-90">
         <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--muted)" strokeWidth={stroke} />
         <circle
@@ -71,32 +95,57 @@ function ProgressRing({ value, color }: { value: number; color: string }) {
           style={{ transition: 'stroke-dashoffset 900ms ease-out' }}
         />
       </svg>
-      <span className="absolute inset-0 flex items-center justify-center text-xl font-black tabular-nums tracking-tight text-[var(--foreground)]">
-        {formatAmount(value, 0)}<span className="text-xs font-bold text-[var(--muted-foreground)]">%</span>
-      </span>
+
+      {/* Default: done / total */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center px-3 text-center transition-opacity duration-200 group-hover:opacity-0">
+        <span className="text-lg font-black leading-none tabular-nums tracking-tight text-[var(--foreground)]">{qty(actual)}</span>
+        <span className="mt-1 h-px w-8 bg-[var(--border)]" aria-hidden="true" />
+        <span className="mt-1 text-[11px] font-bold leading-none tabular-nums text-[var(--muted-foreground)]">
+          {qty(total)} {unit}
+        </span>
+      </div>
+
+      {/* Hover: percentage */}
+      <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+        <span className="text-2xl font-black tabular-nums tracking-tight text-[var(--foreground)]">
+          {formatAmount(progress, 0)}<span className="text-sm font-bold text-[var(--muted-foreground)]">%</span>
+        </span>
+      </div>
     </div>
   )
 }
 
-/** One label/value pair in the facts grid */
-function Fact({ label, children, hint, tone = 'default', className = '' }: {
+type FactTone = 'default' | 'accent' | 'good' | 'bad'
+
+const FACT_TONES: Record<FactTone, string> = {
+  default: 'text-[var(--foreground)]',
+  accent: 'text-[var(--sidebar-primary)]',
+  good: 'text-emerald-500',
+  bad: 'text-rose-500',
+}
+
+/** Key figure card — same look as the KPI cards on the project dashboard (Pulpit) */
+function Fact({ icon: Icon, label, value, suffix, hint, tone = 'default', footer }: {
+  icon: typeof Wallet
   label: string
-  className?: string
-  children: ReactNode
-  hint?: string
-  tone?: 'default' | 'good' | 'bad' | 'accent'
+  value: ReactNode
+  suffix?: string
+  hint?: ReactNode
+  tone?: FactTone
+  footer?: ReactNode
 }) {
-  const toneCls = {
-    default: 'text-[var(--foreground)]',
-    good: 'text-emerald-500',
-    bad: 'text-rose-500',
-    accent: 'text-[var(--sidebar-primary)]',
-  }[tone]
   return (
-    <div className={`min-w-0 bg-[var(--card)] px-3 py-2 ${className}`}>
-      <dt className="text-[9px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] truncate">{label}</dt>
-      <dd className={`mt-0.5 text-sm font-extrabold tabular-nums truncate ${toneCls}`}>{children}</dd>
-      {hint ? <p className="text-[10px] text-[var(--muted-foreground)] truncate">{hint}</p> : null}
+    <div className="min-w-0 bg-[var(--card)] px-3 py-2.5">
+      <dt className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
+        <Icon size={14} className="shrink-0 text-[var(--sidebar-primary)]" />
+        <span className="truncate">{label}</span>
+      </dt>
+      <dd className="mt-1 flex items-baseline gap-1 min-w-0">
+        <span className={`truncate text-[14px] font-extrabold ${FACT_TONES[tone]}`}>{value}</span>
+        {suffix ? <span className="shrink-0 text-[11px] font-semibold text-[var(--muted-foreground)]">{suffix}</span> : null}
+      </dd>
+      {footer}
+      {hint ? <p className="mt-0.5 truncate text-[10px] text-[var(--muted-foreground)]">{hint}</p> : null}
     </div>
   )
 }
@@ -113,15 +162,155 @@ function SectionTitle({ icon: Icon, children, aside }: { icon: typeof Layers; ch
   )
 }
 
+type ChartDay = { date: Date; iso: string; quantity: number; workers: number | null; hours: number | null; isToday: boolean; isWeekend: boolean }
+
+/** Bar per calendar day across the planned period (or the reported period when there is no plan) */
+function buildChartDays(reports: ApiWorkTypeDailyReport[], plannedStart: Date | null, plannedEnd: Date | null): ChartDay[] {
+  const byDate = new Map<string, { quantity: number; workers: number | null; hours: number | null }>()
+  for (const r of reports) {
+    const prev = byDate.get(r.date) ?? { quantity: 0, workers: null, hours: null }
+    byDate.set(r.date, {
+      quantity: prev.quantity + r.quantity,
+      workers: r.workers !== null ? (prev.workers ?? 0) + r.workers : prev.workers,
+      hours: r.hours !== null ? (prev.hours ?? 0) + r.hours : prev.hours,
+    })
+  }
+
+  const reportDates = reports.map((r) => parseDate(r.date)).filter((d): d is Date => d !== null)
+  const candidatesStart = [plannedStart, ...reportDates].filter((d): d is Date => d !== null)
+  const candidatesEnd = [plannedEnd, ...reportDates].filter((d): d is Date => d !== null)
+  if (candidatesStart.length === 0 || candidatesEnd.length === 0) return []
+
+  let start = new Date(Math.min(...candidatesStart.map((d) => d.getTime())))
+  let end = new Date(Math.max(...candidatesEnd.map((d) => d.getTime())))
+  // Too long to draw day by day: stick to the planned period, else the latest days
+  if ((end.getTime() - start.getTime()) / DAY_MS + 1 > MAX_CHART_DAYS) {
+    if (plannedStart && plannedEnd && plannedEnd >= plannedStart) {
+      start = new Date(plannedStart)
+      end = new Date(plannedEnd)
+    }
+    if ((end.getTime() - start.getTime()) / DAY_MS + 1 > MAX_CHART_DAYS) {
+      start = new Date(end.getTime() - (MAX_CHART_DAYS - 1) * DAY_MS)
+    }
+  }
+
+  const todayIso = toIsoDate(new Date())
+  const days: ChartDay[] = []
+  for (let cursor = new Date(start); cursor <= end; cursor.setDate(cursor.getDate() + 1)) {
+    const iso = toIsoDate(cursor)
+    const entry = byDate.get(iso)
+    days.push({
+      date: new Date(cursor),
+      iso,
+      quantity: entry?.quantity ?? 0,
+      workers: entry?.workers ?? null,
+      hours: entry?.hours ?? null,
+      isToday: iso === todayIso,
+      isWeekend: cursor.getDay() === 0 || cursor.getDay() === 6,
+    })
+  }
+  return days
+}
+
+function DailyChart({ days, unit }: { days: ChartDay[]; unit: string }) {
+  const max = Math.max(...days.map((d) => d.quantity), 0)
+  // Round the axis up to a "nice" number
+  const magnitude = max > 0 ? 10 ** Math.floor(Math.log10(max)) : 1
+  const axisMax = max > 0 ? Math.ceil(max / magnitude) * magnitude : 1
+  const labelEvery = Math.max(1, Math.ceil(days.length / 12))
+  // Tooltip is portalled to <body> so the card's overflow-hidden can't clip it
+  const [hover, setHover] = useState<{ day: ChartDay; x: number; y: number } | null>(null)
+
+  return (
+    <div className="flex gap-2 px-3 pt-3 pb-2" onMouseLeave={() => setHover(null)}>
+      {/* Y axis */}
+      <div className="flex h-40 flex-col justify-between pb-5 text-right text-[9px] tabular-nums text-[var(--muted-foreground)]">
+        <span>{qty(axisMax)}</span>
+        <span>{qty(axisMax / 2)}</span>
+        <span>0</span>
+      </div>
+
+      <div className="relative flex-1 min-w-0">
+        {/* Grid lines */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-[calc(100%-1.25rem)] flex flex-col justify-between">
+          <div className="border-t border-dashed border-[var(--border)]" />
+          <div className="border-t border-dashed border-[var(--border)]" />
+          <div className="border-t border-[var(--border)]" />
+        </div>
+
+        <div className="relative flex h-40 items-stretch gap-[2px]" role="img" aria-label={`Wykonanie dzienne (${unit})`}>
+          {days.map((d, i) => {
+            const height = (d.quantity / axisMax) * 100
+            return (
+              <div
+                key={d.iso}
+                className="group relative flex flex-1 min-w-0 flex-col"
+                onMouseEnter={(event) => {
+                  const rect = event.currentTarget.getBoundingClientRect()
+                  setHover({ day: d, x: rect.left + rect.width / 2, y: rect.top })
+                }}
+              >
+                {/* Bar area */}
+                <div className={`relative flex flex-1 items-end justify-center rounded-sm ${d.isWeekend ? 'bg-[color-mix(in_oklch,var(--muted)_25%,transparent)]' : ''}`}>
+                  {d.isToday ? (
+                    <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 border-l border-dashed border-[color-mix(in_oklch,var(--sidebar-primary)_60%,transparent)]" aria-hidden="true" />
+                  ) : null}
+                  {d.quantity > 0 ? (
+                    <div
+                      className="relative w-full max-w-[22px] rounded-t-[3px] bg-[color-mix(in_oklch,var(--sidebar-primary)_75%,transparent)] transition-colors group-hover:bg-[var(--sidebar-primary)]"
+                      style={{ height: `${Math.max(2, height)}%` }}
+                    />
+                  ) : null}
+                </div>
+
+                {/* X label */}
+                <div className="h-5 pt-1 text-center text-[9px] tabular-nums leading-none text-[var(--muted-foreground)]">
+                  {i % labelEvery === 0 || d.isToday ? (
+                    <span className={d.isToday ? 'font-bold text-[var(--sidebar-primary)]' : ''}>{formatShortDate(d.date)}</span>
+                  ) : null}
+                </div>
+
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {hover && createPortal(
+        <div
+          className="pointer-events-none fixed z-[200] whitespace-nowrap rounded-md border border-[var(--border)] bg-[var(--popover)] px-2.5 py-1.5 text-[11px] text-[var(--popover-foreground)] shadow-xl"
+          style={{
+            left: Math.min(Math.max(hover.x, 80), window.innerWidth - 80),
+            top: hover.y - 6,
+            transform: 'translate(-50%, -100%)',
+          }}
+        >
+          <p className="font-semibold">{formatDate(hover.day.date)}{hover.day.isToday ? ' · dziś' : ''}</p>
+          <p className="tabular-nums">
+            {hover.day.quantity > 0 ? <><strong>{qty(hover.day.quantity)}</strong> {unit}</> : 'Brak raportu'}
+          </p>
+          {hover.day.workers !== null || hover.day.hours !== null ? (
+            <p className="tabular-nums text-[var(--muted-foreground)]">
+              {[
+                hover.day.workers !== null ? `${hover.day.workers} os.` : null,
+                hover.day.hours !== null ? `${qty(hover.day.hours)} godz.` : null,
+              ].filter(Boolean).join(' · ')}
+            </p>
+          ) : null}
+        </div>,
+        document.body,
+      )}
+    </div>
+  )
+}
+
 export function WorkTypeDetailsView({
   work,
   milestone,
-  siblings,
   departmentLabel,
   foremanName,
   formatBudget,
   onClose,
-  onSelectWork,
 }: WorkTypeDetailsViewProps) {
   const { data: reports = [], isLoading: reportsLoading } = useQuery({
     queryKey: ['work-type-daily-reports', work.id],
@@ -155,19 +344,63 @@ export function WorkTypeDetailsView({
 
   const overdue = Boolean(schedule && schedule.daysLeft < 0 && status !== 'completed')
 
-
   // ── Reports ───────────────────────────────────────────────────────────────
   const reportStats = useMemo(() => {
-    const totalHours = reports.reduce((sum, r) => sum + (r.hours ?? 0), 0)
-    const workerReports = reports.filter((r) => r.workers !== null)
-    const avgWorkers = workerReports.length ? workerReports.reduce((sum, r) => sum + (r.workers ?? 0), 0) / workerReports.length : null
     const reportDays = new Set(reports.map((r) => r.date)).size
     const avgPerDay = reportDays ? actual / reportDays : null
     const forecastDays = avgPerDay && avgPerDay > 0 && remaining > 0 ? Math.ceil(remaining / avgPerDay) : null
-    const chart = [...reports].reverse().slice(-30)
-    const chartMax = Math.max(1, ...chart.map((r) => r.quantity))
-    return { totalHours, avgWorkers, avgPerDay, forecastDays, chart, chartMax, lastDate: reports[0]?.date ?? null }
+    return { avgPerDay, forecastDays, reportDays, lastDate: reports[0]?.date ?? null }
   }, [reports, actual, remaining])
+
+  const chartDays = useMemo(
+    () => buildChartDays(reports, parseDate(work.plannedStart), parseDate(work.plannedEnd)),
+    [reports, work.plannedStart, work.plannedEnd],
+  )
+
+  // Reports that fall outside the drawn period
+  const reportsOutsideChart = chartDays.length
+    ? reports.filter((r) => r.date < chartDays[0].iso || r.date > chartDays[chartDays.length - 1].iso).length
+    : 0
+
+  const scheduleFact = (() => {
+    if (status === 'completed') {
+      const finished = parseDate(reportStats.lastDate)
+      const lateBy = finished && schedule ? Math.round((finished.getTime() - schedule.end.getTime()) / DAY_MS) : null
+      return {
+        label: 'Ukończono',
+        value: finished ? formatDate(finished) : '—',
+        suffix: undefined,
+        tone: (lateBy !== null && lateBy > 0 ? 'bad' : 'good') as FactTone,
+        hint: lateBy === null ? 'wg ostatniego raportu' : lateBy > 0 ? `${daysLabel(lateBy)} po planie` : 'w terminie',
+      }
+    }
+    if (!schedule) return { label: 'Termin', value: '—', suffix: undefined, tone: 'default' as FactTone, hint: 'brak planu' }
+    if (!schedule.started) {
+      return {
+        label: 'Start za',
+        value: formatAmount(schedule.daysUntilStart, 0),
+        suffix: schedule.daysUntilStart === 1 ? 'dzień' : 'dni',
+        tone: 'default' as FactTone,
+        hint: `planowany start ${formatDate(schedule.start)}`,
+      }
+    }
+    if (overdue) {
+      return {
+        label: 'Po terminie',
+        value: formatAmount(Math.abs(schedule.daysLeft), 0),
+        suffix: Math.abs(schedule.daysLeft) === 1 ? 'dzień' : 'dni',
+        tone: 'bad' as FactTone,
+        hint: `plan do ${formatDate(schedule.end)}`,
+      }
+    }
+    return {
+      label: 'Do końca',
+      value: schedule.daysLeft === 0 ? 'dziś' : formatAmount(schedule.daysLeft, 0),
+      suffix: schedule.daysLeft === 0 ? undefined : schedule.daysLeft === 1 ? 'dzień' : 'dni',
+      tone: 'default' as FactTone,
+      hint: `koniec ${formatDate(schedule.end)}`,
+    }
+  })()
 
   const statusMeta = STATUS_META[status]
   const StatusIcon = statusMeta.icon
@@ -183,7 +416,7 @@ export function WorkTypeDetailsView({
           size="icon"
           onClick={onClose}
           aria-label="Wróć do listy robót"
-          className="h-8 w-8 rounded-full bg-[var(--muted)]/50 hover:bg-[var(--muted)] shrink-0"
+          className="h-8 w-8 rounded-full bg-[color-mix(in_oklch,var(--muted)_50%,transparent)] hover:bg-[var(--muted)] shrink-0"
         >
           <ArrowLeft size={16} />
         </Button>
@@ -223,23 +456,20 @@ export function WorkTypeDetailsView({
         </div>
       </div>
 
-      {/* Summary: progress + facts */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/30 overflow-hidden">
+      {/* Summary: donut + bars on the left, key facts on the right */}
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] rounded-xl border border-[var(--border)] bg-[color-mix(in_oklch,var(--background)_30%,transparent)] overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-3">
-          <ProgressRing value={progress} color={accentColor} />
+          <ProgressDonut actual={actual} total={total} unit={unit} progress={progress} color={accentColor} />
 
-          <div className="flex-1 min-w-0 space-y-2.5">
+          <div className="flex-1 min-w-0 space-y-3">
             {/* Quantity */}
             <div>
-              <div className="flex items-baseline justify-between gap-2">
-                <p className="text-sm text-[var(--muted-foreground)]">
-                  <span className="text-lg font-black tabular-nums text-[var(--foreground)]">{formatAmount(actual)}</span>
-                  {' '}z <span className="font-bold tabular-nums text-[var(--foreground)]">{formatAmount(total)}</span> {unit}
-                </p>
-                <span className="text-[11px] text-[var(--muted-foreground)] whitespace-nowrap">
+              <div className="flex items-center justify-between gap-2 text-[11px] text-[var(--muted-foreground)]">
+                <span>Wykonanie</span>
+                <span className="whitespace-nowrap">
                   {actual > total && total > 0
-                    ? <span className="font-semibold text-amber-500">+{formatAmount(actual - total)} {unit} ponad plan</span>
-                    : <>zostało <strong className="tabular-nums text-[var(--foreground)]">{formatAmount(remaining)}</strong> {unit}</>}
+                    ? <span className="font-semibold text-amber-500">+{qty(actual - total)} {unit} ponad plan</span>
+                    : <>zostało <strong className="tabular-nums text-[var(--foreground)]">{qty(remaining)}</strong> {unit}</>}
                 </span>
               </div>
               <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-[var(--muted)]">
@@ -251,14 +481,13 @@ export function WorkTypeDetailsView({
             {schedule ? (
               <div>
                 <div className="flex items-center justify-between gap-2 text-[11px] text-[var(--muted-foreground)]">
-                  <span>
-                    Czas: <strong className="tabular-nums text-[var(--foreground)]">
-                      {schedule.started ? `${daysLabel(schedule.elapsedDays)} z ${daysLabel(schedule.durationDays)}` : `start za ${daysLabel(schedule.daysUntilStart)}`}
-                    </strong>
-                  </span>
+                  <span>Czas</span>
+                  <strong className="tabular-nums text-[var(--foreground)]">
+                    {schedule.started ? `${daysLabel(schedule.elapsedDays)} z ${daysLabel(schedule.durationDays)}` : `start za ${daysLabel(schedule.daysUntilStart)}`}
+                  </strong>
                 </div>
                 <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-[var(--muted)]">
-                  <div className={`h-full rounded-full ${overdue ? 'bg-rose-500/70' : 'bg-[var(--muted-foreground)]/40'}`} style={{ width: `${schedule.timePct}%` }} />
+                  <div className={`h-full rounded-full ${overdue ? 'bg-rose-500/70' : 'bg-[color-mix(in_oklch,var(--muted-foreground)_40%,transparent)]'}`} style={{ width: `${schedule.timePct}%` }} />
                 </div>
               </div>
             ) : (
@@ -267,44 +496,62 @@ export function WorkTypeDetailsView({
           </div>
         </div>
 
-        {/* Facts grid */}
-        <dl className="grid grid-cols-2 lg:grid-cols-5 gap-px border-t border-[var(--border)] bg-[var(--border)]">
+        {/* Facts 2×2 */}
+        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-[var(--border)] border-t lg:border-t-0 lg:border-l border-[var(--border)]">
           <Fact
+            icon={Wallet}
             label="Wartość etapu"
             tone="accent"
-            hint={milestone ? `netto, etap ${milestone.milestoneNo}` : undefined}
-            className="col-span-2 lg:col-span-1"
-          >
-            {milestone ? formatBudget(milestone.netAmount || 0) : '—'}
-          </Fact>
-          <Fact label="Udział w etapie" hint={milestone ? `etap ${milestone.milestoneNo}` : undefined}>
-            {formatAmount(share, 0, 2)}%
-          </Fact>
-          <Fact label={overdue ? 'Po terminie' : 'Do końca'} tone={overdue ? 'bad' : 'default'} hint={schedule ? `koniec ${formatDate(schedule.end)}` : undefined}>
-            {schedule ? daysLabel(Math.abs(schedule.daysLeft)) : '—'}
-          </Fact>
-          <Fact label="Wydajność / dzień" hint={reportStats.forecastDays !== null ? `prognoza: ${daysLabel(reportStats.forecastDays)}` : undefined} tone={forecastLate ? 'bad' : 'default'}>
-            {reportStats.avgPerDay !== null ? `${formatAmount(reportStats.avgPerDay, 0, 2)} ${unit}` : '—'}
-          </Fact>
-          <Fact label="Śr. ekipa" hint={reportStats.totalHours > 0 ? `${formatAmount(reportStats.totalHours, 0, 1)} godz. łącznie` : undefined}>
-            {reportStats.avgWorkers !== null ? `${formatAmount(reportStats.avgWorkers, 0, 1)} os.` : '—'}
-          </Fact>
+            value={milestone ? formatBudget(milestone.netAmount || 0) : '—'}
+            hint={milestone ? `netto · ${milestone.milestoneNo}` : 'brak etapu'}
+          />
+          <Fact
+            icon={PieChart}
+            label="Udział w etapie"
+            value={formatAmount(share, 0, 2)}
+            suffix="%"
+            footer={
+              <div className="mt-1.5 h-1 w-full max-w-[140px] overflow-hidden rounded-full bg-[var(--muted)]">
+                <div className="h-full rounded-full bg-[var(--sidebar-primary)]" style={{ width: `${Math.min(100, share)}%` }} />
+              </div>
+            }
+          />
+          <Fact
+            icon={CalendarClock}
+            label={scheduleFact.label}
+            value={scheduleFact.value}
+            suffix={scheduleFact.suffix}
+            tone={scheduleFact.tone}
+            hint={scheduleFact.hint}
+          />
+          <Fact
+            icon={Gauge}
+            label="Wydajność"
+            value={reportStats.avgPerDay !== null ? qty(reportStats.avgPerDay) : '—'}
+            suffix={reportStats.avgPerDay !== null ? `${unit}/dzień` : undefined}
+            tone={forecastLate ? 'bad' : 'default'}
+            hint={
+              reportStats.forecastDays !== null
+                ? `przy tym tempie: ok. ${daysLabel(reportStats.forecastDays)} do końca`
+                : reportStats.reportDays > 0
+                  ? `średnio z ${reportStats.reportDays} dni pracy`
+                  : 'brak raportów'
+            }
+          />
         </dl>
       </div>
 
-      {/* Reports + milestone context */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-start">
-        {/* Daily reports */}
-        <section className="lg:col-span-2 rounded-xl border border-[var(--border)] bg-[var(--background)]/30 overflow-hidden min-w-0">
+      {/* Daily chart */}
+        <section className="rounded-xl border border-[var(--border)] bg-[color-mix(in_oklch,var(--background)_30%,transparent)] overflow-hidden min-w-0">
           <SectionTitle
-            icon={ClipboardList}
+            icon={BarChart3}
             aside={reports.length > 0 ? (
               <span className="text-[10px] text-[var(--muted-foreground)]">
-                {reports.length} {reports.length === 1 ? 'raport' : 'raportów'} · ostatni <strong className="text-[var(--foreground)] tabular-nums">{formatDate(reportStats.lastDate)}</strong>
+                ostatni raport <strong className="text-[var(--foreground)] tabular-nums">{formatDate(reportStats.lastDate)}</strong>
               </span>
             ) : null}
           >
-            Raporty dzienne
+            Wykonanie dzienne{unit ? ` (${unit})` : ''}
           </SectionTitle>
 
           {reportsLoading ? (
@@ -312,90 +559,24 @@ export function WorkTypeDetailsView({
               <Loader2 size={14} className="animate-spin" />
               Wczytywanie raportów...
             </div>
-          ) : reports.length === 0 ? (
+          ) : chartDays.length === 0 ? (
             <p className="px-3 py-4 text-xs text-[var(--muted-foreground)]">
-              Brak raportów — postęp pojawi się po pierwszym raporcie dziennym.
+              Brak raportów i terminu — wykres pojawi się po pierwszym raporcie dziennym.
             </p>
           ) : (
             <>
-              {reportStats.chart.length > 1 ? (
-                <div className="flex items-end gap-0.5 h-14 px-3 pt-3" role="img" aria-label="Wykonanie w kolejnych raportach">
-                  {reportStats.chart.map((r) => (
-                    <div key={r.id} className="group relative flex-1 flex items-end justify-center h-full">
-                      <div
-                        className="w-full max-w-[18px] rounded-t-sm bg-[var(--sidebar-primary)]/60 group-hover:bg-[var(--sidebar-primary)] transition-colors"
-                        style={{ height: `${Math.max(4, (r.quantity / reportStats.chartMax) * 100)}%` }}
-                      />
-                      <div className="pointer-events-none absolute bottom-full mb-1 hidden group-hover:block whitespace-nowrap rounded-md border border-[var(--border)] bg-[var(--popover)] px-2 py-1 text-[10px] font-semibold text-[var(--popover-foreground)] shadow-lg z-10">
-                        {formatDate(r.date)}: {formatAmount(r.quantity)} {unit}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              <DailyChart days={chartDays} unit={unit} />
+              {reports.length === 0 ? (
+                <p className="px-3 pb-3 text-[11px] text-[var(--muted-foreground)]">Brak raportów dziennych w tym okresie.</p>
+              ) : reportsOutsideChart > 0 ? (
+                <p className="px-3 pb-3 text-[11px] text-amber-600 dark:text-amber-400">
+                  {reportsOutsideChart === 1 ? '1 raport' : `${reportsOutsideChart} raportów`} poza okresem wykresu (ostatni {formatDate(reportStats.lastDate)}) — wliczone w wykonanie.
+                </p>
               ) : null}
-
-              <div className="max-h-56 overflow-auto custom-scrollbar">
-                <table className="w-full text-xs">
-                  <thead className="sticky top-0 bg-[var(--card)] text-[9px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
-                    <tr>
-                      <th className="px-3 py-1.5 text-left">Data</th>
-                      <th className="px-3 py-1.5 text-right">Ilość</th>
-                      <th className="px-3 py-1.5 text-right">Ekipa</th>
-                      <th className="px-3 py-1.5 text-right">Godziny</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {reports.map((r) => (
-                      <tr key={r.id} className="border-t border-[var(--border)] hover:bg-[var(--muted)]/20 transition-colors">
-                        <td className="px-3 py-1.5 tabular-nums text-[var(--foreground)]">{formatDate(r.date)}</td>
-                        <td className="px-3 py-1.5 text-right font-bold tabular-nums text-[var(--foreground)]">
-                          {formatAmount(r.quantity)} <span className="font-normal text-[var(--muted-foreground)]">{unit}</span>
-                        </td>
-                        <td className="px-3 py-1.5 text-right tabular-nums text-[var(--muted-foreground)]">{r.workers !== null ? `${r.workers} os.` : '—'}</td>
-                        <td className="px-3 py-1.5 text-right tabular-nums text-[var(--muted-foreground)]">{r.hours !== null ? formatAmount(r.hours, 0, 1) : '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
             </>
           )}
         </section>
 
-        {/* Milestone context */}
-        <section className="rounded-xl border border-[var(--border)] bg-[var(--background)]/30 overflow-hidden">
-          <SectionTitle icon={Layers}>Etap {milestone?.milestoneNo ?? ''}</SectionTitle>
-          {milestone ? (
-            <p className="px-3 py-2 text-xs leading-relaxed text-[var(--muted-foreground)]">{milestone.description}</p>
-          ) : (
-            <p className="px-3 py-2 text-xs italic text-[var(--muted-foreground)]">Robota nie jest przypisana do etapu.</p>
-          )}
-
-          {siblings.length > 0 ? (
-            <ul className="border-t border-[var(--border)] p-1">
-              {siblings.map((s) => {
-                const sProgress = s.totalQuantity > 0 ? Math.min(100, ((s.actualQuantity || 0) / s.totalQuantity) * 100) : 0
-                return (
-                  <li key={s.id}>
-                    <button
-                      type="button"
-                      onClick={() => onSelectWork(s.id)}
-                      className="group w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-[var(--sidebar-primary)]/5 cursor-pointer"
-                    >
-                      <span className="flex-1 min-w-0 truncate text-xs font-semibold text-[var(--foreground)] group-hover:text-[var(--sidebar-primary)]">{s.name}</span>
-                      <span className="w-12 h-1 rounded-full bg-[var(--muted)] overflow-hidden shrink-0">
-                        <span className="block h-full rounded-full bg-[var(--sidebar-primary)]" style={{ width: `${sProgress}%` }} />
-                      </span>
-                      <span className="w-8 text-right text-[10px] font-bold tabular-nums text-[var(--muted-foreground)]">{formatAmount(sProgress, 0)}%</span>
-                      <ChevronRight size={12} className="text-[var(--muted-foreground)] opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
-          ) : null}
-        </section>
-      </div>
     </div>
   )
 }

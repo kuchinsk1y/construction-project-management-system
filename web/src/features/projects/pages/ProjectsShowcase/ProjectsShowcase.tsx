@@ -249,7 +249,8 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
   const { "*": urlPath } = useParams()
   const pathParts = urlPath ? urlPath.split('/') : []
   const projectIdStr = pathParts[0] || null
-  const tabId = (pathParts[1] || 'details') as 'dashboard' | 'details' | 'expenses' | 'milestones' | 'departments' | 'works' | 'hours-plan'
+  // Existing projects open on the dashboard; the new-project form lives on the details tab
+  const tabId = (pathParts[1] || (projectIdStr === 'new' ? 'details' : 'dashboard')) as 'dashboard' | 'details' | 'expenses' | 'milestones' | 'departments' | 'works' | 'hours-plan'
 
   // Drawer / Form state
   const drawerOpen = !!projectIdStr
