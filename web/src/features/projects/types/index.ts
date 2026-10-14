@@ -31,7 +31,7 @@ export type CreateMilestonePayload = {
   type: 'KM' | 'roboty_dodatkowe'
   percentage?: number
   netAmount?: number
-  invoicingPercentage?: number
+  invoicingPercentage?: number | null
 }
 
 export type CreateMilestoneInvoicePayload = {
@@ -79,6 +79,14 @@ export type ApiWorkType = {
   actualQuantity?: number
   plannedStart: string | null
   plannedEnd: string | null
+}
+
+export type ApiWorkTypeDailyReport = {
+  id: string
+  date: string
+  quantity: number
+  workers: number | null
+  hours: number | null
 }
 
 export type CreateWorkTypePayload = {

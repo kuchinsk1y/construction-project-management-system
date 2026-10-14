@@ -30,6 +30,7 @@ import { ProjectsFilterBar } from '@/features/projects/pages/ProjectsShowcase/co
 import { ProjectsTableView, type ViewMode, type SortColumn, type SortDirection } from '@/features/projects/pages/ProjectsShowcase/components/ProjectsTableView'
 import { ProjectsGanttView } from '@/features/projects/pages/ProjectsShowcase/components/ProjectsGanttView'
 import { ProjectDetailsDrawer } from '@/features/projects/pages/ProjectsShowcase/components/ProjectDetailsDrawer/ProjectDetailsDrawer'
+import { formatMoney } from '@/lib/format'
 
 // Helper formatters
 function formatDate(value: string | undefined | null, fallback = ''): string {
@@ -55,13 +56,7 @@ function parseDateValue(value: string): Date | null {
 }
 
 function formatBudget(value: number, currencyCode = 'PLN'): string {
-  if (value == null) return '-'
-  const formatted = new Intl.NumberFormat('pl-PL', {
-    style: 'decimal',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value)
-  return `${formatted} ${currencyCode || 'PLN'}`
+  return formatMoney(value, currencyCode)
 }
 
 function statusTone(status: string): string {
@@ -254,7 +249,8 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
   const { "*": urlPath } = useParams()
   const pathParts = urlPath ? urlPath.split('/') : []
   const projectIdStr = pathParts[0] || null
-  const tabId = (pathParts[1] || 'details') as 'dashboard' | 'details' | 'expenses' | 'milestones' | 'departments' | 'works' | 'hours-plan'
+  // Existing projects open on the dashboard; the new-project form lives on the details tab
+  const tabId = (pathParts[1] || (projectIdStr === 'new' ? 'details' : 'dashboard')) as 'dashboard' | 'details' | 'expenses' | 'milestones' | 'departments' | 'works' | 'hours-plan'
 
   // Drawer / Form state
   const drawerOpen = !!projectIdStr
@@ -345,7 +341,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
   const createMilestoneMutation = useMutation({
     mutationFn: (payload: CreateMilestonePayload) => createMilestone(editingProject!.id, payload),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['milestones', editingProject?.id] })
+      await queryClient.invalidateQueries({ queryKey: ['milestones'] })
       await queryClient.invalidateQueries({ queryKey: ['projects'] })
       setMilestoneForm({ milestoneNo: '', description: '', type: 'KM', percentage: 0, netAmount: 0, invoicingPercentage: undefined })
       setMilestoneError('')
@@ -363,7 +359,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
       }
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['milestones', editingProject?.id] })
+      await queryClient.invalidateQueries({ queryKey: ['milestones'] })
       await queryClient.invalidateQueries({ queryKey: ['projects'] })
       setMilestoneForm({ milestoneNo: '', description: '', type: 'KM', percentage: 0, netAmount: 0, invoicingPercentage: undefined })
       setMilestoneError('')
@@ -378,7 +374,26 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
     mutationFn: ({ id, payload }: { id: string; payload: Partial<CreateMilestonePayload> }) =>
       updateMilestone(id, payload),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['milestones', editingProject?.id] })
+      await queryClient.invalidateQueries({ queryKey: ['milestones'] })
+      await queryClient.invalidateQueries({ queryKey: ['projects'] })
+      setMilestoneForm({ milestoneNo: '', description: '', type: 'KM', percentage: 0, netAmount: 0, invoicingPercentage: undefined })
+      setEditingMilestoneId(null)
+      setMilestoneError('')
+      setShowMilestoneForm(false)
+    },
+    onError: (err: Error) => {
+      setMilestoneError(err.message)
+    },
+  })
+
+  const updateMilestonesBatchMutation = useMutation({
+    mutationFn: async (payloads: { id: string; payload: Partial<CreateMilestonePayload> }[]) => {
+      for (const { id, payload } of payloads) {
+        await updateMilestone(id, payload)
+      }
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['milestones'] })
       await queryClient.invalidateQueries({ queryKey: ['projects'] })
       setMilestoneForm({ milestoneNo: '', description: '', type: 'KM', percentage: 0, netAmount: 0, invoicingPercentage: undefined })
       setEditingMilestoneId(null)
@@ -393,7 +408,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
   const deleteMilestoneMutation = useMutation({
     mutationFn: (id: string) => deleteMilestone(id),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['milestones', editingProject?.id] })
+      await queryClient.invalidateQueries({ queryKey: ['milestones'] })
       await queryClient.invalidateQueries({ queryKey: ['projects'] })
     },
     onError: (err: Error) => {
@@ -805,6 +820,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
         createMilestoneMutation={createMilestoneMutation}
         createMilestonesBatchMutation={createMilestonesBatchMutation}
         updateMilestoneMutation={updateMilestoneMutation}
+        updateMilestonesBatchMutation={updateMilestonesBatchMutation}
         deleteMilestoneMutation={deleteMilestoneMutation}
         formatDate={formatDate}
         formatBudget={formatBudget}
@@ -991,6 +1007,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
         createMilestoneMutation={createMilestoneMutation}
         createMilestonesBatchMutation={createMilestonesBatchMutation}
         updateMilestoneMutation={updateMilestoneMutation}
+        updateMilestonesBatchMutation={updateMilestonesBatchMutation}
         deleteMilestoneMutation={deleteMilestoneMutation}
         formatDate={formatDate}
         formatBudget={formatBudget}

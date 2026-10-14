@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
   InternalServerErrorException,
 } from '@nestjs/common';
@@ -32,6 +33,8 @@ function sanitizeDecimals(
 
 @Injectable()
 export class ProjectsService {
+  private readonly logger = new Logger(ProjectsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     @InjectQueue('projects-sync') private readonly syncQueue: Queue,
@@ -727,7 +730,11 @@ export class ProjectsService {
 
   // --- Milestone Invoices ---
 
-  async createMilestoneInvoice(milestoneId: string, dto: CreateMilestoneInvoiceDto) {
+  async createMilestoneInvoice(
+    milestoneId: string,
+    dto: CreateMilestoneInvoiceDto,
+    requesterId: number | null = null,
+  ) {
     const milestone = await this.prisma.milestones.findUnique({
       where: { id: milestoneId, deleted_at: null },
     });
@@ -750,6 +757,13 @@ export class ProjectsService {
 
     await this.recalculateMilestoneInvoicing(milestoneId, Number(milestone.net_amount));
 
+    // A new invoice awaiting acceptance is a request from the project manager — notify finance
+    if (invoice.status === 'OCZEKUJE') {
+      this.notifyFinancialDirectorsAboutInvoiceRequest(milestone, invoice, requesterId).catch((error) =>
+        this.logger.error('Failed to notify financial directors about invoice request', error as Error),
+      );
+    }
+
     return {
       id: invoice.id,
       invoiceNumber: invoice.invoice_number,
@@ -759,6 +773,65 @@ export class ProjectsService {
       status: invoice.status,
       link: invoice.link,
     };
+  }
+
+  private async notifyFinancialDirectorsAboutInvoiceRequest(
+    milestone: { project_id: string; milestone_no: string; description: string },
+    invoice: { net_value: unknown; issued_date: Date | null; note: string },
+    requesterId: number | null,
+  ) {
+    const [project, recipients, requester] = await Promise.all([
+      this.prisma.projects.findUnique({
+        where: { id: milestone.project_id },
+        select: {
+          id: true,
+          name: true,
+          currency: true,
+          users_projects_manager_idTousers: { select: { firstName: true, lastName: true } },
+        },
+      }),
+      this.prisma.user.findMany({
+        where: { isActive: true, roles: { has: 'financial_director' } },
+        select: { email: true, firstName: true },
+      }),
+      requesterId
+        ? this.prisma.user.findUnique({
+            where: { id: requesterId },
+            select: { firstName: true, lastName: true, position: true },
+          })
+        : null,
+    ]);
+
+    if (!project || recipients.length === 0) return;
+
+    // Prefer the logged-in author; fall back to the project manager
+    const manager = project.users_projects_manager_idTousers;
+    const requestedBy = requester
+      ? [`${requester.firstName} ${requester.lastName}`.trim(), requester.position].filter(Boolean).join(', ')
+      : manager
+        ? `${manager.firstName} ${manager.lastName}`.trim()
+        : 'Kierownik projektu';
+    const netValue = `${new Intl.NumberFormat('pl-PL', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+      useGrouping: 'always',
+    }).format(Number(invoice.net_value))} ${project.currency || 'PLN'}`;
+    const frontendUrl = this.config.get<string>('FRONTEND_URL') ?? 'http://localhost:5173';
+
+    await Promise.all(
+      recipients.map((recipient) =>
+        this.mailService.sendInvoiceRequestEmail(recipient.email, recipient.firstName, {
+          projectName: project.name,
+          milestoneNo: milestone.milestone_no,
+          milestoneDescription: milestone.description,
+          netValue,
+          requestedBy,
+          issuedDate: invoice.issued_date?.toISOString().split('T')[0] ?? null,
+          note: invoice.note || null,
+          invoicesUrl: `${frontendUrl}/projects/${project.id}/milestones`,
+        }),
+      ),
+    );
   }
 
   async updateMilestoneInvoice(milestoneId: string, invoiceId: string, dto: CreateMilestoneInvoiceDto) {
@@ -919,6 +992,28 @@ export class ProjectsService {
     });
   }
 
+  async listWorkTypeDailyReports(workTypeId: string) {
+    const reports = await this.prisma.daily_reports.findMany({
+      where: { work_type_id: workTypeId, deleted_at: null },
+      orderBy: { report_date: 'desc' },
+      select: {
+        id: true,
+        report_date: true,
+        actual_quantity: true,
+        actual_workers: true,
+        actual_hours: true,
+      },
+    });
+
+    return reports.map((r) => ({
+      id: r.id,
+      date: r.report_date.toISOString().split('T')[0],
+      quantity: r.actual_quantity ? Number(r.actual_quantity) : 0,
+      workers: r.actual_workers ?? null,
+      hours: r.actual_hours ? Number(r.actual_hours) : null,
+    }));
+  }
+
   async createWorkType(projectId: string, dto: CreateWorkTypeDto) {
     const row = await this.prisma.project_work_types.create({
       data: {
@@ -934,10 +1029,17 @@ export class ProjectsService {
       },
       include: {
         projects: { select: { name: true } },
-        milestones: { select: { milestone_no: true } },
+        milestones: { select: { milestone_no: true, type: true } },
         departments: { select: { name: true } },
       },
     });
+
+    // Works on additional works (RD) get 1% of the hours plan by default
+    if (row.milestones?.type === 'roboty_dodatkowe') {
+      await this.prisma.work_type_hours_distribution.create({
+        data: { project_id: projectId, work_type_id: row.id, percentage: 1 },
+      });
+    }
 
     const spreadsheetId = this.config.getOrThrow<string>('PROJECTS_SPREADSHEET_ID');
     const sheetName = this.config.get<string>('WORK_TYPES_SHEET_NAME', 'RodzajeRobot');
@@ -1312,25 +1414,16 @@ export class ProjectsService {
     const project = await this.prisma.projects.findUnique({
       where: { id: projectId },
     });
-    const projectBudget = project?.contract_net_value
+    const contractNetValue = project?.contract_net_value
       ? Number(project.contract_net_value)
       : 0;
-
-    const budgetItems = await this.prisma.project_budget_items.findMany({
-      where: {
-        project_id: projectId,
-        cost_categories: { is_salary: true },
-      },
-    });
+    const warrantyPercent = project?.warranty_percent
+      ? Number(project.warranty_percent)
+      : 0;
+    const projectBudget = contractNetValue - (contractNetValue * (warrantyPercent / 100));
 
     let totalSalaryBudget = 0;
-    for (const item of budgetItems) {
-      if (item.planned_amount) {
-        totalSalaryBudget += Number(item.planned_amount);
-      }
-    }
-
-    if (totalSalaryBudget === 0 && salaryExpenses.length > 0 && projectBudget > 0) {
+    if (salaryExpenses.length > 0 && projectBudget > 0) {
       for (const exp of salaryExpenses) {
         if (exp.planned_percent) {
           totalSalaryBudget += (Number(exp.planned_percent) / 100) * projectBudget;
@@ -1370,33 +1463,19 @@ export class ProjectsService {
     const project = await this.prisma.projects.findUnique({
       where: { id: projectId },
     });
-    const projectBudget = project?.contract_net_value
+    const contractNetValue = project?.contract_net_value
       ? Number(project.contract_net_value)
       : 0;
-
-    const budgetItems = await this.prisma.project_budget_items.findMany({
-      where: {
-        project_id: projectId,
-        cost_categories: { is_salary: true },
-      },
-    });
+    const warrantyPercent = project?.warranty_percent
+      ? Number(project.warranty_percent)
+      : 0;
+    const projectBudget = contractNetValue - (contractNetValue * (warrantyPercent / 100));
 
     let totalSalaryBudget = 0;
-    for (const item of budgetItems) {
-      if (item.planned_amount) {
-        totalSalaryBudget += Number(item.planned_amount);
-      }
-    }
-
-    if (
-      totalSalaryBudget === 0 &&
-      salaryExpenses.length > 0 &&
-      projectBudget > 0
-    ) {
+    if (salaryExpenses.length > 0 && projectBudget > 0) {
       for (const exp of salaryExpenses) {
         if (exp.planned_percent) {
-          totalSalaryBudget +=
-            (Number(exp.planned_percent) / 100) * projectBudget;
+          totalSalaryBudget += (Number(exp.planned_percent) / 100) * projectBudget;
         }
       }
     }
@@ -1436,5 +1515,59 @@ export class ProjectsService {
     });
 
     return this.getHoursPlan(projectId);
+  }
+
+  // --- Fakturownia ---
+  async searchFakturowniaInvoices(query: string, country?: string) {
+    const apiToken = this.config.get<string>('FAKTUROWNIA_API_TOKEN');
+    if (!apiToken) {
+      throw new BadRequestException('Fakturownia API token is not configured on the server');
+    }
+
+    let subdomain = this.config.get<string>('FAKTUROWNIA_PL_SUBDOMAIN') || 'ispik';
+    if (country) {
+      const c = country.toLowerCase();
+      if (c === 'łotwa' || c === 'latvia' || c === 'lv') {
+        subdomain = this.config.get<string>('FAKTUROWNIA_LV_SUBDOMAIN') || subdomain;
+      } else if (c === 'rumunia' || c === 'romania' || c === 'ro') {
+        subdomain = this.config.get<string>('FAKTUROWNIA_RO_SUBDOMAIN') || subdomain;
+      } else if (c === 'hiszpania' || c === 'spain' || c === 'es') {
+        subdomain = this.config.get<string>('FAKTUROWNIA_ES_SUBDOMAIN') || subdomain;
+      }
+    }
+
+    const url = `https://${subdomain}.fakturownia.pl/invoices.json?api_token=${apiToken}&period=all&per_page=100`;
+
+    try {
+      const fetch = (await import('node-fetch')).default;
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new BadRequestException(`Fakturownia API returned status: ${response.status}`);
+      }
+      
+      let invoices = await response.json();
+      if (!Array.isArray(invoices)) {
+        return [];
+      }
+      
+      // Filter out negative values (corrections, refunds) to only show positive income
+      invoices = invoices.filter((inv: any) => 
+        inv.price_gross > 0 && inv.kind !== 'correction'
+      );
+      
+      if (query) {
+        const q = query.toLowerCase();
+        return invoices.filter((inv: any) => 
+          String(inv.price_gross).includes(q) || 
+          String(inv.price_net).includes(q) || 
+          (inv.number && inv.number.toLowerCase().includes(q))
+        );
+      }
+      
+      return invoices;
+    } catch (e: any) {
+      if (e instanceof BadRequestException) throw e;
+      throw new InternalServerErrorException('Failed to fetch invoices from Fakturownia: ' + e.message);
+    }
   }
 }

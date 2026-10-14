@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { formatAmount } from '@/lib/format'
 
 type FinancialDonutChartProps = {
   total: number;
@@ -57,7 +58,7 @@ export function MilestoneInvoiceDonut({ total, paid, invoicedNotPaid, remaining,
   let currentAngle = 0
 
   const invoicedPct = total > 0 ? ((paid + invoicedNotPaid) / total) * 100 : 0
-  const pctText = invoicedPct % 1 === 0 ? invoicedPct : invoicedPct.toFixed(1)
+  const pctText = Number(invoicedPct.toFixed(1))
 
   return (
   <div className="flex items-center justify-center gap-4 w-full">
@@ -145,8 +146,8 @@ export function MilestoneInvoiceDonut({ total, paid, invoicedNotPaid, remaining,
             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: tooltip.seg.color }} />
             <span className="font-bold text-[10px] uppercase tracking-wider opacity-80">{tooltip.seg.label}</span>
           </div>
-          <div className="font-extrabold text-sm">{tooltip.seg.value.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {currency}</div>
-          <div className="text-[10px] text-[var(--muted-foreground)]">({total > 0 ? ((tooltip.seg.value / total) * 100).toFixed(1) : 0}%)</div>
+          <div className="font-extrabold text-sm">{formatAmount(tooltip.seg.value)} {currency}</div>
+          <div className="text-[10px] text-[var(--muted-foreground)]">({total > 0 ? Number(((tooltip.seg.value / total) * 100).toFixed(1)) : 0}%)</div>
           
           <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-[var(--popover)] border-b border-r border-[var(--border)] rotate-45" />
         </div>
@@ -157,14 +158,14 @@ export function MilestoneInvoiceDonut({ total, paid, invoicedNotPaid, remaining,
     <div className="flex flex-col justify-center gap-2 pl-4">
       {segments.map(seg => {
         if (seg.value <= 0 && seg.id !== 'remaining') return null; // Show remaining even if 0 for context, optional
-        const segPct = total > 0 ? ((seg.value / total) * 100).toFixed(1) : 0;
+        const segPct = total > 0 ? Number(((seg.value / total) * 100).toFixed(1)) : 0;
         return (
           <div key={seg.id} className="flex items-center gap-2 text-xs">
             <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: seg.color }} />
             <div className="flex flex-col">
               <span className="font-semibold text-[var(--foreground)]">{seg.label}</span>
               <span className="text-[10px] text-[var(--muted-foreground)]">
-                {seg.value.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {currency} ({segPct}%)
+                {formatAmount(seg.value)} {currency} ({segPct}%)
               </span>
             </div>
           </div>

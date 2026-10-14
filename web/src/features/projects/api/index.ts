@@ -12,6 +12,7 @@ import type {
   ApiProjectDepartment,
   ApiForemanUser,
   ApiWorkType,
+  ApiWorkTypeDailyReport,
   CreateWorkTypePayload,
   ApiForemanAssignment,
   ApiResourcePlan,
@@ -224,4 +225,16 @@ export function updateHoursPlan(
   payload: { averageHourlyRate: number; distributions: { workTypeId: string; percentage: number }[] }
 ): Promise<HoursPlanResponse> {
   return apiPut<HoursPlanResponse>(`/projects/${projectId}/hours-plan`, payload)
+}
+
+export function searchFakturowniaInvoices(query: string, country?: string): Promise<any[]> {
+  let url = `/projects/fakturownia/invoices?query=${encodeURIComponent(query)}`
+  if (country) {
+    url += `&country=${encodeURIComponent(country)}`
+  }
+  return apiGet<any[]>(url)
+}
+
+export function fetchWorkTypeDailyReports(workTypeId: string): Promise<ApiWorkTypeDailyReport[]> {
+  return apiGet<ApiWorkTypeDailyReport[]>(`/projects/work-types/${workTypeId}/daily-reports`)
 }

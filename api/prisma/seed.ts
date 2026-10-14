@@ -135,6 +135,102 @@ const departmentsToSeed = [
   { name: 'Kable AC', icon: 'Cable' },
 ];
 
+// Deterministic pseudo-random generator so every seed run gives the same reports
+function seededRandom(seedText: string): () => number {
+  let state = 0;
+  for (const char of seedText) state = (state * 31 + char.charCodeAt(0)) >>> 0;
+  return () => {
+    state = (state * 1664525 + 1013904223) >>> 0;
+    return state / 0x100000000;
+  };
+}
+
+type SeedDailyReport = {
+  date: Date;
+  quantity: number;
+  workers: number;
+  hours: number;
+};
+
+/** Typical crew size per department (people on site per day) */
+const CREW_BY_DEPARTMENT: Record<string, [number, number]> = {
+  Kafar: [3, 5],
+  Montaż: [6, 12],
+  Elektryka: [4, 8],
+  'Kable AC': [4, 7],
+};
+
+type SeedWorkSchedule = {
+  name: string;
+  dept: string;
+  start: string;
+  end: string;
+  actual: number;
+  isFinished: boolean;
+};
+
+/**
+ * Spreads `actual` over working days from `start` until `end` (or yesterday for unfinished
+ * work — also past the planned end when the work is late). Sundays off, Saturdays only
+ * sometimes and shorter, occasional lost days (weather, deliveries), slow first day.
+ */
+function buildDailyReports(work: SeedWorkSchedule): SeedDailyReport[] {
+  const random = seededRandom(work.name);
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+
+  const from = new Date(`${work.start}T00:00:00Z`);
+  const planEnd = new Date(`${work.end}T00:00:00Z`);
+  const to = work.isFinished ? planEnd : yesterday;
+  if (work.actual <= 0 || from > to) return [];
+
+  const days: { date: Date; isSaturday: boolean }[] = [];
+  for (let d = new Date(from); d <= to; d.setUTCDate(d.getUTCDate() + 1)) {
+    const dow = d.getUTCDay();
+    if (dow === 0) continue;
+    if (dow === 6 && random() < 0.55) continue; // most Saturdays off
+    if (d > from && random() < 0.07) continue; // rain / waiting for material
+    days.push({ date: new Date(d), isSaturday: dow === 6 });
+  }
+  if (days.length === 0) days.push({ date: from, isSaturday: false });
+
+  const [crewMin, crewMax] = CREW_BY_DEPARTMENT[work.dept] ?? [4, 8];
+  const crews = days.map(({ isSaturday }, i) => {
+    const base = crewMin + Math.round(random() * (crewMax - crewMin));
+    const crew = i === 0 ? Math.max(crewMin, base - 2) : base;
+    return isSaturday ? Math.max(2, Math.round(crew * 0.6)) : crew;
+  });
+  const shiftHours = days.map(({ isSaturday }) => (isSaturday ? 6 : 8 + Math.round(random() * 2)));
+
+  // Output follows man-hours with ±20% productivity noise
+  const weights = crews.map((crew, i) => crew * shiftHours[i] * (0.8 + random() * 0.4));
+  const weightSum = weights.reduce((sum, w) => sum + w, 0);
+
+  // Whole units per day (largest remainder method keeps the exact total)
+  const exact = weights.map((w) => (work.actual * w) / weightSum);
+  const quantities = exact.map((q) => Math.floor(q));
+  let rest = Math.round(work.actual) - quantities.reduce((sum, q) => sum + q, 0);
+  exact
+    .map((q, i) => ({ i, frac: q - Math.floor(q) }))
+    .sort((a, b) => b.frac - a.frac)
+    .forEach(({ i }) => {
+      if (rest > 0) {
+        quantities[i] += 1;
+        rest -= 1;
+      }
+    });
+
+  return days
+    .map(({ date }, i) => ({
+      date,
+      quantity: quantities[i],
+      workers: crews[i],
+      hours: crews[i] * shiftHours[i],
+    }))
+    .filter((r) => r.quantity > 0);
+}
+
 async function main() {
   console.log('Seeding database users...');
 
@@ -342,6 +438,7 @@ async function main() {
           note: 'Wystawiona kwota ' + inv.amount,
           issued_date: new Date(inv.date),
           paid_at: inv.isPaid ? new Date(inv.date) : null,
+          status: inv.isPaid ? 'ZAPŁACONE' : 'WYSTAWIONA',
         }
       });
     }
@@ -413,91 +510,90 @@ async function main() {
   await prisma.project_work_types.deleteMany({ where: { project_id: project.id } });
 
   console.log('Seeding project work types...');
+  // Realistic course of a 10 MW PV build (~12 ha), as seen on 14.10.2026:
+  // KM 1–3 finished, KM 4–5 in progress (one work late), KM 6 just started, KM 7 ahead.
+  // `perc` within each milestone sums to 100.
   const worksToSeed = [
-    // KM 1: Prace przygotowawcze (100% completed) - 1 work type
-    { name: 'Montaż kontenerów i tablic', unit: 'szt', qty: 6, actual: 6, dept: 'Montaż', km: 'KM 1', start: '2026-09-20', end: '2026-09-25', perc: 100 },
+    // KM 1: Prace przygotowawcze — finished
+    { km: 'KM 1', dept: 'Kafar', name: 'Niwelacja i utwardzenie placu budowy', unit: 'm2', qty: 2400, actual: 2400, start: '2026-01-19', end: '2026-01-30', perc: 45 },
+    { km: 'KM 1', dept: 'Montaż', name: 'Montaż kontenerów socjalnych', unit: 'szt', qty: 5, actual: 5, start: '2026-01-26', end: '2026-02-03', perc: 35 },
+    { km: 'KM 1', dept: 'Montaż', name: 'Montaż tablic informacyjnych', unit: 'szt', qty: 2, actual: 2, start: '2026-02-02', end: '2026-02-04', perc: 20 },
 
-    // KM 2: Wykonanie ogrodzenia (100% completed) - 3 work types
-    { name: 'Wbijanie kafarów', unit: 'szt', qty: 2000, actual: 2000, dept: 'Kafar', km: 'KM 2', start: '2026-09-25', end: '2026-09-28', perc: 30 },
-    { name: 'Montaż słupków', unit: 'szt', qty: 2000, actual: 2000, dept: 'Montaż', km: 'KM 2', start: '2026-09-28', end: '2026-10-01', perc: 30 },
-    { name: 'Rozciągnięcie siatki', unit: 'mb', qty: 5000, actual: 5000, dept: 'Montaż', km: 'KM 2', start: '2026-10-01', end: '2026-10-04', perc: 40 },
+    // KM 2: Wykonanie ogrodzenia — finished (~2,6 km perimeter)
+    { km: 'KM 2', dept: 'Kafar', name: 'Wbijanie słupków ogrodzenia', unit: 'szt', qty: 1040, actual: 1040, start: '2026-02-16', end: '2026-03-27', perc: 35 },
+    { km: 'KM 2', dept: 'Montaż', name: 'Montaż siatki ogrodzeniowej', unit: 'mb', qty: 2600, actual: 2600, start: '2026-03-09', end: '2026-04-24', perc: 45 },
+    { km: 'KM 2', dept: 'Montaż', name: 'Montaż bram wjazdowych', unit: 'szt', qty: 2, actual: 2, start: '2026-04-27', end: '2026-05-06', perc: 20 },
 
-    // KM 3: Wykonanie prac wodociągowych (100% completed) - 2 work types
-    { name: 'Wykopy pod rury', unit: 'mb', qty: 800, actual: 800, dept: 'Kafar', km: 'KM 3', start: '2026-10-03', end: '2026-10-05', perc: 40 },
-    { name: 'Montaż instalacji wodnej', unit: 'mb', qty: 800, actual: 800, dept: 'Montaż', km: 'KM 3', start: '2026-10-05', end: '2026-10-08', perc: 60 },
+    // KM 3: Wykonanie prac wodociągowych — finished
+    { km: 'KM 3', dept: 'Kafar', name: 'Wykopy pod rurociąg', unit: 'mb', qty: 650, actual: 650, start: '2026-05-11', end: '2026-05-29', perc: 35 },
+    { km: 'KM 3', dept: 'Montaż', name: 'Montaż rurociągu PE', unit: 'mb', qty: 650, actual: 650, start: '2026-05-18', end: '2026-06-12', perc: 45 },
+    { km: 'KM 3', dept: 'Kafar', name: 'Zasypanie i zagęszczenie wykopów', unit: 'mb', qty: 650, actual: 650, start: '2026-06-08', end: '2026-06-26', perc: 20 },
 
-    // KM 4: Wykonanie fundamentów pod stacje (In progress) - 2 work types
-    { name: 'Wykopy pod fundamenty', unit: 'm3', qty: 500, actual: 100, dept: 'Kafar', km: 'KM 4', start: '2026-10-06', end: '2026-10-15', perc: 40 },
-    { name: 'Wylanie betonu', unit: 'm3', qty: 300, actual: 0, dept: 'Montaż', km: 'KM 4', start: '2026-10-10', end: '2026-10-20', perc: 60 },
+    // KM 4: Fundamenty pod stacje — in progress, concreting slightly behind, backfill starts soon
+    { km: 'KM 4', dept: 'Kafar', name: 'Wykopy pod fundamenty stacji', unit: 'm3', qty: 180, actual: 180, start: '2026-07-06', end: '2026-07-24', perc: 20 },
+    { km: 'KM 4', dept: 'Montaż', name: 'Zbrojenie fundamentów', unit: 't', qty: 14, actual: 14, start: '2026-07-20', end: '2026-08-21', perc: 25 },
+    { km: 'KM 4', dept: 'Montaż', name: 'Betonowanie fundamentów', unit: 'm3', qty: 120, actual: 78, start: '2026-08-17', end: '2026-10-23', perc: 40 },
+    { km: 'KM 4', dept: 'Kafar', name: 'Izolacja i zasypka fundamentów', unit: 'm3', qty: 180, actual: 0, start: '2026-10-19', end: '2026-10-30', perc: 15 },
 
-    // KM 6: Wykonanie połączeń kablowych (Not started) - 3 work types
-    { name: 'Wykop pod kable AC/DC', unit: 'mb', qty: 1500, actual: 0, dept: 'Kable AC', km: 'KM 6', start: '2026-10-15', end: '2026-10-25', perc: 30 },
-    { name: 'Układanie kabli', unit: 'mb', qty: 25000, actual: 0, dept: 'Elektryka', km: 'KM 6', start: '2026-10-20', end: '2026-11-05', perc: 40 },
-    { name: 'Zasypywanie wykopów', unit: 'mb', qty: 1500, actual: 0, dept: 'Kable AC', km: 'KM 6', start: '2026-11-01', end: '2026-11-10', perc: 30 },
+    // KM 5: System uziemienia — trench done, earthing strip late (past planned end)
+    { km: 'KM 5', dept: 'Kable AC', name: 'Wykop pod bednarkę', unit: 'mb', qty: 4200, actual: 4200, start: '2026-08-24', end: '2026-09-25', perc: 30 },
+    { km: 'KM 5', dept: 'Elektryka', name: 'Układanie bednarki uziemiającej', unit: 'mb', qty: 4200, actual: 3300, start: '2026-09-07', end: '2026-10-09', perc: 40 },
+    { km: 'KM 5', dept: 'Elektryka', name: 'Pomiary rezystancji uziemienia', unit: 'pkt', qty: 24, actual: 0, start: '2026-10-26', end: '2026-11-06', perc: 30 },
+
+    // KM 6: Połączenia kablowe AC/DC — trenching started, cabling ahead
+    { km: 'KM 6', dept: 'Kable AC', name: 'Wykop pod kable AC/DC', unit: 'mb', qty: 3100, actual: 1150, start: '2026-09-28', end: '2026-11-06', perc: 25 },
+    { km: 'KM 6', dept: 'Elektryka', name: 'Układanie kabli DC', unit: 'mb', qty: 38000, actual: 0, start: '2026-10-19', end: '2026-11-27', perc: 35 },
+    { km: 'KM 6', dept: 'Kable AC', name: 'Układanie kabli AC', unit: 'mb', qty: 9300, actual: 0, start: '2026-10-26', end: '2026-11-27', perc: 25 },
+    { km: 'KM 6', dept: 'Kable AC', name: 'Zasypywanie wykopów kablowych', unit: 'mb', qty: 3100, actual: 0, start: '2026-11-16', end: '2026-12-04', perc: 15 },
+
+    // KM 7: Odbiór końcowy — not started
+    { km: 'KM 7', dept: 'Elektryka', name: 'Pomiary i protokoły odbiorcze', unit: 'kpl', qty: 1, actual: 0, start: '2026-12-07', end: '2026-12-18', perc: 60 },
+    { km: 'KM 7', dept: 'Montaż', name: 'Dokumentacja powykonawcza', unit: 'kpl', qty: 1, actual: 0, start: '2026-12-07', end: '2026-12-23', perc: 40 },
   ];
 
+  let reportsCount = 0;
   for (const work of worksToSeed) {
     const deptId = createdDepartments[work.dept]?.id;
-    const kmId = work.km ? createdMilestones[work.km]?.id : null;
+    const kmId = createdMilestones[work.km]?.id ?? null;
+    if (!deptId) continue;
 
-    if (deptId) {
-      let existingWork = await prisma.project_work_types.findFirst({
-        where: { project_id: project.id, name: work.name }
+    const createdWork = await prisma.project_work_types.create({
+      data: {
+        project_id: project.id,
+        department_id: deptId,
+        milestone_id: kmId,
+        name: work.name,
+        unit: work.unit,
+        total_quantity: work.qty,
+        percentage: work.perc,
+        planned_start: new Date(work.start),
+        planned_end: new Date(work.end),
+      },
+    });
+
+    const reports = buildDailyReports({
+      name: work.name,
+      dept: work.dept,
+      start: work.start,
+      end: work.end,
+      actual: work.actual,
+      isFinished: work.actual >= work.qty,
+    });
+    if (reports.length > 0) {
+      await prisma.daily_reports.createMany({
+        data: reports.map((r) => ({
+          project_id: project.id,
+          work_type_id: createdWork.id,
+          report_date: r.date,
+          actual_quantity: r.quantity,
+          actual_workers: r.workers,
+          actual_hours: r.hours,
+        })),
       });
-
-      if (!existingWork) {
-        await prisma.project_work_types.create({
-          data: {
-            project_id: project.id,
-            department_id: deptId,
-            milestone_id: kmId,
-            name: work.name,
-            unit: work.unit,
-            total_quantity: work.qty,
-            percentage: work.perc,
-            planned_start: work.start ? new Date(work.start) : null,
-            planned_end: work.end ? new Date(work.end) : null,
-          }
-        });
-      } else {
-        await prisma.project_work_types.update({
-          where: { id: existingWork.id },
-          data: {
-            percentage: work.perc,
-            planned_start: work.start ? new Date(work.start) : null,
-            planned_end: work.end ? new Date(work.end) : null,
-          }
-        });
-      }
-
-      if (work.actual > 0) {
-        const theWork = await prisma.project_work_types.findFirst({
-          where: { project_id: project.id, name: work.name }
-        });
-        if (theWork) {
-          // Check if there is already a daily report
-          const existingReport = await prisma.daily_reports.findFirst({
-            where: { project_id: project.id, work_type_id: theWork.id }
-          });
-          if (!existingReport) {
-            await prisma.daily_reports.create({
-              data: {
-                project_id: project.id,
-                work_type_id: theWork.id,
-                report_date: new Date('2026-02-10'),
-                actual_quantity: work.actual,
-              }
-            });
-          } else {
-            await prisma.daily_reports.update({
-              where: { id: existingReport.id },
-              data: { actual_quantity: work.actual }
-            });
-          }
-        }
-      }
+      reportsCount += reports.length;
     }
   }
+  console.log(`Seeded ${worksToSeed.length} work types and ${reportsCount} daily reports.`);
 
   console.log('Database seeded successfully.');
 }

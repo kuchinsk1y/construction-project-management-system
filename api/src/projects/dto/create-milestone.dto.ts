@@ -37,5 +37,5 @@ export class CreateMilestoneDto {
   @IsOptional()
   @Min(0)
   @Max(100)
-  invoicingPercentage?: number;
+  invoicingPercentage?: number | null;
 }

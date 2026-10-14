@@ -12,6 +12,7 @@ import {
 } from '@/features/projects/api'
 import type { ApiProject } from '@/features/projects/types'
 import { PlannedExpenseFormDrawer } from '@/features/projects/pages/ProjectsShowcase/components/ProjectDetailsDrawer/tabs/PlannedExpenses/PlannedExpenseFormDrawer'
+import { formatMoney } from '@/lib/format'
 
 interface PlannedExpensesTabProps {
   project: ApiProject
@@ -72,15 +73,7 @@ export function PlannedExpensesTab({ project }: PlannedExpensesTabProps) {
   const availableBudget = contractValue - (contractValue * (warrantyPercent / 100))
   const totalPercentUsed = expenses.reduce((sum, e) => sum + e.plannedPercent, 0)
 
-  const formatBudget = (val: number, curr?: string) => {
-    if (val == null) return '-'
-    const formatted = new Intl.NumberFormat('pl-PL', {
-      style: 'decimal',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(val)
-    return `${formatted} ${curr || 'PLN'}`
-  }
+  const formatBudget = (val: number, curr?: string) => formatMoney(val, curr)
 
   const openAddDrawer = () => {
     setEditingExpenseId(null)

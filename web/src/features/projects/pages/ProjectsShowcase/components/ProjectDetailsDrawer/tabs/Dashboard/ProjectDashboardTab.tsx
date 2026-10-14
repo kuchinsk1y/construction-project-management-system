@@ -2,6 +2,7 @@ import { useState, useMemo, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchWorkTypes } from '@/features/projects/api'
 import {
+  Building2,
   CheckCircle2,
   CircleDollarSign,
   Clock,
@@ -197,7 +198,7 @@ type ProjectDashboardTabProps = {
 }
 
 export function ProjectDashboardTab({ project, milestones, formatBudget }: ProjectDashboardTabProps) {
-  const [workersViewMode, setWorkersViewMode] = useState<'grouped' | 'list'>('grouped')
+  const [workersViewMode, setWorkersViewMode] = useState<'company' | 'grouped' | 'list'>('grouped')
 
   const { data: workTypes = [] } = useQuery({
     queryKey: ['work-types', project.id],
@@ -430,6 +431,16 @@ export function ProjectDashboardTab({ project, milestones, formatBudget }: Proje
               {project.status?.toUpperCase() === 'ACTIVE' && (
                 <div className="flex bg-[var(--muted)]/50 p-0.5 rounded-lg border border-[var(--border)]">
                   <button
+                    onClick={() => setWorkersViewMode('company')}
+                    className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold transition-all ${workersViewMode === 'company'
+                      ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm'
+                      : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                      }`}
+                  >
+                    <Building2 size={12} />
+                    <span className="hidden xl:inline">Firma</span>
+                  </button>
+                  <button
                     onClick={() => setWorkersViewMode('grouped')}
                     className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold transition-all ${workersViewMode === 'grouped'
                       ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm'
@@ -437,7 +448,7 @@ export function ProjectDashboardTab({ project, milestones, formatBudget }: Proje
                       }`}
                   >
                     <LayoutList size={12} />
-                    <span className="hidden xl:inline">Grupy</span>
+                    <span className="hidden xl:inline">Stanowisko</span>
                   </button>
                   <button
                     onClick={() => setWorkersViewMode('list')}

@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { X, Loader2, FileText, Calendar, Banknote, Save, Percent, AlertTriangle } from 'lucide-react'
+import { X, Loader2, FileText, Calendar, Banknote, Save, Percent, AlertTriangle, Link2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { ApiMilestone, ApiMilestoneInvoice } from '@/features/projects/types'
+import { formatAmount } from '@/lib/format'
 
 type InvoiceFormDrawerProps = {
   isOpen: boolean
@@ -13,6 +14,7 @@ type InvoiceFormDrawerProps = {
   contractVal: number
   initialData?: ApiMilestoneInvoice | null
   canManageInvoiceDetails?: boolean
+  onLinkFakturownia?: () => void
 }
 
 export function InvoiceFormDrawer({
@@ -24,6 +26,7 @@ export function InvoiceFormDrawer({
   contractVal,
   initialData,
   canManageInvoiceDetails = false,
+  onLinkFakturownia,
 }: InvoiceFormDrawerProps) {
   const [invoiceNumber, setInvoiceNumber] = useState('')
   const [netValue, setNetValue] = useState('')
@@ -60,7 +63,7 @@ export function InvoiceFormDrawer({
 
   if (!isOpen || !milestone) return null
 
-  const milestoneTotal = milestone.type === 'KM' 
+  const milestoneTotal = milestone.type === 'KM'
     ? Math.round(((milestone.percentage / 100) * contractVal) * 100) / 100
     : (milestone.netAmount || 0)
 
@@ -96,11 +99,11 @@ export function InvoiceFormDrawer({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    
+
     if (canManageInvoiceDetails && !invoiceNumber.trim()) {
       // Optional: Maybe even for admins it's optional? Let's make it optional.
     }
-    
+
     const parsedValue = parseFloat(netValue)
     if (isNaN(parsedValue) || parsedValue <= 0) {
       setError('Kwota netto musi być większa od 0.')
@@ -112,10 +115,16 @@ export function InvoiceFormDrawer({
         return
       }
     }
-    
+
     let finalStatus = status
     if (canManageInvoiceDetails) {
-      if (status === 'OCZEKUJE' && invoiceNumber.trim()) {
+      if ((status === 'WYSTAWIONA' || status === 'ZAPŁACONE') && !link.trim()) {
+        setError('Aby ustawić status Wystawiona lub Zapłacone, musisz dodać link do faktury.')
+        return
+      }
+      
+      // Auto-update status if link is provided but they forgot to change select
+      if (status === 'OCZEKUJE' && invoiceNumber.trim() && link.trim()) {
         finalStatus = 'WYSTAWIONA'
       }
     } else {
@@ -135,13 +144,13 @@ export function InvoiceFormDrawer({
   return createPortal(
     <div className="fixed inset-0 z-[120] flex justify-end">
       {/* Backdrop */}
-      <div 
+      <div
         className="absolute inset-0 bg-black/40 backdrop-blur-[2px] animate-in fade-in duration-300"
         onClick={onClose}
       />
       {/* Drawer */}
       <div className="relative bg-[var(--card)] text-[var(--foreground)] border-l border-[var(--border)] shadow-2xl w-full max-w-md h-full flex flex-col animate-in slide-in-from-right duration-300">
-        
+
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-[var(--border)] bg-[var(--card)] shrink-0">
           <div className="flex items-center gap-3">
@@ -155,7 +164,7 @@ export function InvoiceFormDrawer({
               </p>
             </div>
           </div>
-          <button 
+          <button
             onClick={onClose}
             className="p-2 text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)] rounded-md transition-all"
           >
@@ -168,17 +177,17 @@ export function InvoiceFormDrawer({
           <div className="mb-6 p-4 rounded-xl border border-[var(--sidebar-primary)]/20 bg-[var(--sidebar-primary)]/5 flex flex-col gap-2">
             <div className="flex justify-between items-center text-sm">
               <span className="text-[var(--muted-foreground)]">Wartość całkowita etapu:</span>
-              <span className="font-bold">{milestoneTotal.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} PLN</span>
+              <span className="font-bold">{formatAmount(milestoneTotal)} PLN</span>
             </div>
             <div className="flex justify-between items-center text-sm">
               <span className="text-[var(--muted-foreground)]">Już zafakturowano:</span>
-              <span className="font-medium text-amber-600 dark:text-amber-500">{alreadyInvoicedPct.toFixed(1)}%</span>
+              <span className="font-medium text-amber-600 dark:text-amber-500">{Number(alreadyInvoicedPct.toFixed(1))}%</span>
             </div>
             <div className="flex justify-between items-center text-sm border-t border-[var(--sidebar-primary)]/10 pt-2 mt-1">
-              <span className="text-[var(--sidebar-primary)] font-semibold">Pozostało do zafakturowania:</span>
+              <span className="text-[var(--sidebar-primary)] font-semibold">Pozostało:</span>
               <span className="font-bold text-[var(--sidebar-primary)]">
-                {maxRemainingNet.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} PLN
-                <span className="text-xs ml-1 opacity-70">({maxRemainingPct.toFixed(1)}%)</span>
+                {formatAmount(maxRemainingNet)} PLN
+                <span className="text-xs ml-1 opacity-70">({Number(maxRemainingPct.toFixed(1))}%)</span>
               </span>
             </div>
           </div>
@@ -193,9 +202,21 @@ export function InvoiceFormDrawer({
 
             {canManageInvoiceDetails && (
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 transition-colors block mb-1">
-                  Numer faktury
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 transition-colors block">
+                    Numer faktury
+                  </label>
+                  {onLinkFakturownia && (
+                    <button
+                      type="button"
+                      onClick={onLinkFakturownia}
+                      className="flex items-center gap-1 text-[11px] font-semibold text-[var(--sidebar-primary)] hover:underline"
+                    >
+                      <Link2 className="w-3.5 h-3.5" />
+                      Pobierz z Fakturowni
+                    </button>
+                  )}
+                </div>
                 <div className="relative">
                   <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
                   <input
@@ -248,14 +269,14 @@ export function InvoiceFormDrawer({
                 </div>
               </div>
             </div>
-            
+
             <div className="flex justify-end -mt-3">
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={handleFillRemaining}
                 className="text-[11px] text-[var(--sidebar-primary)] hover:underline font-medium"
               >
-                Uzupełnij pozostałą kwotą ({maxRemainingPct.toFixed(1)}%)
+                Uzupełnij pozostałą kwotą ({Number(maxRemainingPct.toFixed(1))}%)
               </button>
             </div>
 
@@ -273,7 +294,7 @@ export function InvoiceFormDrawer({
                 />
               </div>
             </div>
-            
+
             {canManageInvoiceDetails && (
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
@@ -325,7 +346,7 @@ export function InvoiceFormDrawer({
               />
             </div>
           </form>
-          
+
 
         </div>
 

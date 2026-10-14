@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { createMilestoneInvoice, deleteMilestoneInvoice, updateMilestoneInvoice } from '@/features/projects/api'
 import { InvoiceFormDrawer } from './InvoiceFormDrawer'
 import { MilestoneInvoicesView } from './MilestoneInvoicesView'
+import { FakturowniaImportDrawer } from './FakturowniaImportDrawer'
 import type { ApiMilestone, CreateMilestoneInvoicePayload, CreateMilestonePayload, ApiProject, ApiMilestoneInvoice, ApiWorkType } from '@/features/projects/types'
 
 type MilestonesTabProps = {
@@ -63,7 +64,7 @@ export function MilestonesTab({
     mutationFn: (data: CreateMilestoneInvoicePayload) =>
       createMilestoneInvoice(activeInvoiceMilestone!.id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['milestones', editingProject?.id] })
+      queryClient.invalidateQueries({ queryKey: ['milestones'] })
       setActiveInvoiceMilestone(null)
       setEditingInvoice(null)
     },
@@ -73,7 +74,7 @@ export function MilestonesTab({
     mutationFn: (data: Partial<CreateMilestoneInvoicePayload>) =>
       updateMilestoneInvoice(activeInvoiceMilestone!.id, editingInvoice!.id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['milestones', editingProject?.id] })
+      queryClient.invalidateQueries({ queryKey: ['milestones'] })
       setActiveInvoiceMilestone(null)
       setEditingInvoice(null)
     },
@@ -83,10 +84,13 @@ export function MilestonesTab({
     mutationFn: ({ milestoneId, invoiceId }: { milestoneId: string; invoiceId: string }) =>
       deleteMilestoneInvoice(milestoneId, invoiceId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['milestones', editingProject?.id] })
+      queryClient.invalidateQueries({ queryKey: ['milestones'] })
     },
   })
 
+  const [isFakturowniaDrawerOpen, setIsFakturowniaDrawerOpen] = useState(false)
+  const [fakturowniaFromForm, setFakturowniaFromForm] = useState(false)
+  
   if (detailedMilestoneId && detailedMilestone) {
     return (
       <>
@@ -101,6 +105,10 @@ export function MilestonesTab({
             setEditingInvoice(null)
             setActiveInvoiceMilestone(m)
           }}
+          onFakturowniaClick={(m) => {
+            setActiveInvoiceMilestone(m)
+            setIsFakturowniaDrawerOpen(true)
+          }}
           onEditInvoiceClick={(m, inv) => {
             setEditingInvoice(inv)
             setActiveInvoiceMilestone(m)
@@ -113,7 +121,7 @@ export function MilestonesTab({
         />
         
         {/* Render InvoiceDrawer over this nested view too */}
-        {activeInvoiceMilestone && (
+        {activeInvoiceMilestone && !isFakturowniaDrawerOpen && (
           <InvoiceFormDrawer
             isOpen={true}
             onClose={() => {
@@ -123,8 +131,12 @@ export function MilestonesTab({
             milestone={activeInvoiceMilestone}
             initialData={editingInvoice}
             canManageInvoiceDetails={canManageInvoiceDetails}
+            onLinkFakturownia={() => {
+              setFakturowniaFromForm(true)
+              setIsFakturowniaDrawerOpen(true)
+            }}
             onSubmit={(data) => {
-              if (editingInvoice) {
+              if (editingInvoice && editingInvoice.id) {
                 editInvoiceMutation.mutate(data)
               } else {
                 addInvoiceMutation.mutate(data)
@@ -134,6 +146,31 @@ export function MilestonesTab({
             contractVal={contractVal}
           />
         )}
+
+        <FakturowniaImportDrawer 
+          isOpen={isFakturowniaDrawerOpen}
+          country={editingProject?.country}
+          onClose={() => {
+            setIsFakturowniaDrawerOpen(false)
+            if (!editingInvoice && !fakturowniaFromForm) {
+              setActiveInvoiceMilestone(null)
+            }
+            setFakturowniaFromForm(false)
+          }}
+          onImport={(invData) => {
+            setEditingInvoice({
+              id: editingInvoice?.id || '', // Empty id means it's a new invoice
+              milestoneId: activeInvoiceMilestone!.id,
+              invoiceNumber: invData.number,
+              netValue: parseFloat(invData.price_net),
+              issuedDate: invData.issue_date,
+              link: invData.view_url, // Assuming Fakturownia provides view_url
+              status: 'WYSTAWIONA'
+            } as any)
+            setIsFakturowniaDrawerOpen(false)
+            setFakturowniaFromForm(false)
+          }}
+        />
       </>
     )
   }
@@ -153,7 +190,7 @@ export function MilestonesTab({
                 Przypisano z kontraktu
               </span>
               <span className={`font-extrabold ${totalPct === 100 ? 'text-[var(--sidebar-primary)]' : totalPct > 100 ? 'text-rose-500' : 'text-amber-500'}`}>
-                {totalPct % 1 === 0 ? totalPct : totalPct.toFixed(2)}%
+                {Number(totalPct.toFixed(1))}%
               </span>
             </div>
             <div className="relative h-3 w-full bg-[var(--muted)]/30 border border-[var(--border)] shadow-inner rounded-full overflow-hidden mt-0.5">
@@ -186,7 +223,7 @@ export function MilestonesTab({
                 Przypisano
               </span>
               <p className={`text-sm font-extrabold truncate ${totalPct === 100 ? 'text-[var(--sidebar-primary)]' : totalPct > 100 ? 'text-rose-500' : 'text-amber-500'}`}>
-                {totalPct % 1 === 0 ? totalPct : totalPct.toFixed(1)}%
+                {Number(totalPct.toFixed(1))}%
               </p>
             </div>
           </div>
@@ -236,20 +273,29 @@ export function MilestonesTab({
                       <th className="px-2 py-1.5 text-center w-24 border-r border-[var(--border)]">Nr</th>
                       <th className="px-3 py-1.5 border-r border-[var(--border)]">Etap / Opis prac</th>
                       <th className="px-2 py-1.5 text-center w-28 border-r border-[var(--border)]">% Udziału</th>
-                      <th className="px-3 py-1.5 text-right w-32 border-r border-[var(--border)]">Kwota netto</th>
+                      <th className="px-3 py-1.5 text-right w-32 border-r border-[var(--border)] whitespace-nowrap">Kwota netto</th>
+                      <th className="px-2 py-1.5 text-center w-28 border-r border-[var(--border)]" title="Procent fakturowania">% Fakt.</th>
                       <th className="px-3 py-1.5 text-right w-44 border-r border-[var(--border)]">Fakturowanie</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--border)] font-medium">
                     {kmMilestones.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="text-center py-6 text-xs text-[var(--muted-foreground)]">
+                        <td colSpan={6} className="text-center py-6 text-xs text-[var(--muted-foreground)]">
                           Brak zdefiniowanych kamieni milowych.
                         </td>
                       </tr>
                     ) : (
                       kmMilestones.map((m, index) => {
                         const netValue = Math.round((contractVal ? (m.percentage / 100) * contractVal : 0) * 100) / 100
+                        const paidNet = m.invoices?.filter(i => i.status === 'ZAPŁACONA' || i.status === 'ZAPŁACONE').reduce((sum, inv) => sum + inv.netValue, 0) || 0
+                        const issuedNet = m.invoices?.filter(i => i.status === 'WYSTAWIONA').reduce((sum, inv) => sum + inv.netValue, 0) || 0
+                        
+                        const paidPct = netValue > 0 ? Math.min(100, (paidNet / netValue) * 100) : 0
+                        const issuedPct = netValue > 0 ? Math.min(100 - paidPct, (issuedNet / netValue) * 100) : 0
+                        const remainingPct = Math.max(0, 100 - paidPct - issuedPct)
+                        const fmt = (v: number) => Number(v.toFixed(1))
+
                         return (
                           <tr
                             key={m.id}
@@ -267,24 +313,35 @@ export function MilestonesTab({
                             </td>
                             <td className="px-2 py-2 text-center border-r border-[var(--border)] font-bold">
                               <span className="inline-block rounded-full bg-[var(--background)] px-2 py-0.5 text-[11px] border border-[var(--border)]">
-                                {m.percentage % 1 === 0 ? m.percentage : m.percentage.toFixed(1)}%
+                                {Number(m.percentage.toFixed(1))}%
                               </span>
                             </td>
-                            <td className="px-3 py-2 text-right border-r border-[var(--border)] font-bold text-[var(--foreground)]">
+                            <td className="px-3 py-2 text-right border-r border-[var(--border)] font-bold text-[var(--foreground)] whitespace-nowrap">
                               {formatBudget(netValue, currency)}
+                            </td>
+                            <td className="px-2 py-2 text-center border-r border-[var(--border)] font-bold">
+                              {m.invoicingPercentage != null ? (
+                                <span className="inline-block rounded-full bg-[var(--background)] px-2 py-0.5 text-[11px] border border-[var(--border)] text-[var(--muted-foreground)]">
+                                  {Math.round(m.invoicingPercentage)}%
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-[var(--muted-foreground)]">-</span>
+                              )}
                             </td>
                             <td className="px-3 py-2 border-r border-[var(--border)] align-middle">
                               <div className="flex flex-col gap-1.5 justify-center mt-1">
-                                <div className="flex justify-end items-center text-[10px] font-bold">
-                                  <span className={m.invoicingPercentage === 100 ? 'text-[var(--sidebar-primary)]' : (m.invoicingPercentage && m.invoicingPercentage > 0 ? 'text-amber-500' : 'text-zinc-400')}>
-                                    {m.invoicingPercentage ? (m.invoicingPercentage % 1 === 0 ? m.invoicingPercentage : m.invoicingPercentage.toFixed(1)) : '0'}%
-                                  </span>
+                                <div className="flex items-center justify-between gap-2 text-[10px] font-bold px-1">
+                                  <span className="text-emerald-500" title="Zapłacono">{fmt(paidPct)}%</span>
+                                  <span className="text-amber-500" title="Wystawiono FV">{fmt(issuedPct)}%</span>
+                                  <span className="text-[var(--muted-foreground)]" title="Pozostało (niewystawione / oczekuje akceptacji)">{fmt(remainingPct)}%</span>
                                 </div>
-                                <div className="relative h-1.5 w-full bg-[var(--muted)]/30 border border-[var(--border)] shadow-inner rounded-full overflow-hidden">
-                                  <div
-                                    className={`h-full rounded-full transition-all duration-500 ${m.invoicingPercentage === 100 ? 'bg-[var(--sidebar-primary)]' : (m.invoicingPercentage && m.invoicingPercentage > 0 ? 'bg-amber-500' : 'bg-transparent')}`}
-                                    style={{ width: `${Math.min(m.invoicingPercentage || 0, 100)}%` }}
-                                  />
+                                <div
+                                  className="relative h-2 w-full bg-[var(--muted)]/40 border border-[var(--border)] shadow-inner rounded-full overflow-hidden flex"
+                                  title={`Zapłacono: ${formatBudget(paidNet, currency)}\nWystawiono: ${formatBudget(issuedNet, currency)}\nPozostało: ${formatBudget(Math.max(0, netValue - paidNet - issuedNet), currency)}`}
+                                >
+                                  <div className="h-full transition-all duration-500 bg-emerald-500" style={{ width: `${paidPct}%` }} />
+                                  <div className="h-full transition-all duration-500 bg-amber-500" style={{ width: `${issuedPct}%` }} />
+                                  <div className="h-full transition-all duration-500 bg-zinc-400 dark:bg-zinc-500" style={{ width: `${remainingPct}%` }} />
                                 </div>
                               </div>
                             </td>
@@ -303,7 +360,7 @@ export function MilestonesTab({
                           Suma KM
                         </td>
                         <td className="px-2 py-2.5 text-center text-[var(--foreground)]">
-                          {totalPct % 1 === 0 ? totalPct : totalPct.toFixed(1)}%
+                          {Number(totalPct.toFixed(1))}%
                         </td>
                         <td className="px-3 py-2.5 text-right text-[var(--foreground)]">
                           <span className="underline underline-offset-4 decoration-zinc-300 dark:decoration-zinc-700 decoration-2">

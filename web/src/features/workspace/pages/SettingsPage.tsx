@@ -17,6 +17,7 @@ const cards: ThemeCard[] = [
   { id: 'lime' },
   { id: 'mono' },
   { id: 'ocean' },
+  { id: 'b3FiC8aqBc' },
 ]
 
 export function SettingsPage({ theme, themePreset, onThemePresetChange }: SettingsPageProps) {
