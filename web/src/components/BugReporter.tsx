@@ -1,11 +1,9 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { Wrench, X, Loader2, Send } from 'lucide-react'
 import { toPng } from 'html-to-image'
-import { useTranslation } from 'react-i18next'
 import type { UserProfile } from '@/types/auth'
 
 export function BugReporter({ profile }: { profile: UserProfile | null }) {
-  const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
   const [description, setDescription] = useState('')
   const [screenshot, setScreenshot] = useState<string | null>(null)

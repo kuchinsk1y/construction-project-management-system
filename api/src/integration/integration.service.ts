@@ -1,61 +1,122 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  fieldGroups,
+  parseProjectFields,
+  pickFields,
+  ProjectFieldGroup,
+} from './project-fields';
+
+export type ListProjectsQuery = {
+  status?: string;
+  managerId?: string;
+  fields?: string;
+};
 
 @Injectable()
 export class IntegrationService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private get detailedIncludes() {
-    return {
-      contractors: { select: { id: true, name: true } },
-      project_types: { select: { code: true, name: true } },
-      users_projects_manager_idTousers: { select: { id: true, firstName: true, lastName: true, email: true } },
-      
-      milestones: {
+  // Loads only the relations required by the requested fields.
+  private buildInclude(groups: Set<ProjectFieldGroup>): Prisma.projectsInclude {
+    const include: Prisma.projectsInclude = {};
+
+    if (groups.has('contractor')) {
+      include.contractors = { select: { id: true, name: true } };
+    }
+    if (groups.has('type')) {
+      include.project_types = { select: { code: true, name: true } };
+    }
+    if (groups.has('manager')) {
+      include.users_projects_manager_idTousers = {
+        select: { id: true, firstName: true, lastName: true, email: true },
+      };
+    }
+    if (groups.has('milestones')) {
+      include.milestones = {
         where: { deleted_at: null },
-        orderBy: { milestone_no: 'asc' } as any,
-      },
-      
-      project_work_types: {
+        orderBy: { milestone_no: 'asc' },
+      };
+    }
+    if (groups.has('works')) {
+      include.project_work_types = {
         where: { deleted_at: null },
         include: { departments: true, milestones: true },
-        orderBy: { created_at: 'asc' } as any,
-      },
-      
-      planned_expenses: {
+        orderBy: { created_at: 'asc' },
+      };
+    }
+    if (groups.has('plannedExpenses')) {
+      include.planned_expenses = {
         include: { cost_categories: true },
-        orderBy: { planned_date: 'asc' } as any,
-      },
+        orderBy: { planned_date: 'asc' },
+      };
+    }
+    if (groups.has('departments')) {
+      include.project_department_foremen = {
+        include: { departments: true, users: true },
+      };
+    }
 
-      project_department_foremen: {
-        include: { departments: true, users: true }
-      }
-    };
+    return include;
   }
 
-  async listActiveProjects() {
+  private parseManagerId(raw?: string): number | undefined {
+    if (raw === undefined) return undefined;
+
+    const value = Number(raw);
+    if (!/^\d+$/.test(raw.trim()) || !Number.isSafeInteger(value)) {
+      throw new BadRequestException(
+        'Query parameter "managerId" must be a positive integer',
+      );
+    }
+    return value;
+  }
+
+  async listActiveProjects(query: ListProjectsQuery = {}) {
+    const fields = parseProjectFields(query.fields);
+    const managerId = this.parseManagerId(query.managerId);
+    const status = query.status?.trim();
+
+    const where: Prisma.projectsWhereInput = { deleted_at: null };
+    if (status) {
+      where.status = { equals: status, mode: 'insensitive' };
+    }
+    if (managerId !== undefined) {
+      where.manager_id = managerId;
+    }
+
     const projects = await this.prisma.projects.findMany({
-      where: { 
-        deleted_at: null,
-      },
-      include: this.detailedIncludes,
+      where,
+      include: this.buildInclude(fieldGroups(fields)),
       orderBy: { created_at: 'desc' },
     });
 
-    return projects.map(p => this.mapDetailedProject(p));
+    return projects.map((p) => this.toView(p, fields));
   }
 
-  async getProjectDetails(id: string) {
+  async getProjectDetails(id: string, rawFields?: string) {
+    const fields = parseProjectFields(rawFields);
+
     const project = await this.prisma.projects.findUnique({
       where: { id, deleted_at: null },
-      include: this.detailedIncludes
+      include: this.buildInclude(fieldGroups(fields)),
     });
 
     if (!project) {
       throw new NotFoundException('Project not found');
     }
 
-    return this.mapDetailedProject(project);
+    return this.toView(project, fields);
+  }
+
+  private toView(project: any, fields?: string[]) {
+    const view = this.mapDetailedProject(project);
+    return fields ? pickFields(view, fields) : view;
   }
 
   private mapDetailedProject(project: any) {
@@ -110,7 +171,9 @@ export class IntegrationService {
       type: p.project_types?.code,
       location: {
         country: p.country,
-        city: p.city
+        city: p.city,
+        latitude: p.latitude != null ? Number(p.latitude) : null,
+        longitude: p.longitude != null ? Number(p.longitude) : null,
       },
       dates: {
         contractStart: p.start_date_contract ? p.start_date_contract.toISOString().split('T')[0] : null,

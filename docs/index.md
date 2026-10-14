@@ -25,6 +25,12 @@ Wybierz jedną z poniższych sekcji, aby zapoznać się ze szczegółami:
 5. [**Raporty dzienne i integracja z TMA**](./daily_reports_integration.md)
    *Plan wdrożenia: raport brygadzisty, dziennik prac, API integracyjne z TMA i tryb live (dokument w języku ukraińskim).*
 
+6. [**Publikacja na VPS**](./deployment_vps.md)
+   *Pierwsze wdrożenie krok po kroku: Docker Compose, Nginx, HTTPS, kopie zapasowe (dokument w języku ukraińskim).*
+
+7. [**Aktualizacja wdrożenia**](./update_deployment.md)
+   *Aktualizacja wersji na serwerze, migracje, rollback (dokument w języku ukraińskim).*
+
 ---
 
 ## 🎯 Główne Funkcjonalności

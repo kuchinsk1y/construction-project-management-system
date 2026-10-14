@@ -49,7 +49,7 @@ export function WorkspaceContent({ isAdmin, profile, theme, themePreset, onTheme
       <Route path="/projects/*" element={<ProjectsPage profile={profile} />} />
       
       {canViewUsers && (
-        <Route path="/users" element={<UsersPage canView={canViewUsers} canAdd={isAdmin} canEdit={isAdminOrDirector} />} />
+        <Route path="/users" element={<UsersPage canView={canViewUsers} canAdd={isAdmin} canEdit={isAdminOrDirector} isAdmin={isAdmin} />} />
       )}
       
       {isAdminOrDirector && (

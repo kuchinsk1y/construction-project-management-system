@@ -13,6 +13,7 @@ type UsersPageProps = {
   canView: boolean
   canAdd: boolean
   canEdit: boolean
+  isAdmin: boolean
 }
 
 type NoticeTone = 'success' | 'error'
@@ -138,7 +139,7 @@ function toUpdatePayload(form: UserFormState): UpdateUserPayload {
   }
 }
 
-export function UsersPage({ canView, canAdd, canEdit }: UsersPageProps) {
+export function UsersPage({ canView, canAdd, canEdit, isAdmin }: UsersPageProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [query, setQuery] = useState('')
@@ -444,6 +445,9 @@ export function UsersPage({ canView, canAdd, canEdit }: UsersPageProps) {
               <table className="w-full whitespace-nowrap border-separate border-spacing-0 text-[13px]">
                 <thead className="sticky top-0 z-10">
                   <tr className="bg-[var(--background)]/95 backdrop-blur supports-[backdrop-filter]:bg-[var(--background)]/80">
+                    {isAdmin ? (
+                      <th className="border-b border-[var(--border)] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">{t('users.table.idLabel')}</th>
+                    ) : null}
                     <th className="border-b border-[var(--border)] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">{t('users.table.headers.user')}</th>
                     <th className="border-b border-[var(--border)] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">{t('users.table.headers.role')}</th>
                     <th className="border-b border-[var(--border)] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">{t('users.table.headers.position')}</th>
@@ -472,6 +476,9 @@ export function UsersPage({ canView, canAdd, canEdit }: UsersPageProps) {
                       ].join(' ')}
                       style={{ animationDelay: `${index * 35}ms` }}
                     >
+                      {isAdmin ? (
+                        <td className="border-b border-[var(--border)] px-4 py-3 align-top tabular-nums text-[var(--muted-foreground)]">{user.id}</td>
+                      ) : null}
                       <td className="border-b border-[var(--border)] px-4 py-3 align-top whitespace-normal">
                         <p className="font-semibold text-sm leading-snug text-[var(--foreground)]">{fullName(user)}</p>
                       </td>

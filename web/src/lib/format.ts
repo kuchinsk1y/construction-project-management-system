@@ -9,7 +9,7 @@ function getFormatter(minFractionDigits: number, maxFractionDigits: number): Int
     formatter = new Intl.NumberFormat('pl-PL', {
       minimumFractionDigits: minFractionDigits,
       maximumFractionDigits: maxFractionDigits,
-      useGrouping: 'always',
+      useGrouping: true,
     })
     formatters.set(key, formatter)
   }
