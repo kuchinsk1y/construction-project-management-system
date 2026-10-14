@@ -992,6 +992,28 @@ export class ProjectsService {
     });
   }
 
+  async listWorkTypeDailyReports(workTypeId: string) {
+    const reports = await this.prisma.daily_reports.findMany({
+      where: { work_type_id: workTypeId, deleted_at: null },
+      orderBy: { report_date: 'desc' },
+      select: {
+        id: true,
+        report_date: true,
+        actual_quantity: true,
+        actual_workers: true,
+        actual_hours: true,
+      },
+    });
+
+    return reports.map((r) => ({
+      id: r.id,
+      date: r.report_date.toISOString().split('T')[0],
+      quantity: r.actual_quantity ? Number(r.actual_quantity) : 0,
+      workers: r.actual_workers ?? null,
+      hours: r.actual_hours ? Number(r.actual_hours) : null,
+    }));
+  }
+
   async createWorkType(projectId: string, dto: CreateWorkTypeDto) {
     const row = await this.prisma.project_work_types.create({
       data: {

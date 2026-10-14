@@ -163,6 +163,11 @@ export class ProjectsController {
     return this.projectsService.deleteWorkType(id);
   }
 
+  @Get('work-types/:id/daily-reports')
+  listWorkTypeDailyReports(@Param('id') id: string) {
+    return this.projectsService.listWorkTypeDailyReports(id);
+  }
+
   // --- Project Departments ---
 
   @Get(':projectId/departments')

@@ -1312,6 +1312,7 @@ export function ProjectDetailsDrawer({
               projectId={editingProject.id}
               milestones={milestones}
               formatBudget={formatBudget}
+              currency={editingProject.currency || 'PLN'}
               canEditProject={canEditProject}
             />
           )}

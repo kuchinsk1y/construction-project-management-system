@@ -1,8 +1,9 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  Loader2, Plus, Edit2, Layers, Check, X, ChevronDown, AlertTriangle, Trash2
+  Loader2, Plus, Edit2, Layers, Check, X, ChevronDown, ChevronRight, AlertTriangle, Trash2
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -15,6 +16,7 @@ import {
 } from '@/features/projects/api'
 import type { ApiMilestone, CreateWorkTypePayload, ApiWorkType } from '@/features/projects/types'
 import { formatAmount } from '@/lib/format'
+import { WorkTypeDetailsView } from './WorkTypeDetailsView'
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -130,6 +132,7 @@ type WorksTabProps = {
   projectId: string
   milestones: ApiMilestone[]
   formatBudget: (val: number, currency?: string) => string
+  currency?: string
   canEditProject: boolean
 }
 
@@ -149,8 +152,17 @@ type EditRow = {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export function WorksTab({ projectId, milestones, canEditProject }: WorksTabProps) {
+export function WorksTab({ projectId, milestones, formatBudget, currency, canEditProject }: WorksTabProps) {
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
+  const { '*': urlPath } = useParams()
+  const pathParts = urlPath ? urlPath.split('/') : []
+  // Work details live at /projects/:id/works/praca/:workId (same pattern as milestone invoices)
+  const detailedWorkId = pathParts[2] === 'praca' ? pathParts[3] : null
+  const openWork = useCallback(
+    (workId: string) => navigate(`/projects/${projectId}/works/praca/${workId}`),
+    [navigate, projectId],
+  )
 
   const [isEditMode, setIsEditMode] = useState(false)
   const [editRows, setEditRows] = useState<EditRow[]>([])
@@ -399,6 +411,26 @@ export function WorksTab({ projectId, milestones, canEditProject }: WorksTabProp
 
   // ─── Render ────────────────────────────────────────────────────────────────
 
+  const detailedWork = detailedWorkId ? workTypes.find(wt => wt.id === detailedWorkId) ?? null : null
+  if (detailedWork && !isEditMode) {
+    const milestone = milestones.find(m => m.id === detailedWork.milestoneId) ?? null
+    const dept = deptOptions.find(d => d.id === detailedWork.departmentId)
+    const foreman = foremenAssignments.find(f => f.departmentId === detailedWork.departmentId)
+    return (
+      <WorkTypeDetailsView
+        key={detailedWork.id}
+        work={detailedWork}
+        milestone={milestone}
+        siblings={workTypes.filter(wt => wt.milestoneId === detailedWork.milestoneId && wt.id !== detailedWork.id)}
+        departmentLabel={dept?.name ?? detailedWork.departmentName}
+        foremanName={foreman?.foremanName ?? null}
+        formatBudget={(val) => formatBudget(val, currency)}
+        onClose={() => navigate(`/projects/${projectId}/works`)}
+        onSelectWork={openWork}
+      />
+    )
+  }
+
   return (
     <div className="w-full space-y-3 animate-tab-content">
       <div className="w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3 md:p-4 shadow-sm space-y-4">
@@ -547,6 +579,7 @@ export function WorksTab({ projectId, milestones, canEditProject }: WorksTabProp
                         updateEditRow={updateEditRow}
                         addSubRow={addSubRow}
                         canEdit={canEditProject}
+                        onOpenWork={openWork}
                       />
                     </tbody>
                   )
@@ -576,6 +609,7 @@ type MilestoneRowsProps = {
   updateEditRow: (id: string, field: keyof EditRow, value: string | boolean) => void
   addSubRow: (milestoneId: string, isRD: boolean) => void
   canEdit: boolean
+  onOpenWork: (workId: string) => void
 }
 
 function MilestoneRows({
@@ -589,13 +623,15 @@ function MilestoneRows({
   updateEditRow,
   addSubRow,
   canEdit,
+  onOpenWork,
 }: MilestoneRowsProps) {
   const isKM = milestone.type === 'KM'
 
   const milestoneCell = (span: number) => (
     <td
       rowSpan={span}
-      className="px-2 py-2 text-center align-top pt-2.5 font-bold"
+      onClick={e => e.stopPropagation()}
+      className="px-2 py-2 text-center align-top pt-2.5 font-bold cursor-default bg-[var(--card)]"
     >
       {isKM ? (
         <span className="inline-block rounded-md px-1.5 py-0.5 text-[11px] shadow-2xs font-extrabold bg-[var(--sidebar-primary)]/10 text-[var(--sidebar-primary)]">
@@ -612,7 +648,8 @@ function MilestoneRows({
   const descriptionCell = (span: number) => (
     <td
       rowSpan={span}
-      className="px-3 py-2 text-[var(--foreground)] font-normal leading-relaxed text-[11px] align-top pt-2.5 max-w-[160px]"
+      onClick={e => e.stopPropagation()}
+      className="px-3 py-2 text-[var(--foreground)] font-normal leading-relaxed text-[11px] align-top pt-2.5 max-w-[160px] cursor-default bg-[var(--card)]"
     >
       {milestone.description}
     </td>
@@ -658,12 +695,24 @@ function MilestoneRows({
           return (
             <tr
               key={wt.id}
-              className="group hover:bg-[var(--muted)]/20 transition-colors align-middle border-b border-[var(--border)] last:border-b-0"
+              tabIndex={0}
+              title="Kliknij, aby zobaczyć szczegóły roboty"
+              onClick={() => onOpenWork(wt.id)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  onOpenWork(wt.id)
+                }
+              }}
+              className="group cursor-pointer outline-none hover:bg-[var(--sidebar-primary)]/[0.05] focus-visible:bg-[var(--sidebar-primary)]/[0.08] transition-colors align-middle border-b border-[var(--border)] last:border-b-0"
             >
               {isFirst && milestoneCell(rowSpan)}
               {isFirst && descriptionCell(rowSpan)}
               <td className="px-3 py-2 font-bold text-[var(--sidebar-primary)] whitespace-nowrap">
-                {wt.name}
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="group-hover:underline underline-offset-2 decoration-[var(--sidebar-primary)]/40">{wt.name}</span>
+                  <ChevronRight size={13} className="text-[var(--muted-foreground)] opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 group-focus-visible:opacity-100 transition-all" />
+                </span>
               </td>
               <td className="px-2 py-2 text-center">
                 <span className="inline-block rounded-full bg-[var(--background)] px-2 py-0.5 text-[11px] font-bold border border-[var(--border)] tabular-nums">

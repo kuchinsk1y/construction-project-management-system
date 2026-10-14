@@ -81,6 +81,14 @@ export type ApiWorkType = {
   plannedEnd: string | null
 }
 
+export type ApiWorkTypeDailyReport = {
+  id: string
+  date: string
+  quantity: number
+  workers: number | null
+  hours: number | null
+}
+
 export type CreateWorkTypePayload = {
   milestoneId?: string
   departmentId: number

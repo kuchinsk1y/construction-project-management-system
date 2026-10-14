@@ -12,6 +12,7 @@ import type {
   ApiProjectDepartment,
   ApiForemanUser,
   ApiWorkType,
+  ApiWorkTypeDailyReport,
   CreateWorkTypePayload,
   ApiForemanAssignment,
   ApiResourcePlan,
@@ -232,4 +233,8 @@ export function searchFakturowniaInvoices(query: string, country?: string): Prom
     url += `&country=${encodeURIComponent(country)}`
   }
   return apiGet<any[]>(url)
+}
+
+export function fetchWorkTypeDailyReports(workTypeId: string): Promise<ApiWorkTypeDailyReport[]> {
+  return apiGet<ApiWorkTypeDailyReport[]>(`/projects/work-types/${workTypeId}/daily-reports`)
 }
