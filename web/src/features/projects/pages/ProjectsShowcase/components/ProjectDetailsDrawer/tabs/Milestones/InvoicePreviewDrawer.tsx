@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { X, ExternalLink, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -10,8 +10,45 @@ interface InvoicePreviewDrawerProps {
   title?: string
 }
 
+// Assumed layout width of HTML invoice pages (cross-origin pages can't be measured)
+const HTML_DOC_WIDTH = 820
+// The invoice page has a wider left margin than right — crop part of it off
+const HTML_DOC_LEFT_CROP = 54
+
 export function InvoicePreviewDrawer({ isOpen, onClose, url, title = 'Podgląd faktury' }: InvoicePreviewDrawerProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 })
+  const [docWidth, setDocWidth] = useState(HTML_DOC_WIDTH)
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect
+      setContainerSize({ width, height })
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [isOpen, url])
+
+  useEffect(() => {
+    setDocWidth(HTML_DOC_WIDTH)
+  }, [url])
+
+  // Same-origin pages can report their real content width
+  const handleIframeLoad = (e: React.SyntheticEvent<HTMLIFrameElement>) => {
+    try {
+      const doc = e.currentTarget.contentDocument
+      const width = doc?.documentElement.scrollWidth
+      if (width && width > 0) setDocWidth(Math.max(width, HTML_DOC_WIDTH))
+    } catch {
+      // cross-origin — keep the default width
+    }
+  }
+
   if (!isOpen || !url) return null
+
+  const scale = containerSize.width > 0 ? Math.min(1, containerSize.width / docWidth) : 1
 
   let previewUrl = url
 
@@ -65,7 +102,7 @@ export function InvoicePreviewDrawer({ isOpen, onClose, url, title = 'Podgląd f
         </div>
 
         {/* Content (Iframe) */}
-        <div className="flex-1 w-full h-full bg-zinc-100 dark:bg-zinc-900 overflow-hidden relative">
+        <div ref={containerRef} className="flex-1 w-full min-h-0 bg-zinc-100 dark:bg-zinc-900 overflow-hidden relative">
           {isPdf ? (
             <iframe
               src={previewUrl}
@@ -74,9 +111,17 @@ export function InvoicePreviewDrawer({ isOpen, onClose, url, title = 'Podgląd f
               sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-downloads"
             />
           ) : (
-            <div style={{ width: '150%', height: '150%', transform: 'scale(0.6666)', transformOrigin: 'top left' }}>
+            <div
+              style={{
+                width: containerSize.width ? containerSize.width / scale + HTML_DOC_LEFT_CROP : '100%',
+                height: containerSize.height / scale || '100%',
+                transform: `scale(${scale}) translateX(-${HTML_DOC_LEFT_CROP}px)`,
+                transformOrigin: 'top left',
+              }}
+            >
               <iframe
                 src={previewUrl}
+                onLoad={handleIframeLoad}
                 className="w-full h-full border-none"
                 title="Podgląd dokumentu"
                 sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-downloads"

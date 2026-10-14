@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { X, Loader2, FileText, Calendar, Banknote, Save, Percent, AlertTriangle } from 'lucide-react'
+import { X, Loader2, FileText, Calendar, Banknote, Save, Percent, AlertTriangle, Link2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { ApiMilestone, ApiMilestoneInvoice } from '@/features/projects/types'
+import { formatAmount } from '@/lib/format'
 
 type InvoiceFormDrawerProps = {
   isOpen: boolean
@@ -13,6 +14,7 @@ type InvoiceFormDrawerProps = {
   contractVal: number
   initialData?: ApiMilestoneInvoice | null
   canManageInvoiceDetails?: boolean
+  onLinkFakturownia?: () => void
 }
 
 export function InvoiceFormDrawer({
@@ -24,6 +26,7 @@ export function InvoiceFormDrawer({
   contractVal,
   initialData,
   canManageInvoiceDetails = false,
+  onLinkFakturownia,
 }: InvoiceFormDrawerProps) {
   const [invoiceNumber, setInvoiceNumber] = useState('')
   const [netValue, setNetValue] = useState('')
@@ -174,17 +177,17 @@ export function InvoiceFormDrawer({
           <div className="mb-6 p-4 rounded-xl border border-[var(--sidebar-primary)]/20 bg-[var(--sidebar-primary)]/5 flex flex-col gap-2">
             <div className="flex justify-between items-center text-sm">
               <span className="text-[var(--muted-foreground)]">Wartość całkowita etapu:</span>
-              <span className="font-bold">{milestoneTotal.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} PLN</span>
+              <span className="font-bold">{formatAmount(milestoneTotal)} PLN</span>
             </div>
             <div className="flex justify-between items-center text-sm">
               <span className="text-[var(--muted-foreground)]">Już zafakturowano:</span>
-              <span className="font-medium text-amber-600 dark:text-amber-500">{alreadyInvoicedPct.toFixed(1)}%</span>
+              <span className="font-medium text-amber-600 dark:text-amber-500">{Number(alreadyInvoicedPct.toFixed(1))}%</span>
             </div>
             <div className="flex justify-between items-center text-sm border-t border-[var(--sidebar-primary)]/10 pt-2 mt-1">
-              <span className="text-[var(--sidebar-primary)] font-semibold">Pozostało do zafakturowania:</span>
+              <span className="text-[var(--sidebar-primary)] font-semibold">Pozostało:</span>
               <span className="font-bold text-[var(--sidebar-primary)]">
-                {maxRemainingNet.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} PLN
-                <span className="text-xs ml-1 opacity-70">({maxRemainingPct.toFixed(1)}%)</span>
+                {formatAmount(maxRemainingNet)} PLN
+                <span className="text-xs ml-1 opacity-70">({Number(maxRemainingPct.toFixed(1))}%)</span>
               </span>
             </div>
           </div>
@@ -199,9 +202,21 @@ export function InvoiceFormDrawer({
 
             {canManageInvoiceDetails && (
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 transition-colors block mb-1">
-                  Numer faktury
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 transition-colors block">
+                    Numer faktury
+                  </label>
+                  {onLinkFakturownia && (
+                    <button
+                      type="button"
+                      onClick={onLinkFakturownia}
+                      className="flex items-center gap-1 text-[11px] font-semibold text-[var(--sidebar-primary)] hover:underline"
+                    >
+                      <Link2 className="w-3.5 h-3.5" />
+                      Pobierz z Fakturowni
+                    </button>
+                  )}
+                </div>
                 <div className="relative">
                   <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
                   <input
@@ -261,7 +276,7 @@ export function InvoiceFormDrawer({
                 onClick={handleFillRemaining}
                 className="text-[11px] text-[var(--sidebar-primary)] hover:underline font-medium"
               >
-                Uzupełnij pozostałą kwotą ({maxRemainingPct.toFixed(1)}%)
+                Uzupełnij pozostałą kwotą ({Number(maxRemainingPct.toFixed(1))}%)
               </button>
             </div>
 

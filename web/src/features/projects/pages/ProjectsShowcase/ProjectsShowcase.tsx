@@ -30,6 +30,7 @@ import { ProjectsFilterBar } from '@/features/projects/pages/ProjectsShowcase/co
 import { ProjectsTableView, type ViewMode, type SortColumn, type SortDirection } from '@/features/projects/pages/ProjectsShowcase/components/ProjectsTableView'
 import { ProjectsGanttView } from '@/features/projects/pages/ProjectsShowcase/components/ProjectsGanttView'
 import { ProjectDetailsDrawer } from '@/features/projects/pages/ProjectsShowcase/components/ProjectDetailsDrawer/ProjectDetailsDrawer'
+import { formatMoney } from '@/lib/format'
 
 // Helper formatters
 function formatDate(value: string | undefined | null, fallback = ''): string {
@@ -55,13 +56,7 @@ function parseDateValue(value: string): Date | null {
 }
 
 function formatBudget(value: number, currencyCode = 'PLN'): string {
-  if (value == null) return '-'
-  const formatted = new Intl.NumberFormat('pl-PL', {
-    style: 'decimal',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value)
-  return `${formatted} ${currencyCode || 'PLN'}`
+  return formatMoney(value, currencyCode)
 }
 
 function statusTone(status: string): string {

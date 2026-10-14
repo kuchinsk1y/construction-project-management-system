@@ -3,6 +3,7 @@ import { Plus, Trash2, X, Loader2, Calendar, Milestone, Wrench, AlertTriangle } 
 import { Button } from '@/components/ui/button'
 import type { UseMutationResult } from '@tanstack/react-query'
 import type { ApiMilestone, CreateMilestonePayload } from '@/features/projects/types'
+import { formatAmount } from '@/lib/format'
 
 type MilestoneFormDrawerProps = {
   isOpen: boolean
@@ -307,7 +308,7 @@ export function MilestoneFormDrawer({
                         </div>
                         <div className="col-span-2 space-y-1">
                           <label className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Kwota (auto)</label>
-                          <div className={inputLockedCls}>{computedNet > 0 ? computedNet.toLocaleString('pl-PL', { minimumFractionDigits: 2 }) : '—'}</div>
+                          <div className={inputLockedCls}>{computedNet > 0 ? formatAmount(computedNet) : '—'}</div>
                         </div>
                         <div className="col-span-3 space-y-1">
                           <label className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Opis etapu</label>

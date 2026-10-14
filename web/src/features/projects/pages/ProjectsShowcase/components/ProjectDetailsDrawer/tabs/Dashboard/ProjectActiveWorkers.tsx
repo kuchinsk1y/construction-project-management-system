@@ -1,18 +1,19 @@
 import { useState } from 'react'
-import { HardHat, User, Clock, Loader2, AlertCircle, ChevronDown, Coffee } from 'lucide-react'
+import { HardHat, User, Clock, Loader2, AlertCircle, ChevronDown, Coffee, Building2 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 
 type WorkerAttendance = {
   id: number
   firstName: string
   lastName: string
+  company?: string
   role: string
   clockInTime: string
   isForeman: boolean
 }
 
 type ProjectActiveWorkersProps = {
-  viewMode: 'grouped' | 'list'
+  viewMode: 'company' | 'grouped' | 'list'
 }
 
 export function ProjectActiveWorkers({ viewMode }: ProjectActiveWorkersProps) {
@@ -25,7 +26,9 @@ export function ProjectActiveWorkers({ viewMode }: ProjectActiveWorkersProps) {
       if (!response.ok) {
         throw new Error('Network response was not ok')
       }
-      return response.json() as Promise<WorkerAttendance[]>
+      const data = (await response.json()) as WorkerAttendance[]
+      // Only ISPIK employees can be a foreman (brygadzista)
+      return data.map(w => ({ ...w, isForeman: w.isForeman && (!w.company || w.company.toUpperCase() === 'ISPIK') }))
     },
   })
 
@@ -33,9 +36,12 @@ export function ProjectActiveWorkers({ viewMode }: ProjectActiveWorkersProps) {
     setExpandedGroups(prev => ({ ...prev, [role]: !prev[role] }))
   }
 
+  const groupKey = (w: WorkerAttendance) => viewMode === 'company' ? (w.company || 'Bez firmy') : w.role
+
   const groupedWorkers = workers.reduce((acc, worker) => {
-    if (!acc[worker.role]) acc[worker.role] = []
-    acc[worker.role].push(worker)
+    const key = groupKey(worker)
+    if (!acc[key]) acc[key] = []
+    acc[key].push(worker)
     return acc
   }, {} as Record<string, WorkerAttendance[]>)
 
@@ -59,7 +65,7 @@ export function ProjectActiveWorkers({ viewMode }: ProjectActiveWorkersProps) {
           </span>
           {showRole && (
             <span className="text-[9px] font-semibold text-[var(--muted-foreground)]">
-              {worker.role}
+              {viewMode === 'company' ? worker.role : viewMode === 'grouped' ? worker.company : [worker.role, worker.company].filter(Boolean).join(' · ')}
             </span>
           )}
         </div>
@@ -116,7 +122,7 @@ export function ProjectActiveWorkers({ viewMode }: ProjectActiveWorkersProps) {
                   >
                     <div className="flex items-center gap-2.5">
                       <div className={`rounded p-1.5 shadow-sm ${hasForeman ? 'bg-amber-500/15 text-amber-500' : 'bg-[var(--sidebar-primary)]/10 text-[var(--sidebar-primary)]'}`}>
-                        {hasForeman ? <HardHat size={12} /> : <User size={12} />}
+                        {viewMode === 'company' ? <Building2 size={12} /> : hasForeman ? <HardHat size={12} /> : <User size={12} />}
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-[11px] font-bold text-[var(--foreground)]">{role}</span>
@@ -132,7 +138,7 @@ export function ProjectActiveWorkers({ viewMode }: ProjectActiveWorkersProps) {
                   
                   {isExpanded && (
                     <div className="flex flex-col border-t border-[var(--border)] bg-[var(--background)]/30 p-1 space-y-0.5 max-h-[160px] overflow-y-auto custom-scrollbar">
-                      {groupWorkers.map(worker => renderWorkerItem(worker, false))}
+                      {groupWorkers.map(worker => renderWorkerItem(worker, true))}
                     </div>
                   )}
                 </div>

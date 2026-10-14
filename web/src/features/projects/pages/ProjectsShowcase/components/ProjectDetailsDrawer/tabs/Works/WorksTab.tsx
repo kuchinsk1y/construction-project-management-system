@@ -14,6 +14,7 @@ import {
   deleteWorkType,
 } from '@/features/projects/api'
 import type { ApiMilestone, CreateWorkTypePayload, ApiWorkType } from '@/features/projects/types'
+import { formatAmount } from '@/lib/format'
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -673,7 +674,7 @@ function MilestoneRows({
                 {formatDateLocal(wt.plannedStart)} - {formatDateLocal(wt.plannedEnd)}
               </td>
               <td className="px-2 py-2 text-right font-bold text-[11px]">
-                {wt.totalQuantity ? Number(wt.totalQuantity).toFixed(2) : '-'} {wt.unit && <span className="font-normal text-[var(--muted-foreground)]">{wt.unit}</span>}
+                {wt.totalQuantity ? formatAmount(wt.totalQuantity) : '-'} {wt.unit && <span className="font-normal text-[var(--muted-foreground)]">{wt.unit}</span>}
               </td>
               <td className="px-3 py-2">
                 <span className="inline-flex items-center rounded-md bg-[var(--sidebar-primary)]/10 px-2 py-0.5 text-[10px] font-bold text-[var(--sidebar-primary)] whitespace-nowrap">

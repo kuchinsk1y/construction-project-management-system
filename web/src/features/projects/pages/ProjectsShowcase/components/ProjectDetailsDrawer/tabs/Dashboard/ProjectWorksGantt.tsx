@@ -104,17 +104,22 @@ export function ProjectWorksGantt({ works }: ProjectWorksGanttProps) {
       const arr = []
       const start = new Date(today)
       start.setDate(start.getDate() - 14) // 14 days ago
-      for (let i = 0; i < 17; i++) { // 14 past + today + 2 ahead = 17
+      for (let i = 0; i < 17; i += 2) {
         const d = new Date(start)
         d.setDate(d.getDate() + i)
-        arr.push({ date: d, label: formatDate(d), isToday: d.getTime() === today.getTime() })
+
+        arr.push({
+          date: d,
+          label: formatDate(d),
+          isToday: d.getTime() === today.getTime()
+        })
       }
       return { columns: arr, totalMs: 17 * 24 * 60 * 60 * 1000, startTime: start.getTime(), endTime: start.getTime() + 17 * 24 * 60 * 60 * 1000 }
     } else if (viewMode === '30d') {
       const arr = []
       const start = new Date(today)
       start.setDate(start.getDate() - 30) // 30 days ago
-      for (let i = 0; i < 33; i++) { // 30 past + today + 2 ahead = 33
+      for (let i = 0; i < 33; i += 5) { // 30 past + today + 2 ahead = 33
         const d = new Date(start)
         d.setDate(d.getDate() + i)
         arr.push({ date: d, label: formatDate(d), isToday: d.getTime() === today.getTime() })
@@ -145,20 +150,20 @@ export function ProjectWorksGantt({ works }: ProjectWorksGanttProps) {
       minT = startD.getTime()
 
       const durationDays = (maxT - minT) / (24 * 60 * 60 * 1000)
-      let stepDays = durationDays > 150 ? 14 : 7 
-      if (durationDays > 365) stepDays = 30 
+      let stepDays = durationDays > 150 ? 14 : 7
+      if (durationDays > 365) stepDays = 30
 
       const arr = []
       let current = new Date(minT)
       while (current.getTime() <= maxT) {
-        const label = stepDays === 30 
+        const label = stepDays === 30
           ? current.toLocaleDateString('pl-PL', { month: 'short', year: '2-digit' })
           : current.toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' })
-        
-        arr.push({ 
-          date: new Date(current), 
+
+        arr.push({
+          date: new Date(current),
           label,
-          isToday: false 
+          isToday: false
         })
         current.setDate(current.getDate() + stepDays)
       }
@@ -179,7 +184,7 @@ export function ProjectWorksGantt({ works }: ProjectWorksGanttProps) {
           </div>
           <span className="text-[var(--muted-foreground)] tracking-wider">Statystyki Robót</span>
         </div>
-        
+
         <div className="flex bg-[var(--muted)]/50 p-0.5 rounded-lg border border-[var(--border)]">
           <button
             onClick={() => setViewMode('14d')}
@@ -306,29 +311,28 @@ export function ProjectWorksGantt({ works }: ProjectWorksGanttProps) {
                                 ))}
                               </div>
 
-                                {!outOfView && (
-                                  <div
-                                    className="absolute top-1 bottom-1 rounded-full shadow-sm transition-all duration-700 ease-out hover:brightness-110 cursor-help"
-                                    style={{ left: `${leftPercent}%`, width: `${Math.min(widthPercent, 100 - leftPercent)}%` }}
-                                    onMouseMove={(e) => handleMouseMove(e, w)}
-                                    onMouseLeave={handleMouseLeave}
-                                  >
-                                    {/* Background Layer with safe opacity */}
-                                    <div className={`absolute inset-0 rounded-full ${
-                                      w.status === 'completed' ? 'bg-[var(--sidebar-primary)]' : 
-                                      w.status === 'in_progress' ? 'bg-[var(--sidebar-primary)] opacity-25' : 
+                              {!outOfView && (
+                                <div
+                                  className="absolute top-1 bottom-1 rounded-full shadow-sm transition-all duration-700 ease-out hover:brightness-110 cursor-help"
+                                  style={{ left: `${leftPercent}%`, width: `${Math.min(widthPercent, 100 - leftPercent)}%` }}
+                                  onMouseMove={(e) => handleMouseMove(e, w)}
+                                  onMouseLeave={handleMouseLeave}
+                                >
+                                  {/* Background Layer with safe opacity */}
+                                  <div className={`absolute inset-0 rounded-full ${w.status === 'completed' ? 'bg-[var(--sidebar-primary)]' :
+                                    w.status === 'in_progress' ? 'bg-[var(--sidebar-primary)] opacity-25' :
                                       'bg-[#e4e4e7] dark:bg-zinc-800'
                                     }`} />
 
-                                    {/* Optional progress fill inside the bar if in progress */}
-                                    {w.status === 'in_progress' && (
-                                      <div
-                                        className="absolute left-0 top-0 bottom-0 bg-[var(--sidebar-primary)] rounded-full transition-all duration-1000 ease-out z-10 shadow-[2px_0_4px_rgba(0,0,0,0.1)]"
-                                        style={{ width: `${w.progress}%` }}
-                                      />
-                                    )}
-                                  </div>
-                                )}
+                                  {/* Optional progress fill inside the bar if in progress */}
+                                  {w.status === 'in_progress' && (
+                                    <div
+                                      className="absolute left-0 top-0 bottom-0 bg-[var(--sidebar-primary)] rounded-full transition-all duration-1000 ease-out z-10 shadow-[2px_0_4px_rgba(0,0,0,0.1)]"
+                                      style={{ width: `${w.progress}%` }}
+                                    />
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </div>
                         )
@@ -377,14 +381,12 @@ export function ProjectWorksGantt({ works }: ProjectWorksGanttProps) {
               <span className="text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wider">Postęp</span>
               <div className="flex items-center gap-2">
                 <div className="relative overflow-hidden px-1.5 py-0.5 rounded-sm flex items-center justify-center">
-                  <div className={`absolute inset-0 ${
-                    tooltip.work.progress === 100 ? 'bg-[var(--sidebar-primary)] opacity-10' :
+                  <div className={`absolute inset-0 ${tooltip.work.progress === 100 ? 'bg-[var(--sidebar-primary)] opacity-10' :
                     tooltip.work.progress > 0 ? 'bg-[var(--sidebar-primary)] opacity-25' : 'bg-[var(--muted)]'
-                  }`} />
-                  <span className={`relative z-10 text-[10px] font-bold ${
-                    tooltip.work.progress === 100 ? 'text-[var(--sidebar-primary)]' :
+                    }`} />
+                  <span className={`relative z-10 text-[10px] font-bold ${tooltip.work.progress === 100 ? 'text-[var(--sidebar-primary)]' :
                     tooltip.work.progress > 0 ? 'text-[var(--sidebar-primary)] brightness-75 dark:brightness-125' : 'text-[var(--muted-foreground)]'
-                  }`}>
+                    }`}>
                     {tooltip.work.progress}%
                   </span>
                 </div>

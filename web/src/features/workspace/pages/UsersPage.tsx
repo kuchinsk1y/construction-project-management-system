@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { createUser, fetchUsers, updateUser, deleteUser } from '@/features/users/api'
+import { UserDetailsView } from '@/features/users/components/UserDetailsView'
 import type { ApiUser, CreateUserPayload, UpdateUserPayload, UserRole } from '@/features/users/types'
 
 type UsersPageProps = {
@@ -95,6 +96,20 @@ function fullName(user: ApiUser): string {
   return parts.join(' ')
 }
 
+function toFormState(user: ApiUser): UserFormState {
+  return {
+    firstName: user.firstName,
+    lastName: user.lastName,
+    middleNames: user.middleNames ?? '',
+    email: user.email,
+    position: user.position,
+    phoneNumber: user.phoneNumber,
+    telegramId: user.telegramId ?? '',
+    role: primaryRole(user),
+    isActive: user.isActive,
+  }
+}
+
 function toCreatePayload(form: UserFormState): CreateUserPayload {
   return {
     firstName: form.firstName.trim(),
@@ -130,6 +145,8 @@ export function UsersPage({ canView, canAdd, canEdit }: UsersPageProps) {
   const [roleFilter, setRoleFilter] = useState<'all' | UserRole>('all')
   const [showModal, setShowModal] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
+  // Existing users open read-only first; "Edytuj" switches the drawer to the form
+  const [isViewMode, setIsViewMode] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [formError, setFormError] = useState('')
   const [formState, setFormState] = useState<UserFormState>(emptyForm)
@@ -190,10 +207,7 @@ export function UsersPage({ canView, canAdd, canEdit }: UsersPageProps) {
         return oldUsers.map((u) => (u.id === updatedUser.id ? updatedUser : u))
       })
       await queryClient.invalidateQueries({ queryKey: ['users'] })
-      setShowModal(false)
-      setIsEditMode(false)
-      setEditingId(null)
-      setFormState(emptyForm)
+      setIsViewMode(true)
       setFormError('')
       showNotice('success', data.noticeTitle, data.noticeMessage)
     },
@@ -243,28 +257,54 @@ export function UsersPage({ canView, canAdd, canEdit }: UsersPageProps) {
   const openCreateModal = () => {
     setFormError('')
     setIsEditMode(false)
+    setIsViewMode(false)
     setEditingId(null)
     setFormState(emptyForm)
     setShowModal(true)
   }
 
-  const openEditModal = (user: ApiUser) => {
+  const viewedUser = useMemo(
+    () => (editingId === null ? null : users.find((user) => user.id === editingId) ?? null),
+    [editingId, users],
+  )
+  const isViewing = isEditMode && isViewMode && viewedUser !== null
+
+  const openViewModal = (user: ApiUser) => {
     setFormError('')
     setIsEditMode(true)
+    setIsViewMode(true)
     setEditingId(user.id)
-    setFormState({
-      firstName: user.firstName,
-      lastName: user.lastName,
-      middleNames: user.middleNames ?? '',
-      email: user.email,
-      position: user.position,
-      phoneNumber: user.phoneNumber,
-      telegramId: user.telegramId ?? '',
-      role: primaryRole(user),
-      isActive: user.isActive,
-    })
+    setFormState(toFormState(user))
     setShowModal(true)
   }
+
+  const startEditing = () => {
+    if (!viewedUser) return
+    setFormError('')
+    setFormState(toFormState(viewedUser))
+    setIsViewMode(false)
+  }
+
+  const closeModal = () => setShowModal(false)
+
+  // Cancel while editing an existing user goes back to the details view
+  const cancelForm = () => {
+    if (isEditMode && !isViewMode) {
+      setFormError('')
+      setIsViewMode(true)
+      return
+    }
+    closeModal()
+  }
+
+  useEffect(() => {
+    if (!showModal || showDeleteConfirm) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') cancelForm()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  })
 
   const handleSubmit = () => {
     setFormError('')
@@ -409,7 +449,6 @@ export function UsersPage({ canView, canAdd, canEdit }: UsersPageProps) {
                     <th className="border-b border-[var(--border)] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">{t('users.table.headers.position')}</th>
                     <th className="border-b border-[var(--border)] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">{t('users.table.headers.contact')}</th>
                     <th className="border-b border-[var(--border)] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">{t('users.table.headers.status')}</th>
-                    <th className="border-b border-[var(--border)] px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">Akcje</th>
                   </tr>
                 </thead>
 
@@ -417,7 +456,20 @@ export function UsersPage({ canView, canAdd, canEdit }: UsersPageProps) {
                   {filteredUsers.map((user, index) => (
                     <tr
                       key={user.id}
-                      className="group transition-colors odd:bg-[var(--background)]/25 hover:bg-[var(--sidebar-accent)]/35 animate-row-fade-in"
+                      tabIndex={0}
+                      title={t('users.table.openHint')}
+                      onDoubleClick={() => openViewModal(user)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') openViewModal(user)
+                      }}
+                      // Prevent text selection flicker on double click
+                      onMouseDown={(event) => {
+                        if (event.detail > 1) event.preventDefault()
+                      }}
+                      className={[
+                        'group cursor-pointer transition-colors odd:bg-[var(--background)]/25 hover:bg-[var(--sidebar-accent)]/35 animate-row-fade-in outline-none focus-visible:bg-[var(--sidebar-primary)]/10',
+                        showModal && editingId === user.id ? 'bg-[var(--sidebar-primary)]/10' : '',
+                      ].join(' ')}
                       style={{ animationDelay: `${index * 35}ms` }}
                     >
                       <td className="border-b border-[var(--border)] px-4 py-3 align-top whitespace-normal">
@@ -438,6 +490,7 @@ export function UsersPage({ canView, canAdd, canEdit }: UsersPageProps) {
                           <button
                             type="button"
                             onClick={() => handleToggleActive(user)}
+                            onDoubleClick={(event) => event.stopPropagation()}
                             className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium transition hover:brightness-110 ${statusClassName(user.isActive)}`}
                           >
                             {user.isActive ? <UserCheck size={12} /> : <UserX size={12} />}
@@ -451,23 +504,6 @@ export function UsersPage({ canView, canAdd, canEdit }: UsersPageProps) {
                             {user.isActive ? t('users.statuses.active') : t('users.statuses.inactive')}
                           </span>
                         )}
-                      </td>
-                      <td className="border-b border-[var(--border)] px-4 py-3 align-top text-right">
-                        <div className="flex justify-end gap-1.5">
-                          {canEdit ? (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openEditModal(user)}
-                              title={t('users.actions.edit')}
-                            >
-                              <PencilLine size={13} />
-                            </Button>
-                          ) : (
-                            <span className="text-zinc-400">-</span>
-                          )}
-                        </div>
                       </td>
                     </tr>
                   ))}
@@ -490,7 +526,7 @@ export function UsersPage({ canView, canAdd, canEdit }: UsersPageProps) {
           'fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity duration-300',
           showModal ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
         ].join(' ')}
-        onClick={() => setShowModal(false)}
+        onClick={closeModal}
       />
 
       {/* Drawer panel */}
@@ -499,24 +535,29 @@ export function UsersPage({ canView, canAdd, canEdit }: UsersPageProps) {
           'fixed inset-y-0 right-0 z-50 flex w-full max-w-[500px] flex-col overflow-hidden border-l border-[var(--border)] bg-[var(--card)] shadow-2xl transition-transform duration-300 ease-out',
           showModal ? 'translate-x-0' : 'translate-x-full',
         ].join(' ')}
-        aria-label={isEditMode ? t('users.modal.editTitle') : t('users.modal.createTitle')}
+        aria-label={isViewing ? t('users.modal.viewTitle') : isEditMode ? t('users.modal.editTitle') : t('users.modal.createTitle')}
       >
         {/* Drawer header */}
         <div className="flex shrink-0 items-center justify-between border-b border-[var(--border)] px-5 py-4">
           <div>
             <h3 className="text-base font-semibold">
-              {isEditMode ? t('users.modal.editTitle') : t('users.modal.createTitle')}
+              {isViewing ? t('users.modal.viewTitle') : isEditMode ? t('users.modal.editTitle') : t('users.modal.createTitle')}
             </h3>
             <p className="mt-0.5 text-sm text-[var(--muted-foreground)]">
-              {isEditMode ? t('users.modal.editSubtitle') : t('users.modal.createSubtitle')}
+              {isViewing ? t('users.modal.viewSubtitle') : isEditMode ? t('users.modal.editSubtitle') : t('users.modal.createSubtitle')}
             </p>
           </div>
-          <Button size="icon-sm" variant="outline" onClick={() => setShowModal(false)} aria-label={t('users.actions.closeModal')}>
+          <Button size="icon-sm" variant="outline" onClick={closeModal} aria-label={t('users.actions.closeModal')}>
             <X size={16} />
           </Button>
         </div>
 
         {/* Drawer body */}
+        {isViewing && viewedUser ? (
+          <div className="flex-1 overflow-y-auto custom-scrollbar px-5 py-4">
+            <UserDetailsView user={viewedUser} fullName={fullName(viewedUser)} roleLabel={roleLabel(primaryRole(viewedUser), t)} />
+          </div>
+        ) : (
         <div className="flex-1 overflow-y-auto custom-scrollbar px-5 py-4 space-y-5">
 
           {/* Section: Personal */}
@@ -652,8 +693,20 @@ export function UsersPage({ canView, canAdd, canEdit }: UsersPageProps) {
             <p className="rounded-xl border border-rose-500/35 bg-rose-500/10 px-3 py-2 text-sm text-rose-500">{formError}</p>
           ) : null}
         </div>
+        )}
 
         {/* Drawer footer */}
+        {isViewing ? (
+          <div className="flex shrink-0 justify-end gap-2 border-t border-[var(--border)] px-5 py-3">
+            <Button type="button" variant="outline" onClick={closeModal}>{t('users.actions.close')}</Button>
+            {canEdit ? (
+              <Button type="button" onClick={startEditing}>
+                <PencilLine size={14} />
+                {t('users.actions.edit')}
+              </Button>
+            ) : null}
+          </div>
+        ) : (
         <div className="flex shrink-0 justify-between gap-2 border-t border-[var(--border)] px-5 py-3">
           <div>
             {isEditMode && (
@@ -663,13 +716,14 @@ export function UsersPage({ canView, canAdd, canEdit }: UsersPageProps) {
             )}
           </div>
           <div className="flex gap-2">
-            <Button type="button" variant="outline" onClick={() => setShowModal(false)}>{t('users.actions.cancel')}</Button>
+            <Button type="button" variant="outline" onClick={cancelForm}>{t('users.actions.cancel')}</Button>
             <Button type="button" onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending || deleteMutation.isPending}>
               {(createMutation.isPending || updateMutation.isPending) ? <Loader2 size={14} className="animate-spin" /> : null}
               {isEditMode ? t('users.actions.save') : t('users.actions.addUser')}
             </Button>
           </div>
         </div>
+        )}
       </aside>
 
       {showDeleteConfirm && (

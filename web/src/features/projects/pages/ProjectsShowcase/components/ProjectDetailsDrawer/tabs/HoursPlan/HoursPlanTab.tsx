@@ -4,6 +4,7 @@ import { Loader2, Clock, Edit2, X, Check } from 'lucide-react' // Save, Percent,
 import { Button } from '@/components/ui/button'
 import type { ApiWorkType } from '@/features/projects/types'
 import { fetchHoursPlan, updateHoursPlan } from '@/features/projects/api'
+import { formatAmount } from '@/lib/format'
 
 type HoursPlanTabProps = {
   projectId: string
@@ -163,7 +164,7 @@ export function HoursPlanTab({ projectId, works, canEditProject }: HoursPlanTabP
             <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] relative z-10">Planowany budżet wynagrodzeń</span>
             <div className="flex items-baseline gap-1.5 relative z-10 mt-1">
               <span className="text-2xl font-black tabular-nums text-[var(--foreground)] tracking-tight">
-                {(plan?.totalSalaryBudget || 0).toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {formatAmount(plan?.totalSalaryBudget || 0)}
               </span>
               <span className="text-xs font-bold text-[var(--muted-foreground)]">PLN</span>
             </div>
@@ -183,7 +184,7 @@ export function HoursPlanTab({ projectId, works, canEditProject }: HoursPlanTabP
                 />
               ) : (
                 <div className="flex-1 px-3 py-1.5 text-sm font-bold text-[var(--foreground)]">
-                  {hourlyRate ? Number(hourlyRate.replace(',', '.')).toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}
+                  {hourlyRate ? formatAmount(Number(hourlyRate.replace(',', '.'))) : '-'}
                 </div>
               )}
               <div className="px-2 py-1.5 bg-[var(--sidebar-primary)]/10 text-[var(--sidebar-primary)] rounded-md text-xs font-bold">
@@ -199,7 +200,7 @@ export function HoursPlanTab({ projectId, works, canEditProject }: HoursPlanTabP
             <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--sidebar-primary)] relative z-10">Planowana ilość godzin</span>
             <div className="flex items-baseline gap-1.5 relative z-10">
               <span className="text-2xl font-black tabular-nums text-[var(--foreground)] tracking-tight">
-                {Math.round(totalHours).toLocaleString('pl-PL')}
+                {formatAmount(Math.round(totalHours), 0)}
               </span>
               <span className="text-xs font-bold text-[var(--muted-foreground)]">godz.</span>
             </div>
@@ -274,7 +275,7 @@ export function HoursPlanTab({ projectId, works, canEditProject }: HoursPlanTabP
 
                       <div className="col-span-3 lg:col-span-3 px-2 flex justify-center">
                         <div className="inline-flex min-w-[60px] justify-center items-center gap-1 rounded-md bg-[var(--sidebar-primary)]/10 px-2 py-1 font-bold text-[11px] text-[var(--sidebar-primary)] tabular-nums group-hover:bg-[var(--sidebar-primary)]/20 transition-colors">
-                          {calculatedHours.toLocaleString('pl-PL')}
+                          {formatAmount(calculatedHours, 0)}
                         </div>
                       </div>
                     </div>

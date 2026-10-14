@@ -4,6 +4,7 @@ import { Search, Loader2, Plus, FileText, X } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { searchFakturowniaInvoices } from '@/features/projects/api'
 import { Button } from '@/components/ui/button'
+import { formatMoney } from '@/lib/format'
 
 interface FakturowniaImportDrawerProps {
   isOpen: boolean
@@ -108,9 +109,9 @@ export function FakturowniaImportDrawer({
                     <div className="flex flex-col min-w-0">
                       <span className="font-bold text-sm truncate" title={inv.number}>{inv.number || 'Brak numeru'}</span>
                       <span className="text-xs text-[var(--muted-foreground)] mt-0.5">
-                        Netto: <strong className="text-[var(--foreground)]">{inv.price_net} {inv.currency}</strong>
+                        Netto: <strong className="text-[var(--foreground)]">{formatMoney(inv.price_net, inv.currency)}</strong>
                         {' • '}
-                        Brutto: <strong className="text-[var(--foreground)]">{inv.price_gross} {inv.currency}</strong>
+                        Brutto: <strong className="text-[var(--foreground)]">{formatMoney(inv.price_gross, inv.currency)}</strong>
                       </span>
                       <span className="text-[10px] text-[var(--muted-foreground)] mt-1">
                         Wystawiono: {inv.issue_date || '-'}

@@ -45,15 +45,18 @@ export function MilestoneInvoicesView({
     : Math.round((contractVal ? (milestone.percentage / 100) * contractVal : 0) * 100) / 100
   const invoicedNet = milestone.invoices?.reduce((sum, inv) => sum + inv.netValue, 0) || 0
 
-  const paidNet = milestone.invoices?.filter(i => i.status === 'ZAPŁACONE').reduce((sum, inv) => sum + inv.netValue, 0) || 0
-  const invoicedNotPaidNet = invoicedNet - paidNet
+  const paidNet = milestone.invoices?.filter(i => i.status === 'ZAPŁACONE' || i.status === 'ZAPŁACONA').reduce((sum, inv) => sum + inv.netValue, 0) || 0
+  // Only actually issued invoices count as "Wystawiono FV"; "Oczekuje akceptacji" stays in "Pozostało"
+  const invoicedNotPaidNet = milestone.invoices?.filter(i => i.status === 'WYSTAWIONA').reduce((sum, inv) => sum + inv.netValue, 0) || 0
 
-  let remainingNet = Math.max(0, Math.round((milestoneTotal - invoicedNet) * 100) / 100)
+  let remainingNet = Math.max(0, Math.round((milestoneTotal - paidNet - invoicedNotPaidNet) * 100) / 100)
   if (remainingNet < 0.1) remainingNet = 0
 
-  const invoicedPct = milestoneTotal > 0 ? (invoicedNet / milestoneTotal) * 100 : 0
+  // "Zafakturowano" = only issued (WYSTAWIONA) + paid invoices, without "Oczekuje akceptacji"
+  const issuedNet = paidNet + invoicedNotPaidNet
+  const invoicedPct = milestoneTotal > 0 ? (issuedNet / milestoneTotal) * 100 : 0
 
-  const isSettled = invoicedNet >= milestoneTotal - 0.1
+  const isSettled = issuedNet >= milestoneTotal - 0.1
   const isOverbudget = invoicedNet > milestoneTotal + 0.1
 
   const milestoneWorks = works.filter(w => w.milestoneId === milestone.id)
@@ -120,8 +123,8 @@ export function MilestoneInvoicesView({
             <div className="flex flex-col items-center text-center">
               <span className="text-[9px] uppercase font-bold text-[var(--muted-foreground)] tracking-wider">Zafakturowano</span>
               <div className="flex items-baseline gap-1.5 mt-0.5">
-                <span className="text-xl font-extrabold text-[var(--foreground)] leading-none">{formatBudget(invoicedNet, currency)}</span>
-                <span className="text-[11px] font-medium text-[var(--foreground)] opacity-80">{Math.round(invoicedPct)}%</span>
+                <span className="text-xl font-extrabold text-[var(--foreground)] leading-none">{formatBudget(issuedNet, currency)}</span>
+                <span className="text-[11px] font-medium text-[var(--foreground)] opacity-80">{Number(invoicedPct.toFixed(1))}%</span>
               </div>
             </div>
           </div>

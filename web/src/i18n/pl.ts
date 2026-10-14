@@ -267,6 +267,7 @@ export const pl = {
         actions: 'Akcje',
       },
       idLabel: 'ID',
+      openHint: 'Kliknij dwukrotnie, aby zobaczyć szczegóły',
     },
     statuses: {
       active: 'Aktywny',
@@ -279,6 +280,7 @@ export const pl = {
       save: 'Zapisz zmiany',
       closeAlert: 'Zamknij alert',
       closeModal: 'Zamknij modal',
+      close: 'Zamknij',
       addUser: 'Dodaj uzytkownika',
     },
     states: {
@@ -287,6 +289,8 @@ export const pl = {
       noResults: 'Brak uzytkownikow dla aktualnego filtra.',
     },
     modal: {
+      viewTitle: 'Szczegóły użytkownika',
+      viewSubtitle: 'Podgląd danych konta.',
       editTitle: 'Edytuj uzytkownika',
       createTitle: 'Nowy uzytkownik',
       editSubtitle: 'Zmien dane i zapisz aktualizacje.',
@@ -304,6 +308,17 @@ export const pl = {
         status: 'Status konta',
         activeAccountDesc: 'Czy to konto ma dostęp do systemu?',
       },
+    },
+    view: {
+      contactSection: 'Kontakt',
+      roleSection: 'Rola i stanowisko',
+      accountSection: 'Konto',
+      notProvided: 'Nie podano',
+      copy: 'Kopiuj',
+      createdAt: 'Utworzono',
+      updatedAt: 'Ostatnia aktualizacja',
+      activeDesc: 'Aktywne — ma dostęp do systemu',
+      inactiveDesc: 'Nieaktywne — brak dostępu do systemu',
     },
     validation: {
       required: 'Wypelnij wymagane pola: imie, nazwisko, e-mail, stanowisko i telefon',
