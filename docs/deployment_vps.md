@@ -248,10 +248,20 @@ INTEGRATION_API_KEY=<openssl rand -hex 32>
 # Telegram: куди надходять звіти з кнопки зворотного зв'язку (bug reporter)
 TELEGRAM_BOT_TOKEN=<токен від @BotFather>
 TELEGRAM_ADMIN_CHAT_ID=<Telegram ID адміна>
+
+# Fakturownia: імпорт рахунків в етапи (Kamienie milowe)
+FAKTUROWNIA_API_TOKEN=<API-токен Fakturownia>
+FAKTUROWNIA_PL_SUBDOMAIN=ispik
+FAKTUROWNIA_LV_SUBDOMAIN=<субдомен для Латвії>
+FAKTUROWNIA_RO_SUBDOMAIN=<субдомен для Румунії>
+FAKTUROWNIA_ES_SUBDOMAIN=<субдомен для Іспанії>
 ```
 
 > [!NOTE]
 > `TELEGRAM_ADMIN_CHAT_ID` — числовий Telegram ID адміна, який отримує звіти (дізнатися свій ID можна, наприклад, через @userinfobot). Адмін має хоча б раз натиснути **Start** у вашому боті, інакше бот не зможе йому писати. Без цих змінних API працює, але надіслати звіт не вийде.
+
+> [!NOTE]
+> **Fakturownia.** `FAKTUROWNIA_API_TOKEN` — API-токен із налаштувань акаунта Fakturownia (розділ про інтеграцію / API). Субдомен — перша частина адреси акаунта: для `https://ispik.fakturownia.pl` це `ispik`. Субдомен обирається за країною проєкту: Łotwa → `LV`, Rumunia → `RO`, Hiszpania → `ES`, усі інші → `PL`. Якщо `PL` не задано, використовується `ispik`; якщо не задано `LV`/`RO`/`ES` — використовується субдомен `PL`. Без `FAKTUROWNIA_API_TOKEN` API працює, але імпорт рахунків повертатиме помилку *«Fakturownia API token is not configured on the server»*. Якщо в усіх країнах один і той самий акаунт, змінні `LV`/`RO`/`ES` можна не задавати.
 
 > [!NOTE]
 > `PORT`, `DATABASE_URL`, `REDIS_HOST`, `REDIS_PORT` в `api/.env` можна не вказувати — `docker-compose.prod.yml` перевизначає їх правильними значеннями для Docker-мережі.
@@ -347,6 +357,7 @@ sudo certbot renew --dry-run
 - [ ] Створення/зміна проєкту з'являється в Google-таблиці (перевіряє Redis/BullMQ + Google-ключ). Помилки синхронізації пишуться в таблицю `google_sheets_sync_errors` і в `logs api`.
 - [ ] Інтеграція: `curl -H "x-api-key: $KEY" https://projects.ispik24.pl/api/v1/integration/projects` повертає JSON.
 - [ ] Bug-reporter (кнопка зворотного зв'язку) надсилає повідомлення зі скріншотом.
+- [ ] Імпорт рахунку з Fakturownia в етапі (Kamień milowy) знаходить рахунки.
 
 ---
 
@@ -421,3 +432,4 @@ alias dc='docker compose -f /opt/erp/docker-compose.prod.yml --project-directory
 | Фронт звертається до `localhost:3000` | Образ `web` зібраний не з `Dockerfile.prod`. Перезберіть: `dc build --no-cache web && dc up -d web`. |
 | У консолі браузера `blocked by CORS policy` | Домен, з якого відкрито сайт, не збігається з `FRONTEND_URL` в `api/.env` (перевірте `https://`, `www`, слеш у кінці). Виправте і виконайте `dc up -d api`. |
 | Кнопка зворотного зв'язку повертає помилку | Не задано `TELEGRAM_BOT_TOKEN` / `TELEGRAM_ADMIN_CHAT_ID` або адмін не натиснув Start у боті. Див. `dc logs api`. |
+| Імпорт з Fakturownia: `Fakturownia API returned status: 401` / `404` | `401` — неправильний `FAKTUROWNIA_API_TOKEN`; `404` — неправильний субдомен для країни проєкту (`FAKTUROWNIA_*_SUBDOMAIN`). Після правки `api/.env`: `dc up -d api`. |
