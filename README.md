@@ -103,6 +103,10 @@ docker compose up --build
 - **API (Backend):** `http://localhost:3000` (or as configured in NestJS)
 - **Database:** PostgreSQL on port `5432`
 
+### Production deployment
+
+See [docs/deployment_vps.md](./docs/deployment_vps.md) (first deployment on a VPS) and [docs/update_deployment.md](./docs/update_deployment.md) (updating). Production uses `docker-compose.prod.yml`.
+
 ---
 
 <!-- ## 📸 Screenshots

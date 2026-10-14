@@ -1,3 +1,4 @@
 .env
 api/dist
 node_modules
+backups

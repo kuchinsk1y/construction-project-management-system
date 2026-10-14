@@ -1,4 +1,3 @@
-import { useEffect, useRef } from 'react'
 import type { FormEvent } from 'react'
 import { ArrowRight, Mail, ShieldCheck } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -26,7 +25,6 @@ export function AuthScreen({
   normalizedEmail,
   email,
   code,
-  message,
   error,
   isLoading,
   onEmailChange,

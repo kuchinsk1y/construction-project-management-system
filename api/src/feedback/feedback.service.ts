@@ -1,13 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import FormData from 'form-data';
 
 @Injectable()
 export class FeedbackService {
   private readonly logger = new Logger(FeedbackService.name);
 
+  constructor(private readonly config: ConfigService) {}
+
   async sendToTelegram({ description, url, user, file }: { description: string, url: string, user: string, file: Express.Multer.File }) {
-    const BOT_TOKEN = '1828341692:AAGxWM8o773LuqkV7qoRdyg0mICmpZVnzwU';
-    const CHAT_ID = '784892922';
+    const BOT_TOKEN = this.config.getOrThrow<string>('TELEGRAM_BOT_TOKEN');
+    // Telegram ID of the admin who receives bug reports
+    const CHAT_ID = this.config.getOrThrow<string>('TELEGRAM_ADMIN_CHAT_ID');
     const isPhoto = !!file;
     const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/${isPhoto ? 'sendPhoto' : 'sendMessage'}`;
 

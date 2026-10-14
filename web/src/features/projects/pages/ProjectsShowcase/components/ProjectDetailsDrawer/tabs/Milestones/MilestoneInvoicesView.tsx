@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowLeft, FileText, Plus, Trash2, CheckCircle2, AlertTriangle, Calculator, PieChart, Banknote, Edit3, Link as LinkIcon, Layers } from 'lucide-react'
+import { ArrowLeft, FileText, Plus, Trash2, CheckCircle2, AlertTriangle, Edit3, Link as LinkIcon, Layers } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { ApiMilestone, ApiMilestoneInvoice, ApiWorkType } from '@/features/projects/types'
 import { MilestoneInvoiceDonut } from './MilestoneInvoiceDonut'
@@ -42,9 +42,7 @@ export function MilestoneInvoicesView({
 
   let remainingNet = Math.max(0, Math.round((milestoneTotal - invoicedNet) * 100) / 100)
   if (remainingNet < 0.1) remainingNet = 0
-  
-  const invoicedPct = milestoneTotal > 0 ? (invoicedNet / milestoneTotal) * 100 : 0
-  
+
   const isSettled = invoicedNet >= milestoneTotal - 0.1
   const isOverbudget = invoicedNet > milestoneTotal + 0.1
 

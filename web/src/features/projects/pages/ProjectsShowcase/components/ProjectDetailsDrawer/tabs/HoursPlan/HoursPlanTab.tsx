@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Loader2, Save, Clock, Percent, Info, Edit2, X, Check } from 'lucide-react'
+import { Loader2, Clock, Edit2, X, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { ApiWorkType } from '@/features/projects/types'
 import { fetchHoursPlan, updateHoursPlan } from '@/features/projects/api'
@@ -230,8 +230,8 @@ export function HoursPlanTab({ projectId, works, canEditProject }: HoursPlanTabP
                       <div className="col-span-6 lg:col-span-7 border-r border-[var(--border)] pr-2">
                         <div className="flex flex-col">
                           <span className="text-xs font-bold text-[var(--foreground)]">{idx + 1}. {w.name}</span>
-                          {w.departments?.name && (
-                            <span className="text-[9px] text-[var(--muted-foreground)] uppercase tracking-wider mt-0.5">{w.departments.name}</span>
+                          {w.departmentName && (
+                            <span className="text-[9px] text-[var(--muted-foreground)] uppercase tracking-wider mt-0.5">{w.departmentName}</span>
                           )}
                         </div>
                       </div>

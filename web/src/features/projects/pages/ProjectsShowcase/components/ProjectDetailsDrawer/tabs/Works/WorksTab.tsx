@@ -634,7 +634,6 @@ function MilestoneRows({
     <>
       {rows.map((row, idx) => {
         const isFirst = idx === 0
-        const isLast = idx === rows.length - 1
 
         if ('wt' in row) {
           // Read-only row
