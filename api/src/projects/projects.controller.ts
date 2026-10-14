@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Headers,
   Param,
   Post,
   Put,
@@ -15,11 +16,27 @@ import { UpdateMilestoneDto } from './dto/update-milestone.dto';
 import { CreateWorkTypeDto } from './dto/create-work-type.dto';
 import { CreateResourcePlanDto } from './dto/create-resource-plan.dto';
 import { CreateMilestoneInvoiceDto } from './dto/create-milestone-invoice.dto';
+import { JwtService } from '@nestjs/jwt';
 import { ProjectsService } from './projects.service';
 
 @Controller('projects')
 export class ProjectsController {
-  constructor(private readonly projectsService: ProjectsService) {}
+  constructor(
+    private readonly projectsService: ProjectsService,
+    private readonly jwt: JwtService,
+  ) {}
+
+  /** Id of the logged-in user from the Bearer token, or null if missing/invalid. */
+  private async requesterId(authorization?: string): Promise<number | null> {
+    const token = authorization?.match(/^Bearer\s+(.+)$/i)?.[1];
+    if (!token) return null;
+    try {
+      const payload = await this.jwt.verifyAsync<{ sub?: number }>(token);
+      return typeof payload.sub === 'number' ? payload.sub : null;
+    } catch {
+      return null;
+    }
+  }
 
   @Get()
   list() {
@@ -89,11 +106,16 @@ export class ProjectsController {
   // --- Milestone Invoices ---
 
   @Post('milestones/:milestoneId/invoices')
-  createMilestoneInvoice(
+  async createMilestoneInvoice(
     @Param('milestoneId') milestoneId: string,
     @Body() dto: CreateMilestoneInvoiceDto,
+    @Headers('authorization') authorization?: string,
   ) {
-    return this.projectsService.createMilestoneInvoice(milestoneId, dto);
+    return this.projectsService.createMilestoneInvoice(
+      milestoneId,
+      dto,
+      await this.requesterId(authorization),
+    );
   }
 
   @Put('milestones/:milestoneId/invoices/:invoiceId')

@@ -170,26 +170,26 @@ export function HoursPlanTab({ projectId, works, canEditProject }: HoursPlanTabP
             </div>
           </div>
 
-          <div className="rounded-md border border-[var(--border)] bg-[var(--card)] p-3 shadow-sm flex flex-col gap-2">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">Planowana Śr. Stawka (PLN/h)</label>
-            <div className="flex items-center gap-2">
+          <div className="rounded-md border border-[var(--border)] bg-[var(--card)] p-3 shadow-sm flex flex-col justify-center gap-1 relative overflow-hidden">
+            <label htmlFor="hours-plan-rate" className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] relative z-10">Planowana śr. stawka</label>
+            <div className="flex items-baseline gap-1.5 relative z-10 mt-1">
               {isEditMode ? (
                 <input
+                  id="hours-plan-rate"
                   type="text"
+                  inputMode="decimal"
                   value={hourlyRate}
                   onChange={(e) => setHourlyRate(e.target.value)}
                   disabled={!canEditProject}
                   placeholder="np. 45"
-                  className="flex-1 rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-1.5 text-xs font-bold shadow-inner focus:border-[var(--sidebar-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--sidebar-primary)] disabled:opacity-50"
+                  className="w-32 min-w-0 rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-0.5 text-2xl font-black tabular-nums tracking-tight text-[var(--foreground)] shadow-inner placeholder:text-base placeholder:font-medium focus:border-[var(--sidebar-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--sidebar-primary)] disabled:opacity-50"
                 />
               ) : (
-                <div className="flex-1 px-3 py-1.5 text-sm font-bold text-[var(--foreground)]">
+                <span className="text-2xl font-black tabular-nums text-[var(--foreground)] tracking-tight">
                   {hourlyRate ? formatAmount(Number(hourlyRate.replace(',', '.'))) : '-'}
-                </div>
+                </span>
               )}
-              <div className="px-2 py-1.5 bg-[var(--sidebar-primary)]/10 text-[var(--sidebar-primary)] rounded-md text-xs font-bold">
-                PLN / h
-              </div>
+              <span className="text-xs font-bold text-[var(--muted-foreground)]">PLN/h</span>
             </div>
           </div>
 

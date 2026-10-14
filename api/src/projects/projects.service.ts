@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
   InternalServerErrorException,
 } from '@nestjs/common';
@@ -32,6 +33,8 @@ function sanitizeDecimals(
 
 @Injectable()
 export class ProjectsService {
+  private readonly logger = new Logger(ProjectsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     @InjectQueue('projects-sync') private readonly syncQueue: Queue,
@@ -727,7 +730,11 @@ export class ProjectsService {
 
   // --- Milestone Invoices ---
 
-  async createMilestoneInvoice(milestoneId: string, dto: CreateMilestoneInvoiceDto) {
+  async createMilestoneInvoice(
+    milestoneId: string,
+    dto: CreateMilestoneInvoiceDto,
+    requesterId: number | null = null,
+  ) {
     const milestone = await this.prisma.milestones.findUnique({
       where: { id: milestoneId, deleted_at: null },
     });
@@ -750,6 +757,13 @@ export class ProjectsService {
 
     await this.recalculateMilestoneInvoicing(milestoneId, Number(milestone.net_amount));
 
+    // A new invoice awaiting acceptance is a request from the project manager — notify finance
+    if (invoice.status === 'OCZEKUJE') {
+      this.notifyFinancialDirectorsAboutInvoiceRequest(milestone, invoice, requesterId).catch((error) =>
+        this.logger.error('Failed to notify financial directors about invoice request', error as Error),
+      );
+    }
+
     return {
       id: invoice.id,
       invoiceNumber: invoice.invoice_number,
@@ -759,6 +773,65 @@ export class ProjectsService {
       status: invoice.status,
       link: invoice.link,
     };
+  }
+
+  private async notifyFinancialDirectorsAboutInvoiceRequest(
+    milestone: { project_id: string; milestone_no: string; description: string },
+    invoice: { net_value: unknown; issued_date: Date | null; note: string },
+    requesterId: number | null,
+  ) {
+    const [project, recipients, requester] = await Promise.all([
+      this.prisma.projects.findUnique({
+        where: { id: milestone.project_id },
+        select: {
+          id: true,
+          name: true,
+          currency: true,
+          users_projects_manager_idTousers: { select: { firstName: true, lastName: true } },
+        },
+      }),
+      this.prisma.user.findMany({
+        where: { isActive: true, roles: { has: 'financial_director' } },
+        select: { email: true, firstName: true },
+      }),
+      requesterId
+        ? this.prisma.user.findUnique({
+            where: { id: requesterId },
+            select: { firstName: true, lastName: true, position: true },
+          })
+        : null,
+    ]);
+
+    if (!project || recipients.length === 0) return;
+
+    // Prefer the logged-in author; fall back to the project manager
+    const manager = project.users_projects_manager_idTousers;
+    const requestedBy = requester
+      ? [`${requester.firstName} ${requester.lastName}`.trim(), requester.position].filter(Boolean).join(', ')
+      : manager
+        ? `${manager.firstName} ${manager.lastName}`.trim()
+        : 'Kierownik projektu';
+    const netValue = `${new Intl.NumberFormat('pl-PL', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+      useGrouping: 'always',
+    }).format(Number(invoice.net_value))} ${project.currency || 'PLN'}`;
+    const frontendUrl = this.config.get<string>('FRONTEND_URL') ?? 'http://localhost:5173';
+
+    await Promise.all(
+      recipients.map((recipient) =>
+        this.mailService.sendInvoiceRequestEmail(recipient.email, recipient.firstName, {
+          projectName: project.name,
+          milestoneNo: milestone.milestone_no,
+          milestoneDescription: milestone.description,
+          netValue,
+          requestedBy,
+          issuedDate: invoice.issued_date?.toISOString().split('T')[0] ?? null,
+          note: invoice.note || null,
+          invoicesUrl: `${frontendUrl}/projects/${project.id}/milestones`,
+        }),
+      ),
+    );
   }
 
   async updateMilestoneInvoice(milestoneId: string, invoiceId: string, dto: CreateMilestoneInvoiceDto) {
