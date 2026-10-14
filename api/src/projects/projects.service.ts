@@ -1029,10 +1029,17 @@ export class ProjectsService {
       },
       include: {
         projects: { select: { name: true } },
-        milestones: { select: { milestone_no: true } },
+        milestones: { select: { milestone_no: true, type: true } },
         departments: { select: { name: true } },
       },
     });
+
+    // Works on additional works (RD) get 1% of the hours plan by default
+    if (row.milestones?.type === 'roboty_dodatkowe') {
+      await this.prisma.work_type_hours_distribution.create({
+        data: { project_id: projectId, work_type_id: row.id, percentage: 1 },
+      });
+    }
 
     const spreadsheetId = this.config.getOrThrow<string>('PROJECTS_SPREADSHEET_ID');
     const sheetName = this.config.get<string>('WORK_TYPES_SHEET_NAME', 'RodzajeRobot');

@@ -1,4 +1,6 @@
-import { BriefcaseBusiness, Calendar, HardHat, Sparkles, TrendingUp, Users, Zap } from 'lucide-react'
+import { BriefcaseBusiness, Calendar, TrendingUp, Users, Zap } from 'lucide-react'
+
+import { DashboardOverview } from '@/features/workspace/components/DashboardOverview'
 
 // Mixes a palette color with transparency, e.g. alpha('dash-accent', 20)
 const alpha = (name: string, pct: number) => `color-mix(in oklch, var(--${name}) ${pct}%, transparent)`
@@ -22,7 +24,7 @@ const themePalette = {
 
 export function DashboardPage() {
   return (
-    <div className="w-full space-y-4 p-3" style={themePalette}>
+    <div className="w-full space-y-1.5 p-3" style={themePalette}>
       <style>{`
         @keyframes sunRay {
           0%,100% { opacity: 0.5; transform: scaleX(1); }
@@ -86,7 +88,7 @@ export function DashboardPage() {
 
       {/* ── HERO BANNER ── */}
       <div
-        className="relative w-full overflow-hidden rounded-2xl border"
+        className="relative isolate w-full overflow-hidden rounded-2xl border"
         style={{
           height: '340px',
           background: 'linear-gradient(175deg, var(--dash-bg-0) 0%, var(--dash-bg-1) 40%, var(--dash-bg-2) 80%, var(--dash-bg-3) 100%)',
@@ -444,47 +446,9 @@ export function DashboardPage() {
         </div>
       </div>
 
-      {/* ── FEATURE PREVIEW CARDS ── */}
-      <div
-        className="grid grid-cols-1 sm:grid-cols-3 gap-3"
-        style={{ animation: 'slideFadeIn 0.8s ease-out 1s both' }}
-      >
-        {[
-          { icon: TrendingUp, title: 'KPI & Analizy', desc: 'Wskaźniki postępu, budżetów i harmonogramów wszystkich projektów.', color: 'dash-accent' },
-          { icon: Calendar, title: 'Oś czasu', desc: 'Interaktywny Gantt z kamieniami milowymi i alertami terminów.', color: 'dash-accent-2' },
-          { icon: HardHat, title: 'Zasoby & Brygady', desc: 'Przydział zespołów, dostępność i raportowanie godzin pracy.', color: 'dash-accent-3' },
-        ].map(({ icon: Icon, title, desc, color }) => (
-          <div
-            key={title}
-            className="group relative rounded-xl bg-[var(--card)] p-4 space-y-3 overflow-hidden cursor-default transition-all duration-300"
-            style={{ border: `1px solid ${alpha('dash-accent', 12)}` }}
-          >
-            {/* Hover glow */}
-            <div className="absolute -inset-px rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-              style={{ background: `radial-gradient(circle at 30% 50%, ${alpha(color, 4)}, transparent 70%)` }} />
-
-            <div className="flex items-start justify-between">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ background: alpha(color, 6), border: `1px solid ${alpha(color, 15)}` }}>
-                <Icon size={18} style={{ color: `var(--${color})` }} strokeWidth={1.5} />
-              </div>
-              <span className="text-[9px] font-bold px-2 py-1 rounded-full uppercase tracking-widest"
-                style={{ background: alpha('dash-accent', 7), color: 'var(--dash-accent)', border: `1px solid ${alpha('dash-accent', 18)}` }}>
-                <Sparkles size={8} className="inline mr-1" />
-                Wkrótce
-              </span>
-            </div>
-
-            <div className="space-y-1">
-              <h3 className="text-sm font-extrabold text-[var(--foreground)]">{title}</h3>
-              <p className="text-[11px] text-[var(--muted-foreground)] leading-relaxed">{desc}</p>
-            </div>
-
-            <div className="h-1 w-full rounded-full overflow-hidden" style={{ background: alpha('dash-accent', 8) }}>
-              <div className="h-full rounded-full" style={{ width: '0%', background: `var(--${color})` }} />
-            </div>
-          </div>
-        ))}
+      {/* ── LIVE OVERVIEW ── */}
+      <div style={{ animation: 'slideFadeIn 0.8s ease-out 0.6s both' }}>
+        <DashboardOverview />
       </div>
     </div>
   )

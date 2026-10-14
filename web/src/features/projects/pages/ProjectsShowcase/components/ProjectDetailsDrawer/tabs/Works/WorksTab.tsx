@@ -333,6 +333,8 @@ export function WorksTab({ projectId, milestones, formatBudget, currency, canEdi
 
       await Promise.all(promises)
       await queryClient.invalidateQueries({ queryKey: ['work-types', projectId] })
+      // New RD works get a default share in the hours plan
+      await queryClient.invalidateQueries({ queryKey: ['project-hours-plan', projectId] })
       setIsEditMode(false)
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : 'Błąd zapisu')
