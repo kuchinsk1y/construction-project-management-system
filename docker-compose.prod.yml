@@ -57,7 +57,7 @@ services:
       - api
     # Only reachable from the VPS itself; the host nginx terminates HTTPS
     ports:
-      - "127.0.0.1:${WEB_PORT:-8080}:80"
+      - "127.0.0.1:${WEB_PORT:-8081}:80"
 
 volumes:
   postgres_data:
