@@ -38,7 +38,7 @@ git pull  →  docker compose build (api, web)  →  docker compose up -d
 ## 🚀 Варіант А: автоматичний скрипт (рекомендовано)
 
 ```bash
-ssh deploy@IP_СЕРВЕРА
+ssh deploy@31.70.70.236
 cd /opt/erp
 ./deploy/deploy.sh
 ```
@@ -66,7 +66,7 @@ cd /opt/erp
 ## 🛠️ Варіант Б: вручну, крок за кроком
 
 ```bash
-ssh deploy@IP_СЕРВЕРА
+ssh deploy@31.70.70.236
 cd /opt/erp
 ```
 
@@ -115,7 +115,7 @@ docker compose -f docker-compose.prod.yml up -d
 ```bash
 docker compose -f docker-compose.prod.yml ps
 docker compose -f docker-compose.prod.yml logs --tail=50 api
-curl http://127.0.0.1:8080/api/
+curl http://127.0.0.1:8081/api/
 ```
 
 **8. Прибрати старі образи**

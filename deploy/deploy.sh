@@ -8,6 +8,10 @@ cd "$(dirname "$0")/.."
 BRANCH="${1:-main}"
 COMPOSE="docker compose -f docker-compose.prod.yml"
 
+# WEB_PORT lives in .env; read it so the health check hits our container, not another project's
+WEB_PORT="$(grep -E '^WEB_PORT=' .env | cut -d= -f2 | tr -d '\r' || true)"
+WEB_PORT="${WEB_PORT:-8081}"
+
 echo "==> Backing up the database"
 ./deploy/backup-db.sh
 
@@ -25,7 +29,7 @@ $COMPOSE up -d
 
 echo "==> Waiting for the API"
 for i in $(seq 1 30); do
-  if curl -fsS "http://127.0.0.1:${WEB_PORT:-8080}/api/" > /dev/null; then
+  if curl -fsS "http://127.0.0.1:${WEB_PORT}/api/" > /dev/null; then
     echo "    API is up"
     break
   fi

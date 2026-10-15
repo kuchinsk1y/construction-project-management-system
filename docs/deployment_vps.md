@@ -11,7 +11,7 @@
 ```text
 Браузер ──HTTPS──▶ Nginx на хості (:443, SSL)
                         │
-                        ▼  127.0.0.1:8080
+                        ▼  127.0.0.1:8081
                  ┌───────────── Docker (docker-compose.prod.yml) ─────────────┐
                  │  web  (nginx + зібраний React)                              │
                  │    ├─ /        → статичні файли SPA                         │
@@ -53,20 +53,19 @@
 
 ### 0.1. DNS-запис у home.pl
 
-DNS домену `ispik24.pl` обслуговує home.pl (`dns.home.pl`, `dns2.home.pl`, `dns3.home.pl`). На домені є wildcard-запис `*.ispik24.pl → ispik24.pl`, тому без окремого запису `projects.ispik24.pl` вказує на сервер home.pl, а не на VPS.
+DNS домену `ispik24.pl` обслуговує home.pl (`dns.home.pl`, `dns2.home.pl`, `dns3.home.pl`). IP VPS — **`31.70.70.236`**; на нього вже вказують `ispik24.pl`, `work-journal.ispik24.pl` і `trips.ispik24.pl`.
 
 1. Панель home.pl → **Domeny** → `ispik24.pl` → керування DNS («Strefa DNS» / «Rekordy DNS»).
-2. Якщо вже є запис з назвою `projects` (наприклад, `CNAME`) — видаліть його.
-3. Додайте запис:
+2. Запис для ERP (уже доданий):
 
    | Тип | Nazwa / Host | Wartość | TTL |
    |---|---|---|---|
-   | `A` | `projects` | публічний IPv4 VPS | `3600` |
+   | `A` | `projects` | `31.70.70.236` | `3600` |
 
-4. Записи `ispik24.pl`, `www`, `*` та `MX` **не змінюйте** — на них працюють інші сервіси та пошта.
-5. `AAAA` додавайте лише якщо VPS має IPv6. Якщо на домені є записи `CAA`, серед них має бути `letsencrypt.org`.
+3. Записи інших проєктів та `MX` **не змінюйте**.
+4. Якщо на домені є записи `CAA`, серед них має бути `letsencrypt.org`.
 
-Перевірка (у відповіді має бути IP VPS, а не `31.70.70.236`):
+Перевірка (у відповіді має бути `31.70.70.236`):
 
 ```bash
 nslookup projects.ispik24.pl dns.home.pl
@@ -79,14 +78,44 @@ nslookup projects.ispik24.pl 1.1.1.1
 > [!IMPORTANT]
 > Не запускайте certbot (крок 8), поки публічний DNS (`1.1.1.1`) не повертає IP VPS — у Let's Encrypt є ліміт невдалих спроб.
 
+### 0.2. ⚠️ На VPS вже працюють інші проєкти
+
+На цьому сервері вже працюють `ispik24.pl`, `work-journal.ispik24.pl` і `trips.ispik24.pl`. Кроки 1–3 написані для **чистого** сервера — на спільному їх **не можна виконувати наосліп**: можна відрізати SSH, зламати інші сайти або конфлікт портів. Спершу огляньте сервер:
+
+```bash
+free -h; df -h /; nproc
+sudo ss -tlnp | grep -E ':(80|443|8081)\b'   # 8081 — порт ERP за замовчуванням, має бути вільний
+systemctl is-active nginx apache2 caddy 2>/dev/null
+ls /etc/nginx/sites-enabled/ 2>/dev/null
+docker --version; docker compose version; docker ps --format '{{.Names}}\t{{.Ports}}'
+sudo ufw status
+which certbot
+```
+
+Що з цього випливає:
+
+| Що видно | Що робити |
+|---|---|
+| Порти 80/443 слухає **nginx на хості** | Звичайний випадок. Крок 3 пропустити (лише доставити `certbot`/`python3-certbot-nginx`, якщо їх немає), крок 7 — **без** видалення `default` (див. там). |
+| 80/443 слухає **apache2 / caddy** або **Docker-контейнер** (Traefik, nginx-proxy тощо) | Nginx **не встановлювати** — він не зможе зайняти порти й зламає інші сайти. Домен `projects.ispik24.pl` треба додати в наявний проксі з `proxy_pass` на `127.0.0.1:8081` (або підключити контейнер `web` до мережі проксі). |
+| Порт **8081** уже зайнятий | Вибрати вільний порт у `WEB_PORT` (крок 5.1) і той самий — у `proxy_pass` (крок 7). Перевірити, що порт вільний: `sudo ss -tlnp | grep :ПОРТ` (порожній вивід = вільний). |
+| Docker уже встановлено | Крок 2 пропустити (лише додати свого користувача до групи `docker`, якщо треба). |
+| `ufw` неактивний | **Не вмикати** без перевірки, які порти потрібні іншим проєктам, — інакше вони стануть недоступні. Достатньо того, що ERP не публікує жодних портів назовні. |
+| Вільної RAM < 1.5 GB | Збірка образів може не вміститися поряд з іншими проєктами — додати swap (крок 1.4), якщо його ще немає (`swapon --show`). |
+
+Postgres і Redis для ERP працюють в окремих контейнерах без опублікованих портів, тож із базами інших проєктів **не конфліктують** — навіть якщо на сервері вже є свій Postgres на `5432`.
+
 ---
 
 ## 1. Базове налаштування сервера
 
+> [!WARNING]
+> Розділи 1.1–1.3 — **лише для нового сервера**. На спільному VPS (див. 0.2) не виконуйте `apt upgrade` під час роботи інших проєктів без плану, не змінюйте часовий пояс, налаштування SSH і firewall.
+
 Підключіться до сервера під root (або користувачем із sudo):
 
 ```bash
-ssh root@IP_СЕРВЕРА
+ssh root@31.70.70.236
 ```
 
 ### 1.1. Оновлення системи
@@ -106,7 +135,7 @@ usermod -aG sudo deploy
 rsync --archive --chown=deploy:deploy ~/.ssh /home/deploy
 ```
 
-Перевірте в **новому** терміналі, що `ssh deploy@IP_СЕРВЕРА` працює, і далі працюйте під `deploy`.
+Перевірте в **новому** терміналі, що `ssh deploy@31.70.70.236` працює, і далі працюйте під `deploy`.
 
 > [!TIP]
 > Після перевірки входу по ключу варто вимкнути вхід паролем і root-логін: у `/etc/ssh/sshd_config` встановити `PasswordAuthentication no` і `PermitRootLogin no`, потім `sudo systemctl restart ssh`.
@@ -194,7 +223,7 @@ POSTGRES_PASSWORD=<згенерований_пароль>
 POSTGRES_DB=erp_db
 
 # порт, на якому контейнер web слухає на 127.0.0.1 (для nginx хоста)
-WEB_PORT=8080
+WEB_PORT=8081
 ```
 
 Згенерувати пароль:
@@ -271,7 +300,7 @@ FAKTUROWNIA_ES_SUBDOMAIN=<субдомен для Іспанії>
 Скопіюйте файл зі своєї машини на сервер:
 
 ```bash
-scp google-credentials.json deploy@IP_СЕРВЕРА:/opt/erp/api/google-credentials.json
+scp google-credentials.json deploy@31.70.70.236:/opt/erp/api/google-credentials.json
 ```
 
 На сервері:
@@ -297,14 +326,14 @@ docker compose -f docker-compose.prod.yml up -d --build
 1. Піднімаються `postgres` і `redis`.
 2. Збирається образ `api`; при старті виконується `prisma migrate deploy` (усі міграції з `api/prisma/migrations`), потім запускається NestJS.
 3. При старті API автоматично створює/оновлює **адмін-користувачів** (див. `api/src/prisma/prisma.service.ts`), тож у систему відразу можна увійти під їхніми email.
-4. Збирається образ `web` (React з `VITE_API_URL=/api`) і запускається nginx на `127.0.0.1:8080`.
+4. Збирається образ `web` (React з `VITE_API_URL=/api`) і запускається nginx на `127.0.0.1:8081`.
 
 Перевірка:
 
 ```bash
 docker compose -f docker-compose.prod.yml ps
 docker compose -f docker-compose.prod.yml logs --tail=50 api
-curl http://127.0.0.1:8080/api/      # має повернути: Hello World!
+curl http://127.0.0.1:8081/api/      # має повернути: Hello World!
 ```
 
 У логах API мають бути рядки `Admin users seeded successfully on startup.` і `Nest application successfully started`.
@@ -324,13 +353,19 @@ docker compose -f docker-compose.prod.yml exec api npx prisma db seed
 ```bash
 sudo cp /opt/erp/deploy/nginx-host.conf /etc/nginx/sites-available/erp
 sudo ln -s /etc/nginx/sites-available/erp /etc/nginx/sites-enabled/erp
-sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
+> [!CAUTION]
+> На спільному сервері **не видаляйте** `/etc/nginx/sites-enabled/default` і не чіпайте конфіги інших сайтів. Якщо `nginx -t` показує помилку — **не робіть reload** (інакше впадуть усі сайти): приберіть посилання `sudo rm /etc/nginx/sites-enabled/erp` і розберіться з помилкою. Якщо інші конфіги лежать не в `sites-enabled`, а в `/etc/nginx/conf.d/`, покладіть файл туди як `/etc/nginx/conf.d/erp.conf`.
+>
+> Перевірте, що інші сайти після reload працюють: `curl -sI https://ispik24.pl | head -1`.
+
+На чистому сервері (без інших сайтів) можна додатково прибрати стандартну сторінку nginx: `sudo rm -f /etc/nginx/sites-enabled/default && sudo systemctl reload nginx`.
+
 Тепер `http://projects.ispik24.pl` має відкривати сторінку входу (DNS уже має вказувати на сервер — див. крок 0.1, перевірка: `dig +short projects.ispik24.pl`).
 
-> Якщо змінили `WEB_PORT` у `.env`, змініть і `proxy_pass http://127.0.0.1:8080` у конфігу nginx.
+> Якщо змінили `WEB_PORT` у `.env`, змініть і `proxy_pass http://127.0.0.1:8081` у конфігу nginx.
 
 ---
 
