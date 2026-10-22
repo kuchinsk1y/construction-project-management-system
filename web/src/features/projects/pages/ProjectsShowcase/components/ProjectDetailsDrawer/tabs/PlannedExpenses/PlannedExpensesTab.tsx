@@ -8,7 +8,8 @@ import {
   getPlannedExpenses,
   createPlannedExpense,
   updatePlannedExpense,
-  deletePlannedExpense
+  deletePlannedExpense,
+  fetchMilestones,
 } from '@/features/projects/api'
 import type { ApiProject } from '@/features/projects/types'
 import { PlannedExpenseFormDrawer } from '@/features/projects/pages/ProjectsShowcase/components/ProjectDetailsDrawer/tabs/PlannedExpenses/PlannedExpenseFormDrawer'
@@ -16,9 +17,10 @@ import { formatMoney } from '@/lib/format'
 
 interface PlannedExpensesTabProps {
   project: ApiProject
+  canEdit?: boolean
 }
 
-export function PlannedExpensesTab({ project }: PlannedExpensesTabProps) {
+export function PlannedExpensesTab({ project, canEdit = false }: PlannedExpensesTabProps) {
   const queryClient = useQueryClient()
 
   // Queries
@@ -66,11 +68,21 @@ export function PlannedExpensesTab({ project }: PlannedExpensesTabProps) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null)
 
+  // Additional works (RD) are paid on top of the contract, so they enlarge the budget to plan
+  const { data: milestones = [] } = useQuery({
+    queryKey: ['milestones', project.id],
+    queryFn: () => fetchMilestones(project.id),
+  })
+  const additionalWorksValue = milestones
+    .filter((m) => m.type === 'roboty_dodatkowe')
+    .reduce((sum, m) => sum + (Number(m.netAmount) || 0), 0)
+
   // Budget calculations
   const contractValue = project.contract_net_value ? Number(project.contract_net_value) : 0
+  const totalValue = contractValue + additionalWorksValue
   const currency = project.currency || 'PLN'
   const warrantyPercent = project.warrantyPercent ? Number(project.warrantyPercent) : 0
-  const availableBudget = contractValue - (contractValue * (warrantyPercent / 100))
+  const availableBudget = totalValue - (totalValue * (warrantyPercent / 100))
   const totalPercentUsed = expenses.reduce((sum, e) => sum + e.plannedPercent, 0)
 
   const formatBudget = (val: number, curr?: string) => formatMoney(val, curr)
@@ -86,14 +98,14 @@ export function PlannedExpensesTab({ project }: PlannedExpensesTabProps) {
       <div className="flex flex-col gap-3">
 
         {/* Top Stats & Progress Bar in a row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-3">
 
           {/* Left: Progress Bar */}
           <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/30 p-3 shadow-2xs flex flex-col justify-center gap-2">
             <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
               <span className="flex items-center gap-1.5">
                 <Wallet size={14} className="text-[var(--sidebar-primary)]" />
-                Suma wydatków z budżetu
+                Zaplanowano z budżetu
               </span>
               <span className={`font-extrabold ${totalPercentUsed === 100 ? 'text-[var(--sidebar-primary)]' : totalPercentUsed > 100 ? 'text-rose-500' : 'text-amber-500'}`}>
                 {totalPercentUsed % 1 === 0 ? totalPercentUsed : totalPercentUsed.toFixed(2)}%
@@ -109,26 +121,32 @@ export function PlannedExpensesTab({ project }: PlannedExpensesTabProps) {
 
           {/* Right: KPI Card with dividers */}
           <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/35 shadow-xs flex items-center divide-x divide-[var(--border)] overflow-hidden">
-            <div className="flex-[1.3] p-3 space-y-1 min-w-0">
-              <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] whitespace-nowrap truncate">
-                <FileText size={12} className="text-[var(--sidebar-primary)] shrink-0" />
-                Wartość kontraktu netto
+            <div className="flex-[1.3] p-3 space-y-1 min-w-0 self-stretch flex flex-col justify-center">
+              <span className="flex items-start gap-1.5 text-[10px] font-bold uppercase tracking-wider leading-tight text-[var(--muted-foreground)]">
+                <FileText size={12} className="text-[var(--sidebar-primary)] shrink-0 mt-px" />
+                {additionalWorksValue > 0 ? 'Wartość netto (umowa + RD)' : 'Wartość kontraktu netto'}
               </span>
-              <p className="text-sm font-extrabold text-[var(--foreground)] truncate">{formatBudget(contractValue, currency)}</p>
+              <p className="text-sm font-extrabold text-[var(--foreground)] whitespace-nowrap">{formatBudget(totalValue, currency)}</p>
+              {additionalWorksValue > 0 ? (
+                <p className="text-[10px] font-medium leading-snug text-[var(--muted-foreground)]">
+                  umowa {formatBudget(contractValue, currency)}
+                  <span className="font-semibold text-amber-500"> + RD {formatBudget(additionalWorksValue, currency)}</span>
+                </p>
+              ) : null}
             </div>
-            <div className="flex-1 p-3 space-y-1 min-w-0">
-              <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] whitespace-nowrap truncate">
-                <ShieldCheck size={12} className="text-[var(--sidebar-primary)] shrink-0" />
-                Gwarancja ({warrantyPercent}%)
+            <div className="flex-1 p-3 space-y-1 min-w-0 self-stretch flex flex-col justify-center">
+              <span className="flex items-start gap-1.5 text-[10px] font-bold uppercase tracking-wider leading-tight text-[var(--muted-foreground)]">
+                <ShieldCheck size={12} className="text-[var(--sidebar-primary)] shrink-0 mt-px" />
+                Planowana gwarancja ({warrantyPercent}%)
               </span>
-              <p className="text-sm font-extrabold text-[var(--foreground)] truncate">{formatBudget(contractValue * (warrantyPercent / 100), currency)}</p>
+              <p className="text-sm font-extrabold text-[var(--foreground)] whitespace-nowrap">{formatBudget(totalValue * (warrantyPercent / 100), currency)}</p>
             </div>
-            <div className="flex-1 p-3 space-y-1 min-w-0">
-              <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] whitespace-nowrap truncate">
-                <Calculator size={12} className="text-[var(--sidebar-primary)] shrink-0" />
-                Budżet
+            <div className="flex-1 p-3 space-y-1 min-w-0 self-stretch flex flex-col justify-center">
+              <span className="flex items-start gap-1.5 text-[10px] font-bold uppercase tracking-wider leading-tight text-[var(--muted-foreground)]">
+                <Calculator size={12} className="text-[var(--sidebar-primary)] shrink-0 mt-px" />
+                Budżet do zaplanowania
               </span>
-              <p className="text-sm font-extrabold text-[var(--foreground)] truncate">{formatBudget(availableBudget, currency)}</p>
+              <p className="text-sm font-extrabold text-[var(--foreground)] whitespace-nowrap">{formatBudget(availableBudget, currency)}</p>
             </div>
           </div>
 
@@ -138,10 +156,10 @@ export function PlannedExpensesTab({ project }: PlannedExpensesTabProps) {
         <div className="flex items-center justify-between gap-3 pt-1">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
             <Coins size={14} className="text-[var(--sidebar-primary)]" />
-            <span>Planowane wydatki według kategorii</span>
+            <span>Planowane wydatki według kategorii · plan, nie koszty rzeczywiste</span>
           </div>
 
-          <div className="flex items-center gap-2">
+          {canEdit && <div className="flex items-center gap-2">
             <Button
               type="button"
               onClick={openAddDrawer}
@@ -150,7 +168,7 @@ export function PlannedExpensesTab({ project }: PlannedExpensesTabProps) {
               <Plus size={13} />
               <span>Dodaj / Edytuj</span>
             </Button>
-          </div>
+          </div>}
         </div>
       </div>
 
@@ -160,16 +178,16 @@ export function PlannedExpensesTab({ project }: PlannedExpensesTabProps) {
           <table className="w-full border-collapse text-left text-xs">
             <thead className="sticky top-0 z-20 border-b border-[var(--border)] bg-[var(--background)]/95 backdrop-blur-md text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
               <tr>
-                <th className="px-4 py-2 border-r border-[var(--border)] min-w-[200px]">Rodzaj wydatku</th>
-                <th className="px-4 py-2 text-center border-r border-[var(--border)] w-28">Udział (%)</th>
-                <th className="px-4 py-2 text-right border-r border-[var(--border)] w-36">Wartość</th>
+                <th className="px-4 py-2 border-r border-[var(--border)] min-w-[200px]">Planowany wydatek</th>
+                <th className="px-4 py-2 text-center border-r border-[var(--border)] w-44 whitespace-nowrap">Planowany udział (%)</th>
+                <th className="px-4 py-2 text-right border-r border-[var(--border)] w-40 whitespace-nowrap">Planowana kwota</th>
               </tr>
             </thead>
             {isLoading ? (
               <tbody className="font-medium">
                 <tr>
                   <td colSpan={3} className="px-3 py-10 text-center text-[var(--muted-foreground)]">
-                    Ładowanie wydatków...
+                    Ładowanie planu wydatków...
                   </td>
                 </tr>
               </tbody>

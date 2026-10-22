@@ -201,10 +201,10 @@ export function PlannedExpenseFormDrawer({
           <div>
             <h3 className="text-base font-bold tracking-tight text-[var(--foreground)] flex items-center gap-2">
               <Wallet size={18} className="text-[var(--sidebar-primary)]" />
-              Zarządzaj wydatkami
+              Planowanie wydatków
             </h3>
             <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
-              Rozplanuj budżet w 100%. Wybierz z listy lub wpisz nową kategorię.
+              To jest plan, nie koszty rzeczywiste. Rozplanuj budżet w 100% — wybierz z listy lub wpisz nową kategorię.
             </p>
           </div>
           <Button
@@ -228,7 +228,7 @@ export function PlannedExpenseFormDrawer({
 
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-[var(--foreground)]">Suma %:</span>
+              <span className="font-bold text-[var(--foreground)]">Zaplanowano łącznie:</span>
               <span className={`font-extrabold ${Math.abs(currentTotal - 100) <= 0.01 ? 'text-emerald-500' : 'text-rose-500'}`}>
                 {currentTotal.toFixed(2)}% / 100%
               </span>
@@ -246,7 +246,7 @@ export function PlannedExpenseFormDrawer({
               <div key={index} className={`flex gap-2 items-start relative group ${index > 0 ? 'pt-3 mt-3 border-t border-[var(--border)]' : ''}`}>
                 <div className="flex-1">
                   {index === 0 && (
-                    <span className="block text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] ml-1 mb-1.5">Rodzaj wydatku</span>
+                    <span className="block text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] ml-1 mb-1.5">Planowany wydatek</span>
                   )}
                   <input
                     type="text"
@@ -265,7 +265,7 @@ export function PlannedExpenseFormDrawer({
 
                 <div className="w-24">
                   {index === 0 && (
-                    <span className="block text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] ml-1 mb-1.5">Udział (%)</span>
+                    <span className="block text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] ml-1 mb-1.5">Planowany udział (%)</span>
                   )}
                   <input
                     type="number"
@@ -316,7 +316,7 @@ export function PlannedExpenseFormDrawer({
             className="rounded-xl bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] hover:bg-[var(--sidebar-primary)]/90 shadow-[0_4px_14px_color-mix(in_oklch,var(--sidebar-primary),transparent_65%)]"
           >
             {isPending ? <Loader2 size={14} className="animate-spin mr-1.5" /> : <Plus size={14} className="mr-1.5" />}
-            Zapisz budżet
+            Zapisz plan wydatków
           </Button>
         </div>
       </aside>

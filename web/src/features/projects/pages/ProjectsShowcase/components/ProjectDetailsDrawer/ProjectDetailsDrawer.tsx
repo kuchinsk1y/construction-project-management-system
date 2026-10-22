@@ -77,6 +77,9 @@ type ProjectDetailsDrawerProps = {
   updateMilestonesBatchMutation: UseMutationResult<void, Error, { id: string; payload: Partial<CreateMilestonePayload> }[], unknown>
   deleteMilestoneMutation: UseMutationResult<void, Error, string, unknown>
   isContractor?: boolean
+  canEditPlannedExpenses?: boolean
+  canEditProjectDepartments?: boolean
+  canEditWorks?: boolean
 
   formatDate: (val: string | undefined | null, fallback?: string) => string
   formatBudget: (val: number, currency?: string) => string
@@ -136,6 +139,9 @@ export function ProjectDetailsDrawer({
   updateMilestonesBatchMutation,
   deleteMilestoneMutation,
   isContractor = false,
+  canEditPlannedExpenses = false,
+  canEditProjectDepartments = false,
+  canEditWorks = false,
   formatDate,
   formatBudget,
   statusTone,
@@ -1284,7 +1290,7 @@ export function ProjectDetailsDrawer({
 
           {activeTab === 'expenses' && editingProject && (
             <div className="animate-tab-content h-full min-w-0">
-              <PlannedExpensesTab project={editingProject} />
+              <PlannedExpensesTab project={editingProject} canEdit={canEditPlannedExpenses} />
             </div>
           )}
 
@@ -1312,7 +1318,7 @@ export function ProjectDetailsDrawer({
             <ProjectDepartmentsTab
               projectId={editingProject.id}
               milestones={milestones}
-              canEditProject={canEditProject}
+              canEditProject={canEditProjectDepartments}
             />
           )}
 
@@ -1322,7 +1328,7 @@ export function ProjectDetailsDrawer({
               milestones={milestones}
               formatBudget={formatBudget}
               currency={editingProject.currency || 'PLN'}
-              canEditProject={canEditProject}
+              canEditProject={canEditWorks}
             />
           )}
 

@@ -8,6 +8,9 @@ import { createContractor, deleteContractor, fetchContractors, updateContractor 
 import type { ApiContractor, CreateContractorPayload, UpdateContractorPayload } from '@/features/contractors/types'
 
 type ContractorsPageProps = {
+  /** See the list (read-only for roles without canManage) */
+  canView: boolean
+  /** Add, edit and delete contractors */
   canManage: boolean
 }
 
@@ -42,7 +45,7 @@ const emptyForm: ContractorFormState = {
   notes: '',
 }
 
-export function ContractorsPage({ canManage }: ContractorsPageProps) {
+export function ContractorsPage({ canView, canManage }: ContractorsPageProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [query, setQuery] = useState('')
@@ -196,7 +199,7 @@ export function ContractorsPage({ canManage }: ContractorsPageProps) {
     setDeleteConfirmId(id)
   }
 
-  if (!canManage) {
+  if (!canView) {
     return (
       <section className="p-3">
         <article className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
@@ -249,14 +252,16 @@ export function ContractorsPage({ canManage }: ContractorsPageProps) {
           </p> */}
         </div>
 
-        <Button
-          type="button"
-          onClick={openCreateModal}
-          className="h-9 rounded-xl bg-[var(--sidebar-primary)] px-3 text-[var(--sidebar-primary-foreground)] shadow-[0_4px_14px_color-mix(in_oklch,var(--sidebar-primary),transparent_65%)] hover:bg-[var(--sidebar-primary)]/90"
-        >
-          <Plus size={16} />
-          {t('contractors.hero.addButton')}
-        </Button>
+        {canManage ? (
+          <Button
+            type="button"
+            onClick={openCreateModal}
+            className="h-9 rounded-xl bg-[var(--sidebar-primary)] px-3 text-[var(--sidebar-primary-foreground)] shadow-[0_4px_14px_color-mix(in_oklch,var(--sidebar-primary),transparent_65%)] hover:bg-[var(--sidebar-primary)]/90"
+          >
+            <Plus size={16} />
+            {t('contractors.hero.addButton')}
+          </Button>
+        ) : null}
       </div>
 
       {/* <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4 animate-fade-in mb-3">
@@ -319,7 +324,9 @@ export function ContractorsPage({ canManage }: ContractorsPageProps) {
                     <th className="border-b border-[var(--border)] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">{t('contractors.table.headers.name')}</th>
                     <th className="border-b border-[var(--border)] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">{t('contractors.table.headers.taxNumber')}</th>
                     <th className="border-b border-[var(--border)] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">{t('contractors.table.headers.createdAt')}</th>
-                    <th className="border-b border-[var(--border)] px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">Akcje</th>
+                    {canManage ? (
+                      <th className="border-b border-[var(--border)] px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">Akcje</th>
+                    ) : null}
                   </tr>
                 </thead>
 
@@ -350,7 +357,7 @@ export function ContractorsPage({ canManage }: ContractorsPageProps) {
                       <td className="border-b border-[var(--border)] px-4 py-3 align-middle text-sm text-[var(--muted-foreground)]">
                         {c.created_at ? new Date(c.created_at).toLocaleDateString() : '-'}
                       </td>
-                      <td className="border-b border-[var(--border)] px-4 py-3 align-middle text-right">
+                      {canManage ? <td className="border-b border-[var(--border)] px-4 py-3 align-middle text-right">
                         <div className="inline-flex gap-2">
                           <Button
                             type="button"
@@ -374,7 +381,7 @@ export function ContractorsPage({ canManage }: ContractorsPageProps) {
                             <Trash2 size={14} />
                           </Button>
                         </div>
-                      </td>
+                      </td> : null}
                     </tr>
                   ))}
                 </tbody>

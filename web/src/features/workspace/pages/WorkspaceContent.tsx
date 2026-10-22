@@ -39,7 +39,14 @@ export function WorkspaceContent({ isAdmin, profile, theme, themePreset, onTheme
     return role === 'project_manager' || roles.includes('project_manager')
   }, [profile?.role, profile?.roles])
 
-  const canViewUsers = isAdminOrDirector
+  // Financial director sees contractors read-only
+  const isFinancialDirector = useMemo(() => {
+    const role = (profile?.role ?? '').toLowerCase()
+    const roles = (profile?.roles ?? []).map((entry) => entry.toLowerCase())
+    return role === 'financial_director' || roles.includes('financial_director')
+  }, [profile?.role, profile?.roles])
+
+  const canViewUsers = isAdminOrDirector || isFinancialDirector
   const canEditWorks = isAdminOrDirector || isProjectManager
 
   return (
@@ -49,15 +56,15 @@ export function WorkspaceContent({ isAdmin, profile, theme, themePreset, onTheme
       <Route path="/projects/*" element={<ProjectsPage profile={profile} />} />
       
       {canViewUsers && (
-        <Route path="/users" element={<UsersPage canView={canViewUsers} canAdd={isAdmin} canEdit={isAdminOrDirector} isAdmin={isAdmin} />} />
+        <Route path="/users" element={<UsersPage canView={canViewUsers} canAdd={isAdmin} canEdit={isAdmin} isAdmin={isAdmin} />} />
       )}
       
-      {isAdminOrDirector && (
-        <Route path="/contractors" element={<ContractorsPage canManage={isAdminOrDirector} />} />
+      {(isAdminOrDirector || isFinancialDirector || isProjectManager) && (
+        <Route path="/contractors" element={<ContractorsPage canView canManage={isAdminOrDirector} />} />
       )}
 
       {(isAdminOrDirector || isProjectManager) && (
-        <Route path="/departments" element={<DepartmentsPage canManage={isAdminOrDirector || isProjectManager} />} />
+        <Route path="/departments" element={<DepartmentsPage canManage={isAdmin} />} />
       )}
 
       {canEditWorks && (

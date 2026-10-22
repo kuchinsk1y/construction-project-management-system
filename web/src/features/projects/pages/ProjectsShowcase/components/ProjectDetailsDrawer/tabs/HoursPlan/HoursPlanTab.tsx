@@ -168,6 +168,14 @@ export function HoursPlanTab({ projectId, works, canEditProject }: HoursPlanTabP
               </span>
               <span className="text-xs font-bold text-[var(--muted-foreground)]">PLN</span>
             </div>
+            {plan?.additionalWorksValue ? (
+              <p
+                className="relative z-10 text-[10px] font-medium text-[var(--muted-foreground)]"
+                title="Budżet wynagrodzeń liczony od wartości umowy powiększonej o roboty dodatkowe (RD)"
+              >
+                z uwzględnieniem robót dodatkowych <span className="font-semibold text-amber-500">+{formatAmount(plan.additionalWorksValue)} PLN</span>
+              </p>
+            ) : null}
           </div>
 
           <div className="rounded-md border border-[var(--border)] bg-[var(--card)] p-3 shadow-sm flex flex-col justify-center gap-1 relative overflow-hidden">

@@ -214,6 +214,9 @@ export type HoursPlanResponse = {
   averageHourlyRate: number | null
   plannedHoursTotal: number | null
   totalSalaryBudget: number
+  /** Contract value and additional works (RD) the salary budget is based on */
+  contractNetValue?: number
+  additionalWorksValue?: number
   distributions: { workTypeId: string; percentage: number }[]
 }
 

@@ -35,7 +35,6 @@ type ProjectsGanttViewProps = {
   viewMode: ViewMode
   setViewMode: (mode: ViewMode) => void
   canCreateProject: boolean
-  canEditProject: boolean
   onOpenDrawer: () => void
   onSelectProject: (projectId: string) => void
   parseDateValue: (val: string) => Date | null
@@ -83,7 +82,6 @@ export function ProjectsGanttView({
   viewMode,
   setViewMode,
   canCreateProject,
-  canEditProject,
   onOpenDrawer,
   onSelectProject,
   parseDateValue,
@@ -352,8 +350,8 @@ export function ProjectsGanttView({
                         return (
                           <div
                             key={row.project.id}
-                            className={`flex items-center group relative ${canEditProject ? 'cursor-pointer' : ''}`}
-                            onClick={() => canEditProject && onSelectProject(row.project.id)}
+                            className="flex items-center group relative cursor-pointer"
+                            onClick={() => onSelectProject(row.project.id)}
                           >
                             <div className="absolute inset-0 border-b border-[var(--border)] pointer-events-none" style={{ top: 'auto', bottom: '-3px' }} />
 

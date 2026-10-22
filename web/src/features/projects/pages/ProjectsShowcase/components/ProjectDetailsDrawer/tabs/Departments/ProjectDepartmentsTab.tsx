@@ -104,14 +104,15 @@ export function ProjectDepartmentsTab({ projectId, canEditProject }: ProjectDepa
 
   return (
     <div className="w-full space-y-3 animate-tab-content">
-      <div className="flex items-center justify-between bg-[var(--card)] p-4 rounded-xl border border-[var(--border)] shadow-sm">
-        <div>
-          <h3 className="text-sm font-bold text-[var(--foreground)]">Konfiguracja Działów</h3>
-          <p className="text-[11px] text-[var(--muted-foreground)] mt-0.5 max-w-lg">
-            Przypisuj działy do projektu i wyznaczaj odpowiedzialnych kierowników.
-          </p>
-        </div>
-        {canEditProject && (
+      {/* Configuration bar only for roles that can assign departments */}
+      {canEditProject && (
+        <div className="flex items-center justify-between bg-[var(--card)] p-4 rounded-xl border border-[var(--border)] shadow-sm">
+          <div>
+            <h3 className="text-sm font-bold text-[var(--foreground)]">Konfiguracja Działów</h3>
+            <p className="text-[11px] text-[var(--muted-foreground)] mt-0.5 max-w-lg">
+              Przypisuj działy do projektu i wyznaczaj odpowiedzialnych kierowników.
+            </p>
+          </div>
           <Button
             onClick={() => setIsDrawerOpen(true)}
             className="text-[11px] h-8 px-4 rounded-md flex items-center gap-1.5 transition font-bold shadow-sm bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] hover:bg-[var(--sidebar-primary)]/90"
@@ -119,8 +120,8 @@ export function ProjectDepartmentsTab({ projectId, canEditProject }: ProjectDepa
             <Plus size={14} />
             <span>Dodaj / Edytuj</span>
           </Button>
-        )}
-      </div>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="flex-1 flex items-center justify-center py-8">

@@ -200,36 +200,35 @@ export function InvoiceFormDrawer({
               </div>
             )}
 
-            {canManageInvoiceDetails && (
-              <div className="space-y-1">
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 transition-colors block">
-                    Numer faktury
-                  </label>
-                  {onLinkFakturownia && (
-                    <button
-                      type="button"
-                      onClick={onLinkFakturownia}
-                      className="flex items-center gap-1 text-[11px] font-semibold text-[var(--sidebar-primary)] hover:underline"
-                    >
-                      <Link2 className="w-3.5 h-3.5" />
-                      Pobierz z Fakturowni
-                    </button>
-                  )}
-                </div>
-                <div className="relative">
-                  <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-                  <input
-                    type="text"
-                    value={invoiceNumber}
-                    onChange={e => setInvoiceNumber(e.target.value)}
-                    placeholder="np. FV/10/2026"
-                    className="h-10 w-full pl-10 pr-3 rounded-xl border border-[var(--border)] bg-[var(--background)] text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60"
-                    autoFocus
-                  />
-                </div>
+            {/* Invoice number: optional for project managers, required context for finance */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 transition-colors block">
+                  Numer faktury {!canManageInvoiceDetails && <span className="font-normal text-[var(--muted-foreground)]">(opcjonalnie)</span>}
+                </label>
+                {canManageInvoiceDetails && onLinkFakturownia && (
+                  <button
+                    type="button"
+                    onClick={onLinkFakturownia}
+                    className="flex items-center gap-1 text-[11px] font-semibold text-[var(--sidebar-primary)] hover:underline"
+                  >
+                    <Link2 className="w-3.5 h-3.5" />
+                    Pobierz z Fakturowni
+                  </button>
+                )}
               </div>
-            )}
+              <div className="relative">
+                <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                <input
+                  type="text"
+                  value={invoiceNumber}
+                  onChange={e => setInvoiceNumber(e.target.value)}
+                  placeholder="np. FV/10/2026"
+                  className="h-10 w-full pl-10 pr-3 rounded-xl border border-[var(--border)] bg-[var(--background)] text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60"
+                  autoFocus
+                />
+              </div>
+            </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">

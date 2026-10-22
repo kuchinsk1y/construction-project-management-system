@@ -451,9 +451,16 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
     }
   }
 
-  const canCreateProject = (hasRole('admin') || hasRole('administrator') || hasRole('operational_director')) && !isContractor
+  // Roles: create/edit = admin, operational director, project manager; delete = admin only
+  const canCreateProject = (hasRole('admin') || hasRole('administrator') || hasRole('operational_director') || hasRole('project_manager')) && !isContractor
   const canEditProject = (hasRole('admin') || hasRole('administrator') || hasRole('project_manager') || hasRole('operational_director')) && !isContractor
   const canDeleteProject = hasRole('admin') && !isContractor
+  // Planned expenses (budget split) are set by management only, not by project managers
+  const canEditPlannedExpenses = (hasRole('admin') || hasRole('administrator') || hasRole('operational_director')) && !isContractor
+  // Project departments & foremen are set by the project manager (and admin)
+  const canEditProjectDepartments = (hasRole('admin') || hasRole('administrator') || hasRole('project_manager')) && !isContractor
+  // Works (scope per milestone) are defined by the project manager (and admin)
+  const canEditWorks = canEditProjectDepartments
 
   const managerList = useMemo(() => {
     return users.filter((u) => {
@@ -793,6 +800,10 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
         canEditProject={canEditProject}
         canManageInvoiceDetails={canManageInvoiceDetails}
         canDeleteProject={canDeleteProject}
+        canEditPlannedExpenses={canEditPlannedExpenses}
+        canEditProjectDepartments={canEditProjectDepartments}
+        canEditWorks={canEditWorks}
+        isContractor={isContractor}
         handleCloseDrawer={handleCloseDrawer}
         handleCreate={handleCreate}
         handleDeleteProject={handleDeleteProject}
@@ -937,7 +948,6 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
               viewMode={viewMode}
               setViewMode={setViewMode}
               canCreateProject={canCreateProject}
-              canEditProject={canEditProject}
               onOpenDrawer={handleOpenAddDrawer}
               onSelectProject={handleEditProject}
               formatDate={formatDate}
@@ -955,7 +965,6 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
               viewMode={viewMode}
               setViewMode={setViewMode}
               canCreateProject={canCreateProject}
-              canEditProject={canEditProject}
               onOpenDrawer={handleOpenAddDrawer}
               onSelectProject={handleEditProject}
               parseDateValue={parseDateValue}
@@ -980,6 +989,10 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
         canEditProject={canEditProject}
         canManageInvoiceDetails={canManageInvoiceDetails}
         canDeleteProject={canDeleteProject}
+        canEditPlannedExpenses={canEditPlannedExpenses}
+        canEditProjectDepartments={canEditProjectDepartments}
+        canEditWorks={canEditWorks}
+        isContractor={isContractor}
         handleCloseDrawer={handleCloseDrawer}
         handleCreate={handleCreate}
         handleDeleteProject={handleDeleteProject}

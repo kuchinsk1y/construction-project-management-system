@@ -69,7 +69,13 @@ export function WorkspaceShell({ onLogout, theme, themePreset, onThemePresetChan
     return role === 'project_manager' || roles.includes('project_manager')
   }, [profile?.role, profile?.roles])
 
-  const canViewUsers = isAdminOrDirector
+  const isFinancialDirector = useMemo(() => {
+    const role = (profile?.role ?? '').toLowerCase()
+    const roles = (profile?.roles ?? []).map((entry) => entry.toLowerCase())
+    return role === 'financial_director' || roles.includes('financial_director')
+  }, [profile?.role, profile?.roles])
+
+  const canViewUsers = isAdminOrDirector || isFinancialDirector
   const canViewDepartments = isAdminOrDirector || isProjectManager
   const isContractor = useMemo(() => {
     const role = (profile?.role ?? '').toLowerCase()
@@ -81,12 +87,12 @@ export function WorkspaceShell({ onLogout, theme, themePreset, onThemePresetChan
     () =>
       workspaceNavigation.filter((item) => {
         if (item.key === 'users') return canViewUsers
-        if (item.key === 'contractors') return isAdminOrDirector
+        if (item.key === 'contractors') return isAdminOrDirector || isFinancialDirector || isProjectManager
         if (item.key === 'departments') return canViewDepartments
         if (isContractor && (item.key === 'works' || item.key === 'resources')) return false
         return true
       }),
-    [canViewUsers, isAdminOrDirector, canViewDepartments, isContractor],
+    [canViewUsers, isAdminOrDirector, isFinancialDirector, isProjectManager, canViewDepartments, isContractor],
   )
 
   const profileName = useMemo(

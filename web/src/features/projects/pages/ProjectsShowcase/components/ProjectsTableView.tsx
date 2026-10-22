@@ -25,7 +25,6 @@ type ProjectsTableViewProps = {
   viewMode: ViewMode
   setViewMode: (mode: ViewMode) => void
   canCreateProject: boolean
-  canEditProject: boolean
   onOpenDrawer: () => void
   onSelectProject: (projectId: string) => void
   formatDate: (val: string, fallback?: string) => string
@@ -45,7 +44,6 @@ export function ProjectsTableView({
   viewMode,
   setViewMode,
   canCreateProject,
-  canEditProject,
   onOpenDrawer,
   onSelectProject,
   formatDate,
@@ -176,11 +174,9 @@ export function ProjectsTableView({
               return (
                 <div
                   key={project.id}
-                  onClick={() => canEditProject && onSelectProject(project.id)}
+                  onClick={() => onSelectProject(project.id)}
                   style={{ animationDelay: `${index * 30}ms` }}
-                  className={`group relative rounded-xl border border-[var(--border)] bg-[var(--background)]/40 p-3.5 transition-all duration-200 hover:border-[var(--sidebar-primary)]/40 hover:bg-[var(--background)] hover:shadow-md animate-row-fade-in ${
-                    canEditProject ? 'cursor-pointer' : ''
-                  }`}
+                  className={`group relative rounded-xl border border-[var(--border)] bg-[var(--background)]/40 p-3.5 transition-all duration-200 hover:border-[var(--sidebar-primary)]/40 hover:bg-[var(--background)] hover:shadow-md animate-row-fade-in cursor-pointer`}
                 >
                   {/* Card Header: Title, Type & Status */}
                   <div className="flex items-start justify-between gap-2 mb-2">
@@ -242,11 +238,9 @@ export function ProjectsTableView({
                   </div>
 
                   {/* Card edit link indicator */}
-                  {canEditProject ? (
-                    <div className="pt-2 border-t border-[var(--border)]/50 flex items-center justify-end gap-3">
-                      <ChevronRight size={16} className="text-[var(--muted-foreground)] group-hover:text-[var(--sidebar-primary)] group-hover:translate-x-0.5 transition-all shrink-0" />
-                    </div>
-                  ) : null}
+                  <div className="pt-2 border-t border-[var(--border)]/50 flex items-center justify-end gap-3">
+                    <ChevronRight size={16} className="text-[var(--muted-foreground)] group-hover:text-[var(--sidebar-primary)] group-hover:translate-x-0.5 transition-all shrink-0" />
+                  </div>
                 </div>
               )
             })}
@@ -312,9 +306,9 @@ export function ProjectsTableView({
               return (
                 <tr
                   key={project.id}
-                  onClick={() => canEditProject && onSelectProject(project.id)}
+                  onClick={() => onSelectProject(project.id)}
                   style={{ animationDelay: `${index * 25}ms` }}
-                  className={`group relative transition-all duration-300 ease-out border-b border-[var(--border)]/50 odd:bg-[var(--background)]/20 hover:bg-[var(--sidebar-primary)]/[0.045] hover:shadow-[0_4px_20px_-4px_rgba(0,0,0,0.06)] dark:hover:shadow-[0_4px_20px_-4px_rgba(0,0,0,0.4)] animate-row-fade-in ${canEditProject ? 'cursor-pointer' : ''}`}
+                  className={`group relative transition-all duration-300 ease-out border-b border-[var(--border)]/50 odd:bg-[var(--background)]/20 hover:bg-[var(--sidebar-primary)]/[0.045] hover:shadow-[0_4px_20px_-4px_rgba(0,0,0,0.06)] dark:hover:shadow-[0_4px_20px_-4px_rgba(0,0,0,0.4)] animate-row-fade-in cursor-pointer`}
                 >
                   <td className="relative px-4 py-3.5 align-middle">
                     {/* Premium left accent indicator bar */}

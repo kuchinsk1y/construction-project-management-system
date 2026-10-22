@@ -1419,6 +1419,38 @@ export class ProjectsService {
   }
 
   // --- Hours Plan ---
+  /**
+   * Salary budget for the hours plan. The base is the contract value plus additional works (RD),
+   * minus the warranty retention; salary categories take their planned share of it.
+   */
+  private async salaryBudget(projectId: string) {
+    const [project, rd, salaryExpenses] = await Promise.all([
+      this.prisma.projects.findUnique({
+        where: { id: projectId },
+        select: { contract_net_value: true, warranty_percent: true },
+      }),
+      this.prisma.milestones.aggregate({
+        where: { project_id: projectId, deleted_at: null, type: 'roboty_dodatkowe' },
+        _sum: { net_amount: true },
+      }),
+      this.prisma.planned_expenses.findMany({
+        where: { project_id: projectId, cost_categories: { is_salary: true } },
+        select: { planned_percent: true },
+      }),
+    ]);
+
+    const contractNetValue = Number(project?.contract_net_value ?? 0);
+    const additionalWorksValue = Number(rd._sum.net_amount ?? 0);
+    const warrantyPercent = Number(project?.warranty_percent ?? 0);
+    const totalValue = contractNetValue + additionalWorksValue;
+    const projectBudget = totalValue - totalValue * (warrantyPercent / 100);
+
+    const salaryPercent = salaryExpenses.reduce((sum, e) => sum + Number(e.planned_percent ?? 0), 0);
+    const totalSalaryBudget = projectBudget > 0 ? (salaryPercent / 100) * projectBudget : 0;
+
+    return { contractNetValue, additionalWorksValue, projectBudget, totalSalaryBudget };
+  }
+
   async getHoursPlan(projectId: string) {
     const plan = await this.prisma.project_hours_plan.findUnique({
       where: { project_id: projectId },
@@ -1428,40 +1460,14 @@ export class ProjectsService {
       where: { project_id: projectId },
     });
 
-    const salaryExpenses = await this.prisma.planned_expenses.findMany({
-      where: {
-        project_id: projectId,
-        cost_categories: {
-          is_salary: true,
-        },
-      },
-      include: { cost_categories: true },
-    });
-
-    const project = await this.prisma.projects.findUnique({
-      where: { id: projectId },
-    });
-    const contractNetValue = project?.contract_net_value
-      ? Number(project.contract_net_value)
-      : 0;
-    const warrantyPercent = project?.warranty_percent
-      ? Number(project.warranty_percent)
-      : 0;
-    const projectBudget = contractNetValue - (contractNetValue * (warrantyPercent / 100));
-
-    let totalSalaryBudget = 0;
-    if (salaryExpenses.length > 0 && projectBudget > 0) {
-      for (const exp of salaryExpenses) {
-        if (exp.planned_percent) {
-          totalSalaryBudget += (Number(exp.planned_percent) / 100) * projectBudget;
-        }
-      }
-    }
+    const { totalSalaryBudget, contractNetValue, additionalWorksValue } = await this.salaryBudget(projectId);
 
     return {
       averageHourlyRate: plan?.average_hourly_rate ? Number(plan.average_hourly_rate) : null,
       plannedHoursTotal: plan?.planned_hours_total ? Number(plan.planned_hours_total) : null,
       totalSalaryBudget,
+      contractNetValue,
+      additionalWorksValue,
       distributions: distributions.map((d) => ({
         id: d.id,
         workTypeId: d.work_type_id,
@@ -1477,35 +1483,7 @@ export class ProjectsService {
       distributions: { workTypeId: string; percentage: number }[];
     },
   ) {
-    const salaryExpenses = await this.prisma.planned_expenses.findMany({
-      where: {
-        project_id: projectId,
-        cost_categories: {
-          is_salary: true,
-        },
-      },
-      include: { cost_categories: true },
-    });
-
-    const project = await this.prisma.projects.findUnique({
-      where: { id: projectId },
-    });
-    const contractNetValue = project?.contract_net_value
-      ? Number(project.contract_net_value)
-      : 0;
-    const warrantyPercent = project?.warranty_percent
-      ? Number(project.warranty_percent)
-      : 0;
-    const projectBudget = contractNetValue - (contractNetValue * (warrantyPercent / 100));
-
-    let totalSalaryBudget = 0;
-    if (salaryExpenses.length > 0 && projectBudget > 0) {
-      for (const exp of salaryExpenses) {
-        if (exp.planned_percent) {
-          totalSalaryBudget += (Number(exp.planned_percent) / 100) * projectBudget;
-        }
-      }
-    }
+    const { totalSalaryBudget } = await this.salaryBudget(projectId);
 
     const plannedHoursTotal =
       dto.averageHourlyRate > 0
