@@ -60,23 +60,26 @@ export function ProjectsTableView({
   const { t } = useTranslation()
 
   const handleExportCSV = () => {
-    const headers = ['Projekt', 'Status', 'Kierownik', 'Wykonawca', 'Moc', 'Lokalizacja', 'Termin (od)', 'Termin (do)']
-    const rows = allFilteredProjects.map(p => {
-      const start = p.startDateFact || p.startDate || '-'
-      const end = p.endDateFact || p.endDate || '-'
-      return [
-        `"${p.name.replace(/"/g, '""')}"`,
-        `"${statusLabel(p.status, t)}"`,
-        `"${p.owner}"`,
-        `"${p.contractor}"`,
-        `"${p.power || '-'}"`,
-        `"${p.location.replace(/"/g, '""')}"`,
-        `"${start}"`,
-        `"${end}"`
-      ].join(',')
-    })
-    
-    const csvContent = [headers.join(','), ...rows].join('\n')
+    // Polish Excel splits CSV columns on ";" (the comma is its decimal separator)
+    const SEPARATOR = ';'
+    const cell = (value: string | number | null | undefined) => `"${String(value ?? '').replace(/"/g, '""')}"`
+    const date = (value: string) => formatDate(value, '')
+
+    const headers = ['Projekt', 'Typ', 'Status', 'Kierownik', 'Wykonawca', 'Moc (MW)', 'Lokalizacja', 'Termin (od)', 'Termin (do)']
+    const rows = allFilteredProjects.map(p => [
+      p.name,
+      p.projectType !== '-' ? p.projectType : '',
+      statusLabel(p.status, t),
+      p.owner,
+      p.contractor !== '-' ? p.contractor : '',
+      p.power ? Number(p.power).toLocaleString('pl-PL', { useGrouping: false, maximumFractionDigits: 2 }) : '',
+      p.location !== '-' ? p.location : '',
+      date(p.startDateFact || p.startDate),
+      date(p.endDateFact || p.endDate),
+    ].map(cell).join(SEPARATOR))
+
+    const csvContent = [headers.map(cell).join(SEPARATOR), ...rows].join('\r\n')
+    // UTF-8 BOM so Excel shows Polish characters correctly
     const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -85,6 +88,7 @@ export function ProjectsTableView({
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+    URL.revokeObjectURL(url)
   }
 
   return (

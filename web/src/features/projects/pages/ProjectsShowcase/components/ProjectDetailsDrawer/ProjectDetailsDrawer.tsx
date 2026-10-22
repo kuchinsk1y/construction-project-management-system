@@ -21,6 +21,7 @@ import { ProjectDepartmentsTab } from '@/features/projects/pages/ProjectsShowcas
 import { PlannedExpensesTab } from '@/features/projects/pages/ProjectsShowcase/components/ProjectDetailsDrawer/tabs/PlannedExpenses/PlannedExpensesTab'
 import { ProjectDashboardTab } from '@/features/projects/pages/ProjectsShowcase/components/ProjectDetailsDrawer/tabs/Dashboard/ProjectDashboardTab'
 import { HoursPlanTab } from '@/features/projects/pages/ProjectsShowcase/components/ProjectDetailsDrawer/tabs/HoursPlan/HoursPlanTab'
+import { LocationField, type LocationValue } from '@/features/projects/pages/ProjectsShowcase/components/ProjectDetailsDrawer/LocationField'
 type ProjectDetailsDrawerProps = {
   isOpen?: boolean
   editingProject: ApiProject | null
@@ -180,6 +181,8 @@ export function ProjectDetailsDrawer({
         power: editingProject.power ? Number(editingProject.power) : undefined,
         dokumentationUrl: editingProject.dokumentationUrl ?? '',
         pinUrl: editingProject.pinUrl ?? '',
+        latitude: editingProject.latitude ?? undefined,
+        longitude: editingProject.longitude ?? undefined,
         vatRate: editingProject.vatRate ? Number(editingProject.vatRate) : undefined,
         warrantyPercent: editingProject.warrantyPercent ? Number(editingProject.warrantyPercent) : undefined,
         warrantyMonths: editingProject.warrantyMonths ?? undefined,
@@ -211,6 +214,8 @@ export function ProjectDetailsDrawer({
         power: editingProject.power ? Number(editingProject.power) : undefined,
         dokumentationUrl: editingProject.dokumentationUrl ?? '',
         pinUrl: editingProject.pinUrl ?? '',
+        latitude: editingProject.latitude ?? undefined,
+        longitude: editingProject.longitude ?? undefined,
         vatRate: editingProject.vatRate ? Number(editingProject.vatRate) : undefined,
         warrantyPercent: editingProject.warrantyPercent ? Number(editingProject.warrantyPercent) : undefined,
         warrantyMonths: editingProject.warrantyMonths ?? undefined,
@@ -329,21 +334,12 @@ export function ProjectDetailsDrawer({
                       </select>
                     </label>
 
-                    <label className="block sm:col-span-1">
+                    <label className="block sm:col-span-2">
                       <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">{t('projects.form.labels.dokumentationUrl')}</span>
                       <input
                         value={formState.dokumentationUrl || ''}
                         onChange={(e) => setField('dokumentationUrl', e.target.value)}
                         placeholder={t('projects.form.placeholders.dokumentationUrl')}
-                        className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50"
-                      />
-                    </label>
-                    <label className="block sm:col-span-1">
-                      <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">{t('projects.form.labels.pinUrl')}</span>
-                      <input
-                        value={formState.pinUrl || ''}
-                        onChange={(e) => setField('pinUrl', e.target.value)}
-                        placeholder={t('projects.form.placeholders.pinUrl')}
                         className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50"
                       />
                     </label>
@@ -494,6 +490,17 @@ export function ProjectDetailsDrawer({
                     <MapPin size={13} className="text-[var(--sidebar-primary)]" />
                     <span>{t('projects.form.sections.location')}</span>
                   </p>
+                  <LocationField
+                    key={isOpen ? 'new-open' : 'new-closed'}
+                    required
+                    value={{ pinUrl: formState.pinUrl, latitude: formState.latitude, longitude: formState.longitude }}
+                    onChange={(loc: LocationValue) => setFormState((prev) => ({ ...prev, ...loc }))}
+                    onPlaceResolved={(place) => setFormState((prev) => ({
+                      ...prev,
+                      country: prev.country?.trim() ? prev.country : place.country ?? prev.country,
+                      city: prev.city?.trim() ? prev.city : place.city ?? prev.city,
+                    }))}
+                  />
                   <div className="grid grid-cols-2 gap-4">
                     <label className="block">
                       <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">
@@ -527,8 +534,10 @@ export function ProjectDetailsDrawer({
                 </p>
               )}
 
-              {/* Action Buttons Footer */}
-              <div className="border-t border-[var(--border)] pt-5 flex items-center justify-end gap-3">
+            </div>
+          </div>
+              {/* Action Buttons Footer — pinned to the bottom of the drawer */}
+              <div className="flex shrink-0 items-center justify-end gap-3 border-t border-[var(--border)] bg-[var(--card)] px-5 py-4">
                 <Button
                   type="button"
                   variant="outline"
@@ -547,8 +556,6 @@ export function ProjectDetailsDrawer({
                   {createMutation.isPending ? t('projects.form.actions.saving') : t('projects.form.actions.save')}
                 </Button>
               </div>
-            </div>
-          </div>
         </aside>
       </>
     )
@@ -638,7 +645,7 @@ export function ProjectDetailsDrawer({
                   }`}
               >
                 <Coins size={14} className="text-[var(--sidebar-primary)]" />
-                <span>Rodzaje wydatków</span>
+                <span>Planowane wydatki</span>
               </button>
             )}
             <button
@@ -1005,15 +1012,6 @@ export function ProjectDetailsDrawer({
                               className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50"
                             />
                           </label>
-                          <label className="block sm:col-span-2">
-                            <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">{t('projects.form.labels.pinUrl')}</span>
-                            <input
-                              value={formState.pinUrl || ''}
-                              onChange={(e) => setField('pinUrl', e.target.value)}
-                              placeholder={t('projects.form.placeholders.pinUrl')}
-                              className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 text-sm outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 dark:placeholder:text-zinc-400/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 hover:border-zinc-400/60 dark:hover:border-zinc-600/60 disabled:opacity-50"
-                            />
-                          </label>
                         </div>
                       </div>
 
@@ -1189,6 +1187,17 @@ export function ProjectDetailsDrawer({
                           <MapPin size={13} className="text-[var(--sidebar-primary)]" />
                           <span>{t('projects.form.sections.location')}</span>
                         </p>
+                        <LocationField
+                          key={`${editingProject?.id}-${isEditing ? 'edit' : 'view'}`}
+                          required
+                          value={{ pinUrl: formState.pinUrl, latitude: formState.latitude, longitude: formState.longitude }}
+                          onChange={(loc: LocationValue) => setFormState((prev) => ({ ...prev, ...loc }))}
+                          onPlaceResolved={(place) => setFormState((prev) => ({
+                            ...prev,
+                            country: prev.country?.trim() ? prev.country : place.country ?? prev.country,
+                            city: prev.city?.trim() ? prev.city : place.city ?? prev.city,
+                          }))}
+                        />
                         <div className="grid grid-cols-2 gap-4">
                           <label className="block">
                             <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">
@@ -1222,8 +1231,10 @@ export function ProjectDetailsDrawer({
                       </p>
                     )}
 
-                    {/* Action Buttons Footer (Edit Mode) */}
-                    <div className="border-t border-[var(--border)] pt-5 flex items-center justify-between gap-4">
+                  </div>
+                </div>
+                    {/* Action Buttons Footer (Edit Mode) — pinned to the bottom of the drawer */}
+                    <div className="flex shrink-0 items-center justify-between gap-4 border-t border-[var(--border)] bg-[var(--card)] px-5 py-4">
                       {editingProject && canDeleteProject ? (
                         <Button
                           type="button"
@@ -1259,8 +1270,6 @@ export function ProjectDetailsDrawer({
                         </Button>
                       </div>
                     </div>
-                  </div>
-                </div>
               </aside>
             </>
           ) : (

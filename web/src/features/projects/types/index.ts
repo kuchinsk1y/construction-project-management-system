@@ -153,6 +153,8 @@ export type ApiProject = {
   manager: { id: number; firstName: string; lastName: string } | null
   dokumentationUrl?: string | null
   pinUrl?: string | null
+  latitude?: number | null
+  longitude?: number | null
   power?: number | null
   vatRate?: string | null
   warrantyPercent?: string | null
@@ -179,6 +181,8 @@ export type CreateProjectPayload = {
   managerId?: number
   dokumentationUrl?: string
   pinUrl?: string
+  latitude?: number
+  longitude?: number
   power?: number
   vatRate?: number
   warrantyPercent?: number
@@ -311,3 +315,10 @@ export type CreatePlannedExpensePayload = {
   plannedPercent: number
 }
 
+
+export type ResolvedLocation = {
+  latitude: number
+  longitude: number
+  pinUrl: string
+  place: { label: string; city: string | null; region: string | null; country: string | null } | null
+}

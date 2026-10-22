@@ -1,6 +1,6 @@
 import type { JwtPayload, ThemeMode, ThemePreset, UserProfile } from '@/types/auth'
 
-export function applyTheme(mode: ThemeMode, preset: ThemePreset = 'lime'): void {
+export function applyTheme(mode: ThemeMode, preset: ThemePreset = 'b3FiC8aqBc'): void {
   document.documentElement.classList.toggle('dark', mode === 'dark')
   document.documentElement.dataset.theme = preset
 }

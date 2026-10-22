@@ -1,4 +1,6 @@
 import {
+  IsLatitude,
+  IsLongitude,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -9,6 +11,8 @@ import {
   MinLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+
+const LOCATION_REQUIRED = 'Podaj lokalizację projektu (link Google Maps lub współrzędne).';
 
 export class CreateProjectDto {
   @IsString()
@@ -79,6 +83,15 @@ export class CreateProjectDto {
   @IsString()
   @MaxLength(512)
   pinUrl?: string;
+
+  // Required: where the construction site is (from a Google Maps link or typed coordinates)
+  @IsLatitude({ message: LOCATION_REQUIRED })
+  @Type(() => Number)
+  latitude: number;
+
+  @IsLongitude({ message: LOCATION_REQUIRED })
+  @Type(() => Number)
+  longitude: number;
 
   @IsOptional()
   @IsNumber()

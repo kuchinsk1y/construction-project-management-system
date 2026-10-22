@@ -43,8 +43,9 @@ export function MilestonesTab({
   const currency = editingProject?.currency || 'PLN'
 
   // Calculations: only KM milestones count toward % total
-  const kmMilestones = milestones.filter((m) => m.type === 'KM')
-  const rdMilestones = milestones.filter((m) => m.type === 'roboty_dodatkowe')
+  const byNumber = (a: ApiMilestone, b: ApiMilestone) => a.milestoneNo.localeCompare(b.milestoneNo, 'pl', { numeric: true })
+  const kmMilestones = milestones.filter((m) => m.type === 'KM').sort(byNumber)
+  const rdMilestones = milestones.filter((m) => m.type === 'roboty_dodatkowe').sort(byNumber)
   const totalPct = kmMilestones.reduce((s, m) => s + (m.percentage || 0), 0)
   const totalNet = Math.round(milestones.reduce((s, m) => s + (m.netAmount || (m.type === 'KM' ? contractVal * (m.percentage / 100) : 0)), 0) * 100) / 100
 
@@ -362,7 +363,7 @@ export function MilestonesTab({
                         <td className="px-2 py-2.5 text-center text-[var(--foreground)]">
                           {Number(totalPct.toFixed(1))}%
                         </td>
-                        <td className="px-3 py-2.5 text-right text-[var(--foreground)]">
+                        <td className="px-3 py-2.5 text-right text-[var(--foreground)] whitespace-nowrap">
                           <span className="underline underline-offset-4 decoration-zinc-300 dark:decoration-zinc-700 decoration-2">
                             {formatBudget(Math.round(kmMilestones.reduce((s, m) => s + (contractVal * (m.percentage / 100)), 0) * 100) / 100, currency)}
                           </span>
@@ -418,7 +419,7 @@ export function MilestonesTab({
                             <td className="px-3 py-2 border-r border-amber-500/10 dark:border-amber-500/10 text-[var(--foreground)] font-normal leading-relaxed">
                               {m.description}
                             </td>
-                            <td className="px-3 py-2 text-right border-r border-amber-500/10 dark:border-amber-500/10 font-bold text-[var(--foreground)]">
+                            <td className="px-3 py-2 text-right border-r border-amber-500/10 dark:border-amber-500/10 font-bold text-[var(--foreground)] whitespace-nowrap">
                               {formatBudget(netValue, currency)}
                             </td>
                           </tr>
@@ -435,7 +436,7 @@ export function MilestonesTab({
                         <td className="px-3 py-2.5 text-amber-600/70 dark:text-amber-500/70 text-[11px] text-right">
                           Suma RD
                         </td>
-                        <td className="px-3 py-2.5 text-right text-[var(--foreground)]">
+                        <td className="px-3 py-2.5 text-right text-[var(--foreground)] whitespace-nowrap">
                           <span className="underline underline-offset-4 decoration-amber-500/30 dark:decoration-amber-500/40 decoration-2">
                             {formatBudget(Math.round(rdMilestones.reduce((s, m) => s + (m.netAmount || 0), 0) * 100) / 100, currency)}
                           </span>

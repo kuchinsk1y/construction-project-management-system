@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Plus, Trash2, X, Loader2, Calendar, Milestone, Wrench, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { UseMutationResult } from '@tanstack/react-query'
@@ -34,6 +34,25 @@ type FormRow = {
   invoicingPercentage?: number | null
   netAmount: number
   isNew?: boolean
+  /** Stable React key for rows that have no id yet */
+  uid?: string
+}
+
+/** KM rows first, then RD; each in natural number order (KM 2 before KM 10) */
+function sortRows(list: FormRow[]): FormRow[] {
+  return [...list].sort(
+    (a, b) =>
+      Number(a.type === 'roboty_dodatkowe') - Number(b.type === 'roboty_dodatkowe') ||
+      a.milestoneNo.localeCompare(b.milestoneNo, 'pl', { numeric: true }),
+  )
+}
+
+/** Next free number for a section, e.g. "KM 8" after KM 1–7 */
+function nextNumber(list: FormRow[], type: MilestoneType, prefix: 'KM' | 'RD'): string {
+  const max = list
+    .filter((r) => r.type === type)
+    .reduce((m, r) => Math.max(m, Math.floor(Number(r.milestoneNo.replace(/^(KM|RD)\s*/i, '')) || 0)), 0)
+  return `${prefix} ${max + 1}`
 }
 
 export function MilestoneFormDrawer({
@@ -59,7 +78,7 @@ export function MilestoneFormDrawer({
   if (isOpen !== prevIsOpen) {
     setPrevIsOpen(isOpen)
     if (isOpen) {
-      setRows(
+      setRows(sortRows(
         milestones.map((m) => ({
           id: m.id,
           type: m.type as MilestoneType,
@@ -69,10 +88,19 @@ export function MilestoneFormDrawer({
           invoicingPercentage: m.invoicingPercentage,
           netAmount: m.netAmount || 0,
           isNew: false,
-        }))
-      )
+        })),
+      ))
     }
   }
+
+  useEffect(() => {
+    if (!isOpen) return
+    const previous = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previous
+    }
+  }, [isOpen])
 
   const handleClose = () => {
     setMilestoneError('')
@@ -100,10 +128,11 @@ export function MilestoneFormDrawer({
       ...prev,
       {
         type: 'KM',
-        milestoneNo: `KM ${prev.filter((r) => r.type === 'KM').length + 1}`,
+        milestoneNo: nextNumber(prev, 'KM', 'KM'),
+        uid: crypto.randomUUID(),
         description: '',
         percentage: 0,
-        invoicingPercentage: null,
+        invoicingPercentage: 100,
         netAmount: 0,
         isNew: true,
       },
@@ -115,7 +144,8 @@ export function MilestoneFormDrawer({
       ...prev,
       {
         type: 'roboty_dodatkowe',
-        milestoneNo: `RD ${prev.filter((r) => r.type === 'roboty_dodatkowe').length + 1}`,
+        milestoneNo: nextNumber(prev, 'roboty_dodatkowe', 'RD'),
+        uid: crypto.randomUUID(),
         description: '',
         percentage: 0,
         netAmount: 0,
@@ -219,7 +249,7 @@ export function MilestoneFormDrawer({
   const inputCls =
     'h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-2.5 text-xs outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 disabled:opacity-50 disabled:cursor-not-allowed'
   const inputLockedCls =
-    'h-9 w-full rounded-lg border border-[var(--border)]/60 bg-[var(--muted)]/30 px-2.5 text-xs text-[var(--muted-foreground)] cursor-not-allowed select-none flex items-center'
+    'h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--muted)] px-2.5 text-xs text-[var(--muted-foreground)] cursor-not-allowed select-none flex items-center whitespace-nowrap overflow-hidden'
 
   const currentKMPct = rows.filter((r) => r.type === 'KM').reduce((sum, r) => sum + (Number(r.percentage) || 0), 0)
 
@@ -246,7 +276,7 @@ export function MilestoneFormDrawer({
           </Button>
         </header>
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-5 bg-[var(--background)]/20">
+        <div className="flex-1 overflow-y-auto overscroll-contain custom-scrollbar p-5 space-y-5">
           {milestoneError && <div className="rounded-xl border border-rose-500/35 bg-rose-500/10 px-3.5 py-2.5 text-xs text-rose-500 font-medium">{milestoneError}</div>}
 
           {rows.some(r => r.type === 'KM') && (
@@ -257,7 +287,7 @@ export function MilestoneFormDrawer({
                   {currentKMPct.toFixed(2)}% / 100%
                 </span>
               </div>
-              <div className="relative h-1.5 w-full bg-[var(--muted)]/50 rounded-full overflow-hidden">
+              <div className="relative h-1.5 w-full bg-[var(--muted)] rounded-full overflow-hidden">
                 <div
                   className={`absolute left-0 top-0 h-full transition-all duration-300 ${Math.abs(currentKMPct - 100) <= 0.01 ? 'bg-emerald-500' : 'bg-rose-500'}`}
                   style={{ width: `${Math.min(currentKMPct, 100)}%` }}
@@ -281,11 +311,12 @@ export function MilestoneFormDrawer({
                 return rows.map((row, index) => {
                   if (row.type !== 'KM') return null
                   const computedNet = kmNetAmount(row.percentage)
+                  const isFirstKm = index === firstKmIndex
                   return (
-                    <div key={row.id || `new-${index}`} className="relative py-3 border-b border-[var(--border)] last:border-0 group">
+                    <div key={row.id || row.uid || `new-${index}`} className="relative py-2 border-b border-[var(--border)] last:border-0 group">
                       <div className="grid grid-cols-12 gap-2.5 items-end">
                         <div className="col-span-2 space-y-1">
-                          <label className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Nr</label>
+                          {isFirstKm && <label className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Nr</label>}
                           <div className="flex h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] focus-within:border-[var(--sidebar-primary)] focus-within:ring-2 focus-within:ring-[var(--sidebar-primary)]/15 transition duration-150 ease-in-out overflow-hidden">
                             <span className="flex shrink-0 items-center justify-center bg-[var(--sidebar-primary)]/10 px-2.5 text-[11px] font-extrabold text-[var(--sidebar-primary)] border-r border-[var(--border)] select-none">
                               KM
@@ -296,6 +327,7 @@ export function MilestoneFormDrawer({
                                 const val = e.target.value.replace(/[^0-9.]/g, '')
                                 handleUpdateRow(index, 'milestoneNo', `KM ${val}`)
                               }}
+                              onBlur={() => setRows((prev) => sortRows(prev))}
                               placeholder="1"
                               required
                               className="flex-1 w-full min-w-0 bg-transparent px-2.5 text-xs outline-none placeholder:text-zinc-500/70"
@@ -303,20 +335,20 @@ export function MilestoneFormDrawer({
                           </div>
                         </div>
                         <div className="col-span-2 space-y-1">
-                          <label className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Udział %</label>
+                          {isFirstKm && <label className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Udział %</label>}
                           <input type="number" min="0.01" max="100" step="0.01" value={row.percentage || ''} onChange={(e) => handleUpdateRow(index, 'percentage', e.target.value ? Number(e.target.value) : 0)} placeholder="10.0" required className={inputCls} />
                         </div>
                         <div className="col-span-2 space-y-1">
-                          <label className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Kwota (auto)</label>
+                          {isFirstKm && <label className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Kwota (auto)</label>}
                           <div className={inputLockedCls}>{computedNet > 0 ? formatAmount(computedNet) : '—'}</div>
                         </div>
                         <div className="col-span-3 space-y-1">
-                          <label className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Opis etapu</label>
+                          {isFirstKm && <label className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Opis etapu</label>}
                           <input value={row.description} onChange={(e) => handleUpdateRow(index, 'description', e.target.value)} placeholder="Opis..." required className={inputCls} />
                         </div>
                         <div className="col-span-2 space-y-1">
-                          <label className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300" title="Procent fakturowania">% Fakt.</label>
-                          <input type="number" min="0" max="100" step="0.01" value={row.invoicingPercentage ?? ''} onChange={(e) => handleUpdateRow(index, 'invoicingPercentage', e.target.value ? Number(e.target.value) : null)} placeholder="np. 90" className={inputCls} />
+                          {isFirstKm && <label className="block whitespace-nowrap text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">% fakturowania</label>}
+                          <input type="number" min="0" max="100" step="0.01" value={row.invoicingPercentage ?? ''} onChange={(e) => handleUpdateRow(index, 'invoicingPercentage', e.target.value ? Number(e.target.value) : null)} placeholder="np. 50" className={inputCls} />
                         </div>
                         <div className="col-span-1 pb-1 flex justify-end">
                           {index !== firstKmIndex && (
@@ -343,11 +375,12 @@ export function MilestoneFormDrawer({
 
               {rows.map((row, index) => {
                 if (row.type !== 'roboty_dodatkowe') return null
+                const isFirstRd = index === rows.findIndex((r) => r.type === 'roboty_dodatkowe')
                 return (
-                  <div key={row.id || `new-${index}`} className="relative py-3 border-b border-[var(--border)] last:border-0 group">
+                  <div key={row.id || row.uid || `new-${index}`} className="relative py-2 border-b border-[var(--border)] last:border-0 group">
                     <div className="grid grid-cols-12 gap-2.5 items-end">
                       <div className="col-span-2 space-y-1">
-                        <label className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Nr</label>
+                        {isFirstRd && <label className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Nr</label>}
                         <div className="flex h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] focus-within:border-amber-500/50 focus-within:ring-2 focus-within:ring-amber-500/15 transition duration-150 ease-in-out overflow-hidden">
                           <span className="flex shrink-0 items-center justify-center bg-amber-500/10 px-2.5 text-[11px] font-extrabold text-amber-600 dark:text-amber-400 border-r border-[var(--border)] select-none">
                             RD
@@ -358,6 +391,7 @@ export function MilestoneFormDrawer({
                               const val = e.target.value.replace(/[^0-9.]/g, '')
                               handleUpdateRow(index, 'milestoneNo', `RD ${val}`)
                             }}
+                            onBlur={() => setRows((prev) => sortRows(prev))}
                             placeholder="1"
                             required
                             className="flex-1 w-full min-w-0 bg-transparent px-2.5 text-xs outline-none placeholder:text-zinc-500/70"
@@ -365,11 +399,11 @@ export function MilestoneFormDrawer({
                         </div>
                       </div>
                       <div className="col-span-3 space-y-1">
-                        <label className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Kwota netto</label>
+                        {isFirstRd && <label className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Kwota netto</label>}
                         <input type="number" min="0.01" step="0.01" value={row.netAmount || ''} onChange={(e) => handleUpdateRow(index, 'netAmount', e.target.value ? Number(e.target.value) : 0)} placeholder="np. 15000" required className={inputCls} />
                       </div>
                       <div className="col-span-6 space-y-1">
-                        <label className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Opis prac</label>
+                        {isFirstRd && <label className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Opis prac</label>}
                         <input value={row.description} onChange={(e) => handleUpdateRow(index, 'description', e.target.value)} placeholder="Opis robót..." required className={inputCls} />
                       </div>
                       <div className="col-span-1 pb-1 flex justify-end">

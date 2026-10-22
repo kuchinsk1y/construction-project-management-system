@@ -6,6 +6,8 @@
 
 body {
   margin: 0;
+  /* Portalled drawers/popovers render straight into <body> and inherit this */
+  color: var(--foreground);
   font-family: 'Geist Sans', 'Geist Variable', 'Geist', sans-serif;
   font-variant-numeric: tabular-nums lining-nums;
   font-feature-settings: 'tnum' 1, 'lnum' 1;

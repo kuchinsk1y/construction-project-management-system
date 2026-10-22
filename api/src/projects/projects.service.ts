@@ -31,6 +31,8 @@ function sanitizeDecimals(
   ) as Record<string, unknown>;
 }
 
+const PAID_INVOICE_STATUSES = ['ZAPŁACONE', 'ZAPŁACONA'];
+
 @Injectable()
 export class ProjectsService {
   private readonly logger = new Logger(ProjectsService.name);
@@ -116,6 +118,8 @@ export class ProjectsService {
         : null,
       dokumentationUrl: p.dokumentation_url,
       pinUrl: p.pin_url,
+      latitude: p.latitude != null ? Number(p.latitude) : null,
+      longitude: p.longitude != null ? Number(p.longitude) : null,
       power: p.power ? Number(p.power) : null,
       warrantyPercent: p.warranty_percent ? Number(p.warranty_percent) : null,
     }));
@@ -222,6 +226,8 @@ export class ProjectsService {
           : undefined,
         dokumentation_url: dto.dokumentationUrl ?? null,
         pin_url: dto.pinUrl ?? null,
+        latitude: dto.latitude,
+        longitude: dto.longitude,
         power: dto.power ?? null,
         warranty_percent: dto.warrantyPercent ?? null,
       },
@@ -293,6 +299,8 @@ export class ProjectsService {
         : null,
       dokumentationUrl: project.dokumentation_url,
       pinUrl: project.pin_url,
+      latitude: project.latitude != null ? Number(project.latitude) : null,
+      longitude: project.longitude != null ? Number(project.longitude) : null,
       power: project.power ? Number(project.power) : null,
       warrantyPercent: project.warranty_percent ? Number(project.warranty_percent) : null,
     });
@@ -425,6 +433,8 @@ export class ProjectsService {
           : { disconnect: true },
         dokumentation_url: dto.dokumentationUrl,
         pin_url: dto.pinUrl,
+        latitude: dto.latitude,
+        longitude: dto.longitude,
         power: dto.power ?? null,
         warranty_percent: dto.warrantyPercent ?? null,
       },
@@ -475,6 +485,8 @@ export class ProjectsService {
         : null,
       dokumentationUrl: project.dokumentation_url,
       pinUrl: project.pin_url,
+      latitude: project.latitude != null ? Number(project.latitude) : null,
+      longitude: project.longitude != null ? Number(project.longitude) : null,
       power: project.power ? Number(project.power) : null,
       warrantyPercent: project.warranty_percent ? Number(project.warranty_percent) : null,
     });
@@ -498,8 +510,14 @@ export class ProjectsService {
           orderBy: { issued_date: 'asc' }
         }
       },
-      orderBy: { milestone_no: 'asc' },
     });
+
+    // Natural order: contract milestones first (KM 1, KM 2 … KM 10), then additional works (RD 1, RD 2 …)
+    rows.sort(
+      (a, b) =>
+        Number(a.type === 'roboty_dodatkowe') - Number(b.type === 'roboty_dodatkowe') ||
+        a.milestone_no.localeCompare(b.milestone_no, 'pl', { numeric: true }),
+    );
 
     return rows.map((m) => ({
       id: m.id,
@@ -742,15 +760,17 @@ export class ProjectsService {
       throw new NotFoundException('Milestone not found');
     }
 
+    const status = dto.status || 'OCZEKUJE';
     const invoice = await this.prisma.milestones_invoices.create({
       data: {
         milestone_id: milestoneId,
         invoice_number: dto.invoiceNumber || null,
         net_value: dto.netValue,
         issued_date: dto.issuedDate ? new Date(dto.issuedDate) : null,
-        paid_at: dto.issuedDate ? new Date(dto.issuedDate) : null,
+        // Only a paid invoice has a payment date
+        paid_at: PAID_INVOICE_STATUSES.includes(status) ? new Date() : null,
         note: dto.note ?? '',
-        status: dto.status || 'OCZEKUJE',
+        status,
         link: dto.link || null,
       }
     });
@@ -826,7 +846,10 @@ export class ProjectsService {
           milestoneDescription: milestone.description,
           netValue,
           requestedBy,
-          issuedDate: invoice.issued_date?.toISOString().split('T')[0] ?? null,
+          // Polish date format for the email, e.g. 22.10.2026
+          issuedDate: invoice.issued_date
+            ? invoice.issued_date.toISOString().split('T')[0].split('-').reverse().join('.')
+            : null,
           note: invoice.note || null,
           invoicesUrl: `${frontendUrl}/projects/${project.id}/milestones`,
         }),
@@ -842,6 +865,8 @@ export class ProjectsService {
       throw new NotFoundException('Invoice not found');
     }
 
+    const status = dto.status ?? invoice.status;
+    const isPaid = PAID_INVOICE_STATUSES.includes(status);
     const updated = await this.prisma.milestones_invoices.update({
       where: { id: invoiceId },
       data: {
@@ -849,7 +874,9 @@ export class ProjectsService {
         net_value: dto.netValue ?? invoice.net_value,
         note: dto.note ?? invoice.note,
         issued_date: dto.issuedDate ? new Date(dto.issuedDate) : invoice.issued_date,
-        status: dto.status ?? invoice.status,
+        // Payment date follows the status: set when it becomes paid, cleared when it no longer is
+        paid_at: isPaid ? (invoice.paid_at ?? new Date()) : null,
+        status,
         link: dto.link ?? invoice.link,
       }
     });

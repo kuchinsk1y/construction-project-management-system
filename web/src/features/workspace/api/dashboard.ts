@@ -44,6 +44,7 @@ export type DashboardSummary = {
     }>
   }
   settlement: { total: number; paid: number; invoicedNotPaid: number; remaining: number }
+  projectProgress: Record<string, number | null>
   hoursByWeek: Array<{ weekStart: string; label: string; hours: number; isCurrent: boolean }>
   upcoming: Array<{
     workId: string

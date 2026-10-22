@@ -107,6 +107,8 @@ const emptyForm: CreateProjectPayload = {
   power: undefined,
   dokumentationUrl: '',
   pinUrl: '',
+  latitude: undefined,
+  longitude: undefined,
   vatRate: undefined,
   warrantyPercent: undefined,
   warrantyMonths: undefined,
@@ -503,6 +505,8 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
       power: raw.power ? Number(raw.power) : undefined,
       dokumentationUrl: raw.dokumentationUrl ?? '',
       pinUrl: raw.pinUrl ?? '',
+      latitude: raw.latitude ?? undefined,
+      longitude: raw.longitude ?? undefined,
       warrantyPercent: raw.warrantyPercent ? Number(raw.warrantyPercent) : undefined,
     })
     setFormError('')
@@ -533,6 +537,10 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
       setFormError(t('projects.form.errors.locationRequired'))
       return
     }
+    if (formState.latitude == null || formState.longitude == null) {
+      setFormError('Podaj lokalizację projektu: wklej link Google Maps lub wpisz współrzędne.')
+      return
+    }
 
     const payload: CreateProjectPayload = {
       name: formState.name.trim(),
@@ -551,6 +559,8 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
       power: formState.power || undefined,
       dokumentationUrl: formState.dokumentationUrl || undefined,
       pinUrl: formState.pinUrl || undefined,
+      latitude: formState.latitude,
+      longitude: formState.longitude,
       warrantyPercent: formState.warrantyPercent || undefined,
     }
 

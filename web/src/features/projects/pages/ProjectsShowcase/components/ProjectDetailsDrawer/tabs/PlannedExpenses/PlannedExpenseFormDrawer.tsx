@@ -192,7 +192,7 @@ export function PlannedExpenseFormDrawer({
       {/* Drawer */}
       <aside
         className={[
-          'fixed inset-y-0 right-0 z-[70] flex flex-col overflow-hidden border-l border-[var(--border)] bg-[var(--card)] shadow-2xl transition-transform duration-300 ease-out w-full max-w-[500px]',
+          'fixed inset-y-0 right-0 z-[70] flex flex-col overflow-hidden border-l border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] shadow-2xl transition-transform duration-300 ease-out w-full max-w-[500px]',
           isOpen ? 'translate-x-0' : 'translate-x-full',
         ].join(' ')}
       >
@@ -233,7 +233,7 @@ export function PlannedExpenseFormDrawer({
                 {currentTotal.toFixed(2)}% / 100%
               </span>
             </div>
-            <div className="relative h-2 w-full bg-[var(--border)]/50 rounded-full overflow-hidden">
+            <div className="relative h-2 w-full bg-[var(--border)] rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-300 ${Math.abs(currentTotal - 100) <= 0.01 ? 'bg-emerald-500' : currentTotal > 100 ? 'bg-rose-500' : 'bg-amber-500'}`}
                 style={{ width: `${Math.min(currentTotal, 100)}%` }}
@@ -243,7 +243,7 @@ export function PlannedExpenseFormDrawer({
 
           <div className="flex flex-col">
             {rows.map((row, index) => (
-              <div key={index} className={`flex gap-2 items-start relative group ${index > 0 ? 'pt-3 mt-3 border-t border-[var(--border)]/50' : ''}`}>
+              <div key={index} className={`flex gap-2 items-start relative group ${index > 0 ? 'pt-3 mt-3 border-t border-[var(--border)]' : ''}`}>
                 <div className="flex-1">
                   {index === 0 && (
                     <span className="block text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] ml-1 mb-1.5">Rodzaj wydatku</span>

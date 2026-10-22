@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -15,8 +15,121 @@ type WorkTypeDetailsViewProps = {
   milestone: ApiMilestone | null
   departmentLabel: string
   foremanName: string | null
+  /** All works of the same milestone (including this one) */
+  stageWorks: ApiWorkType[]
   formatBudget: (val: number, currency?: string) => string
   onClose: () => void
+  onSelectWork: (workId: string) => void
+}
+
+
+type StageWork = { id: string; name: string; share: number; progress: number; isCurrent: boolean }
+
+// Other works get alternating greys so neighbouring segments stay distinguishable
+const OTHER_SHADES = [
+  'color-mix(in oklch, var(--muted-foreground) 45%, transparent)',
+  'color-mix(in oklch, var(--muted-foreground) 25%, transparent)',
+]
+
+function shareColor(index: number, isCurrent: boolean) {
+  return isCurrent ? 'var(--sidebar-primary)' : OTHER_SHADES[index % OTHER_SHADES.length]
+}
+
+/** How the milestone is split between its works — a segmented bar plus a popover list (scales to many works) */
+function ShareBreakdown({ works, onSelectWork }: { works: StageWork[]; onSelectWork: (id: string) => void }) {
+  const [anchor, setAnchor] = useState<DOMRect | null>(null)
+  const popoverRef = useRef<HTMLDivElement>(null)
+  const total = works.reduce((sum, w) => sum + w.share, 0) || 1
+  let otherIndex = 0
+  const colored = works.map((w) => ({ ...w, color: shareColor(w.isCurrent ? 0 : otherIndex++, w.isCurrent) }))
+
+  useEffect(() => {
+    if (!anchor) return
+    const close = () => setAnchor(null)
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close() }
+    // Page scroll closes the popover; scrolling its own list doesn't
+    const onScroll = (e: Event) => {
+      if (popoverRef.current && e.target instanceof Node && popoverRef.current.contains(e.target)) return
+      close()
+    }
+    window.addEventListener('scroll', onScroll, true)
+    window.addEventListener('resize', close)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('scroll', onScroll, true)
+      window.removeEventListener('resize', close)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [anchor])
+
+  return (
+    <div className="mt-1.5">
+      <div className="flex h-1.5 w-full max-w-[220px] gap-px overflow-hidden rounded-full" role="img" aria-label="Podział etapu na roboty">
+        {colored.map((w) => (
+          <div
+            key={w.id}
+            title={`${w.name}: ${formatAmount(w.share, 0, 2)}%`}
+            className="h-full first:rounded-l-full last:rounded-r-full"
+            style={{ width: `${(w.share / total) * 100}%`, background: w.color }}
+          />
+        ))}
+      </div>
+
+      {works.length > 1 ? (
+        <button
+          type="button"
+          onClick={(e) => setAnchor(anchor ? null : e.currentTarget.getBoundingClientRect())}
+          className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-[var(--muted-foreground)] transition-colors hover:text-[var(--sidebar-primary)]"
+          aria-expanded={Boolean(anchor)}
+        >
+          z {works.length} robót w etapie · <span className="font-semibold underline underline-offset-2">pokaż</span>
+        </button>
+      ) : (
+        <p className="mt-0.5 text-[10px] text-[var(--muted-foreground)]">jedyna robota w etapie</p>
+      )}
+
+      {anchor && createPortal(
+        <>
+          <div className="fixed inset-0 z-[150]" onClick={() => setAnchor(null)} />
+          <div
+            ref={popoverRef}
+            className="fixed z-[151] w-[280px] overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--popover)] text-[var(--popover-foreground)] shadow-2xl animate-in fade-in zoom-in-95 duration-100"
+            style={{
+              left: Math.min(anchor.left, window.innerWidth - 296),
+              ...(window.innerHeight - anchor.bottom > 280
+                ? { top: anchor.bottom + 6 }
+                : { bottom: window.innerHeight - anchor.top + 6 }),
+            }}
+          >
+            <div className="flex items-center justify-between border-b border-[var(--border)] px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
+              <span>Roboty w etapie</span>
+              <span>udział · wykon.</span>
+            </div>
+            <ul className="max-h-[240px] overflow-y-auto custom-scrollbar py-1">
+              {colored.map((w) => (
+                <li key={w.id}>
+                  <button
+                    type="button"
+                    disabled={w.isCurrent}
+                    onClick={() => { setAnchor(null); onSelectWork(w.id) }}
+                    className="flex w-full items-center gap-2 px-3 py-1.5 text-left transition-colors enabled:hover:bg-[color-mix(in_oklch,var(--sidebar-primary)_8%,transparent)] disabled:cursor-default"
+                  >
+                    <span className="size-2 shrink-0 rounded-full" style={{ background: w.color }} aria-hidden="true" />
+                    <span className={`min-w-0 flex-1 truncate text-xs ${w.isCurrent ? 'font-bold text-[var(--sidebar-primary)]' : 'font-medium text-[var(--foreground)]'}`}>
+                      {w.name}{w.isCurrent ? ' (ta robota)' : ''}
+                    </span>
+                    <span className="w-11 shrink-0 text-right text-xs font-bold text-[var(--foreground)]">{formatAmount(w.share, 0, 2)}%</span>
+                    <span className="w-9 shrink-0 text-right text-[10px] text-[var(--muted-foreground)]">{formatAmount(w.progress, 0)}%</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </>,
+        document.body,
+      )}
+    </div>
+  )
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -218,6 +331,10 @@ function DailyChart({ days, unit }: { days: ChartDay[]; unit: string }) {
   const magnitude = max > 0 ? 10 ** Math.floor(Math.log10(max)) : 1
   const axisMax = max > 0 ? Math.ceil(max / magnitude) * magnitude : 1
   const labelEvery = Math.max(1, Math.ceil(days.length / 12))
+  // Today's label always shows; regular labels right next to it are skipped so they don't overlap
+  const todayIndex = days.findIndex((d) => d.isToday)
+  const showLabel = (i: number) =>
+    days[i].isToday || (i % labelEvery === 0 && (todayIndex < 0 || Math.abs(i - todayIndex) >= Math.max(2, Math.ceil(labelEvery / 2))))
   // Tooltip is portalled to <body> so the card's overflow-hidden can't clip it
   const [hover, setHover] = useState<{ day: ChartDay; x: number; y: number } | null>(null)
 
@@ -265,7 +382,7 @@ function DailyChart({ days, unit }: { days: ChartDay[]; unit: string }) {
 
                 {/* X label */}
                 <div className="h-5 pt-1 text-center text-[9px] tabular-nums leading-none text-[var(--muted-foreground)]">
-                  {i % labelEvery === 0 || d.isToday ? (
+                  {showLabel(i) ? (
                     <span className={d.isToday ? 'font-bold text-[var(--sidebar-primary)]' : ''}>{formatShortDate(d.date)}</span>
                   ) : null}
                 </div>
@@ -309,8 +426,10 @@ export function WorkTypeDetailsView({
   milestone,
   departmentLabel,
   foremanName,
+  stageWorks,
   formatBudget,
   onClose,
+  onSelectWork,
 }: WorkTypeDetailsViewProps) {
   const { data: reports = [], isLoading: reportsLoading } = useQuery({
     queryKey: ['work-type-daily-reports', work.id],
@@ -324,6 +443,17 @@ export function WorkTypeDetailsView({
   const remaining = Math.max(0, total - actual)
   const status: WorkStatus = total > 0 && actual >= total ? 'completed' : actual > 0 ? 'in_progress' : 'not_started'
   const share = work.percentage ?? 100
+
+  // This work first, then the rest by share — for the "Udział w etapie" breakdown
+  const stageWorksView: StageWork[] = (stageWorks.length ? stageWorks : [work])
+    .map((w) => ({
+      id: w.id,
+      name: w.name,
+      share: w.percentage ?? 100,
+      progress: w.totalQuantity > 0 ? Math.min(100, ((w.actualQuantity || 0) / w.totalQuantity) * 100) : 0,
+      isCurrent: w.id === work.id,
+    }))
+    .sort((a, b) => Number(b.isCurrent) - Number(a.isCurrent) || b.share - a.share)
   const isKM = milestone?.type !== 'roboty_dodatkowe'
 
   // ── Schedule ──────────────────────────────────────────────────────────────
@@ -511,9 +641,10 @@ export function WorkTypeDetailsView({
             value={formatAmount(share, 0, 2)}
             suffix="%"
             footer={
-              <div className="mt-1.5 h-1 w-full max-w-[140px] overflow-hidden rounded-full bg-[var(--muted)]">
-                <div className="h-full rounded-full bg-[var(--sidebar-primary)]" style={{ width: `${Math.min(100, share)}%` }} />
-              </div>
+              <ShareBreakdown
+                works={stageWorksView}
+                onSelectWork={onSelectWork}
+              />
             }
           />
           <Fact

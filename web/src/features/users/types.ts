@@ -19,6 +19,8 @@ export type ApiUser = {
   roles: string[]
   createdAt: string
   updatedAt: string
+  /** Why the user can't be deleted (linked projects/history), null when deletion is allowed */
+  deleteBlockedReason?: string | null
 }
 
 export type CreateUserPayload = {

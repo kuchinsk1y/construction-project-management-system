@@ -10,6 +10,9 @@ const formatDate = (d: Date) => {
   return d.toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' })
 }
 
+// Tooltip shows the full date so the year is visible, e.g. "1 mar 2026"
+const formatFullDate = (d: Date) => d.toLocaleDateString('pl-PL', { day: 'numeric', month: 'short', year: 'numeric' })
+
 export function ProjectWorksGantt({ works }: ProjectWorksGanttProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [viewMode, setViewMode] = useState<'14d' | '30d' | 'project'>('project')
@@ -99,36 +102,55 @@ export function ProjectWorksGantt({ works }: ProjectWorksGanttProps) {
     }).map(key => ({ km: key, works: groups[key] }))
   }, [mappedWorks])
 
-  const { columns, totalMs, startTime, endTime } = useMemo(() => {
-    if (viewMode === '14d') {
-      const arr = []
-      const start = new Date(today)
-      start.setDate(start.getDate() - 14) // 14 days ago
-      for (let i = 0; i < 17; i += 2) {
-        const d = new Date(start)
-        d.setDate(d.getDate() + i)
+  const { columns, totalMs, startTime, endTime, shiftedRange } = useMemo(() => {
+    if (viewMode === '14d' || viewMode === '30d') {
+      const DAY = 24 * 60 * 60 * 1000
+      const span = viewMode === '14d' ? 14 : 30 // days before the anchor day
+      const ahead = 3 // days after it
+      const step = viewMode === '14d' ? 2 : 5
 
-        arr.push({
-          date: d,
-          label: formatDate(d),
-          isToday: d.getTime() === today.getTime()
-        })
+      const windowHasWork = (anchor: Date) => {
+        const from = anchor.getTime() - span * DAY
+        const to = anchor.getTime() + ahead * DAY
+        return mappedWorks.some(w => w.startDate.getTime() <= to && w.endDate.getTime() >= from)
       }
-      return { columns: arr, totalMs: 17 * 24 * 60 * 60 * 1000, startTime: start.getTime(), endTime: start.getTime() + 17 * 24 * 60 * 60 * 1000 }
-    } else if (viewMode === '30d') {
+
+      // Normally the window ends around today. When nothing happened in it, move it to the
+      // latest finished work (or, if all works are still ahead, to the first one) so the chart is never empty.
+      let anchor = new Date(today)
+      if (mappedWorks.length > 0 && !windowHasWork(today)) {
+        const finished = mappedWorks.filter(w => w.endDate.getTime() < today.getTime())
+        if (finished.length > 0) {
+          anchor = new Date(Math.max(...finished.map(w => w.endDate.getTime())))
+        } else {
+          const firstStart = Math.min(...mappedWorks.map(w => w.startDate.getTime()))
+          anchor = new Date(firstStart + span * DAY)
+        }
+      }
+
+      const start = new Date(anchor)
+      start.setDate(start.getDate() - span)
+      const windowDays = span + ahead
       const arr = []
-      const start = new Date(today)
-      start.setDate(start.getDate() - 30) // 30 days ago
-      for (let i = 0; i < 33; i += 5) { // 30 past + today + 2 ahead = 33
+      for (let i = 0; i < windowDays; i += step) {
         const d = new Date(start)
         d.setDate(d.getDate() + i)
         arr.push({ date: d, label: formatDate(d), isToday: d.getTime() === today.getTime() })
       }
-      return { columns: arr, totalMs: 33 * 24 * 60 * 60 * 1000, startTime: start.getTime(), endTime: start.getTime() + 33 * 24 * 60 * 60 * 1000 }
+      const startT = start.getTime()
+      const endT = startT + windowDays * DAY
+      const shifted = anchor.getTime() !== today.getTime()
+      return {
+        columns: arr,
+        totalMs: windowDays * DAY,
+        startTime: startT,
+        endTime: endT,
+        shiftedRange: shifted ? { from: new Date(startT), to: new Date(endT - DAY) } : null,
+      }
     } else {
       if (mappedWorks.length === 0) {
         const start = new Date(today)
-        return { columns: [], totalMs: 1, startTime: start.getTime(), endTime: start.getTime() + 1 }
+        return { columns: [], totalMs: 1, startTime: start.getTime(), endTime: start.getTime() + 1, shiftedRange: null }
       }
 
       let minT = mappedWorks[0].startDate.getTime()
@@ -169,7 +191,7 @@ export function ProjectWorksGantt({ works }: ProjectWorksGanttProps) {
       }
 
       const exactEnd = current.getTime()
-      return { columns: arr, totalMs: exactEnd - minT, startTime: minT, endTime: exactEnd }
+      return { columns: arr, totalMs: exactEnd - minT, startTime: minT, endTime: exactEnd, shiftedRange: null }
     }
   }, [viewMode, today, mappedWorks])
 
@@ -183,6 +205,14 @@ export function ProjectWorksGantt({ works }: ProjectWorksGanttProps) {
             <Activity size={14} />
           </div>
           <span className="text-[var(--muted-foreground)] tracking-wider">Statystyki Robót</span>
+          {shiftedRange ? (
+            <span
+              className="ml-1 normal-case tracking-normal text-[10px] font-semibold text-[var(--muted-foreground)]"
+              title={`Brak robót w ostatnich ${viewMode === '14d' ? 14 : 30} dniach — pokazano ostatni okres z robotami`}
+            >
+              · ostatnie roboty: {formatDate(shiftedRange.from)} – {formatDate(shiftedRange.to)}
+            </span>
+          ) : null}
         </div>
 
         <div className="flex bg-[var(--muted)]/50 p-0.5 rounded-lg border border-[var(--border)]">
@@ -261,24 +291,18 @@ export function ProjectWorksGantt({ works }: ProjectWorksGanttProps) {
             ) : (
               <div className="flex flex-col relative z-10 pb-2">
                 {groupedWorks.map((group, gIdx) => (
-                  <div key={group.km} className={`flex flex-col ${gIdx > 0 ? 'mt-3' : ''}`}>
-                    {/* KM Header */}
-                    <div className="flex items-center relative mb-1.5">
-                      <div className="w-64 shrink-0 pr-4 z-10">
-                        <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-[var(--sidebar-primary)]/10">
-                          <span className="text-[10px] font-extrabold uppercase tracking-widest text-[var(--sidebar-primary)]">
-                            {group.km}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex-1 relative flex items-center h-full">
-                        {/* Subtle line across for the header to separate visually */}
-                        <div className="absolute left-0 right-0 h-[1px] bg-[var(--border)]" />
+                  <div key={group.km} className={`flex items-stretch ${gIdx > 0 ? 'mt-2 pt-2 border-t border-[var(--border)]' : ''}`}>
+                    {/* KM label, centred next to its works */}
+                    <div className="w-16 shrink-0 pr-2 mr-2 z-10 flex items-center border-r border-[var(--border)]">
+                      <div className="inline-flex items-center px-2 py-1 rounded bg-[var(--sidebar-primary)]/10">
+                        <span className="text-[10px] font-extrabold uppercase tracking-widest text-[var(--sidebar-primary)] whitespace-nowrap">
+                          {group.km}
+                        </span>
                       </div>
                     </div>
 
                     {/* Works in this KM */}
-                    <div className="flex flex-col gap-1.5">
+                    <div className="flex-1 min-w-0 flex flex-col gap-1.5">
                       {group.works.map((w) => {
                         const msPerDay = 24 * 60 * 60 * 1000
 
@@ -295,7 +319,7 @@ export function ProjectWorksGantt({ works }: ProjectWorksGanttProps) {
                             <div className="absolute inset-0 border-b border-[var(--border)] pointer-events-none" style={{ top: 'auto', bottom: '-3px' }} />
 
                             <div
-                              className="w-64 shrink-0 pr-4 z-10 pl-2 flex flex-col justify-center gap-0.5"
+                              className="w-[11.5rem] shrink-0 pr-4 z-10 flex flex-col justify-center gap-0.5"
                               onMouseMove={(e) => handleMouseMove(e, w)}
                               onMouseLeave={handleMouseLeave}
                             >
@@ -374,7 +398,7 @@ export function ProjectWorksGantt({ works }: ProjectWorksGanttProps) {
             <div className="flex items-center justify-between gap-4">
               <span className="text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wider">Termin</span>
               <span className="text-[11px] font-extrabold text-[var(--foreground)]">
-                {formatDate(tooltip.work.startDate)} - {formatDate(tooltip.work.endDate)}
+                {formatFullDate(tooltip.work.startDate)} – {formatFullDate(tooltip.work.endDate)}
               </span>
             </div>
             <div className="flex items-center justify-between gap-4">

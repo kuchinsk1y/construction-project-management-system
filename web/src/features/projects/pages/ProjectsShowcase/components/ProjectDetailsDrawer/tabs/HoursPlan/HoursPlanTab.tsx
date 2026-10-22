@@ -225,7 +225,7 @@ export function HoursPlanTab({ projectId, works, canEditProject }: HoursPlanTabP
                 </div>
               </div>
               <div className="col-span-3 lg:col-span-3 text-[10px] font-bold uppercase tracking-wider text-[var(--sidebar-primary)] px-2 text-center">
-                Godz. (Wyliczone)
+                Godz. (Planowane)
               </div>
             </div>
 

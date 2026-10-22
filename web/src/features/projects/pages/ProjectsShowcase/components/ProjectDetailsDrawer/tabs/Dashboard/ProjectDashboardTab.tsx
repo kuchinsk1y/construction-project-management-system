@@ -240,53 +240,42 @@ export function ProjectDashboardTab({ project, milestones, formatBudget }: Proje
     }
   }, [milestones, workTypes])
 
-  // Financial calculations for donut chart (3-part)
+  // Financial calculations for donut chart (3-part), by invoice status — same rules as the
+  // milestone invoices view and the main dashboard: paid = ZAPŁACONE, issued = WYSTAWIONA,
+  // requests awaiting acceptance (OCZEKUJE) still count as remaining
   const { totalKmNet, paidKmNet, invoicedNotPaidKmNet, remainingKmNet } = useMemo(() => {
     let total = 0
     let paid = 0
-    let invoiced = 0
+    let issued = 0
 
-    if (milestones && milestones.length > 0) {
-      milestones.forEach(m => {
-        const net = Number(m.netAmount) || 0
-        total += net
-
-        let mInvoiced = 0
-        let mPaid = 0
-
-        if (m.invoices && m.invoices.length > 0) {
-          m.invoices.forEach(inv => {
-            mInvoiced += inv.netValue
-            if (inv.paidAt) {
-              mPaid += inv.netValue
-            }
-          })
-        } else {
-          // fallback to milestone percentage if no invoices exist (though they should)
-          mInvoiced = net * ((m.invoicingPercentage || 0) / 100)
-        }
-
-        invoiced += mInvoiced
-        paid += mPaid
+    milestones?.forEach(m => {
+      total += Number(m.netAmount) || 0
+      m.invoices?.forEach(inv => {
+        if (inv.status === 'ZAPŁACONE' || inv.status === 'ZAPŁACONA') paid += inv.netValue
+        else if (inv.status === 'WYSTAWIONA') issued += inv.netValue
       })
-    }
+    })
 
     // Safety boundaries
-    invoiced = Math.min(invoiced, total)
-    paid = Math.min(paid, invoiced)
-    
-    let remaining = Math.round((total - invoiced) * 100) / 100
+    paid = Math.min(paid, total)
+    issued = Math.min(issued, total - paid)
+
+    let remaining = Math.round((total - paid - issued) * 100) / 100
     if (remaining < 0.1) remaining = 0
 
     return {
       totalKmNet: total,
       paidKmNet: paid,
-      invoicedNotPaidKmNet: invoiced - paid,
+      invoicedNotPaidKmNet: issued,
       remainingKmNet: remaining
     }
   }, [milestones])
 
   const budgetValue = project.contract_net_value ? Number(project.contract_net_value) : 0
+  // Additional works (RD) are billed on top of the contract value
+  const additionalWorksValue = (milestones ?? [])
+    .filter(m => m.type === 'roboty_dodatkowe')
+    .reduce((sum, m) => sum + (Number(m.netAmount) || 0), 0)
 
   const managerName = project.manager
     ? `${project.manager.firstName} ${project.manager.lastName}`
@@ -344,6 +333,14 @@ export function ProjectDashboardTab({ project, milestones, formatBudget }: Proje
             <p className="text-[14px] font-extrabold text-[var(--foreground)] truncate tabular-nums">
               {budgetValue > 0 ? formatBudget(budgetValue, project.currency || 'PLN') : '-'}
             </p>
+            {additionalWorksValue > 0 ? (
+              <p
+                className="mt-0.5 truncate text-[10px] font-semibold text-amber-500"
+                title="Roboty dodatkowe (RD) — poza wartością umowy"
+              >
+                + {formatBudget(additionalWorksValue, project.currency || 'PLN')} <span className="font-medium text-[var(--muted-foreground)]">roboty dodatkowe</span>
+              </p>
+            ) : null}
           </div>
           <div className="flex-1 px-3 py-2 hover:bg-[var(--sidebar-primary)]/5 transition-colors h-full relative flex flex-col justify-center items-start pt-6">
             <div className="absolute top-2 left-3 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">

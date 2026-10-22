@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, CheckCircle2, Loader2, PencilLine, Plus, Search, UserCheck, UserX, X } from 'lucide-react' /* ShieldCheck */
+import { AlertTriangle, ArrowDown, ArrowUp, CheckCircle2, ChevronsUpDown, Loader2, Lock, PencilLine, Plus, Search, UserCheck, UserX, X } from 'lucide-react' /* ShieldCheck */
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -56,6 +56,33 @@ const emptyForm: UserFormState = {
   telegramId: '',
   role: 'contractor',
   isActive: true,
+}
+
+type SortKey = 'id' | 'name' | 'role' | 'position' | 'status'
+
+function SortableTh({ label, sortKey, sort, onSort }: {
+  label: string
+  sortKey: SortKey
+  sort: { key: SortKey; dir: 'asc' | 'desc' }
+  onSort: (key: SortKey) => void
+}) {
+  const active = sort.key === sortKey
+  const Icon = !active ? ChevronsUpDown : sort.dir === 'asc' ? ArrowUp : ArrowDown
+  return (
+    <th
+      aria-sort={active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+      className="border-b border-[var(--border)] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]"
+    >
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className={`inline-flex cursor-pointer items-center gap-1 uppercase transition-colors hover:text-[var(--foreground)] ${active ? 'text-[var(--foreground)]' : ''}`}
+      >
+        {label}
+        <Icon size={12} className={active ? 'text-[var(--sidebar-primary)]' : 'opacity-40'} />
+      </button>
+    </th>
+  )
 }
 
 function roleLabel(role: string, t: (key: string) => string): string {
@@ -144,6 +171,7 @@ export function UsersPage({ canView, canAdd, canEdit, isAdmin }: UsersPageProps)
   const queryClient = useQueryClient()
   const [query, setQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState<'all' | UserRole>('all')
+  const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'name', dir: 'asc' })
   const [showModal, setShowModal] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
   // Existing users open read-only first; "Edytuj" switches the drawer to the form
@@ -184,6 +212,8 @@ export function UsersPage({ canView, canAdd, canEdit, isAdmin }: UsersPageProps)
         return [createdUser, ...oldUsers]
       })
       await queryClient.invalidateQueries({ queryKey: ['users'] })
+      // Foreman lists (project departments) are cached separately
+      await queryClient.invalidateQueries({ queryKey: ['foremen'] })
       setShowModal(false)
       setIsEditMode(false)
       setEditingId(null)
@@ -208,6 +238,7 @@ export function UsersPage({ canView, canAdd, canEdit, isAdmin }: UsersPageProps)
         return oldUsers.map((u) => (u.id === updatedUser.id ? updatedUser : u))
       })
       await queryClient.invalidateQueries({ queryKey: ['users'] })
+      await queryClient.invalidateQueries({ queryKey: ['foremen'] })
       setIsViewMode(true)
       setFormError('')
       showNotice('success', data.noticeTitle, data.noticeMessage)
@@ -223,6 +254,7 @@ export function UsersPage({ canView, canAdd, canEdit, isAdmin }: UsersPageProps)
     mutationFn: deleteUser,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['users'] })
+      await queryClient.invalidateQueries({ queryKey: ['foremen'] })
       setShowModal(false)
       setShowDeleteConfirm(false)
       setIsEditMode(false)
@@ -241,7 +273,7 @@ export function UsersPage({ canView, canAdd, canEdit, isAdmin }: UsersPageProps)
   const filteredUsers = useMemo(() => {
     const normalized = query.trim().toLowerCase()
 
-    return users.filter((user) => {
+    const matches = users.filter((user) => {
       const matchesQuery = !normalized
         || fullName(user).toLowerCase().includes(normalized)
         || user.email.toLowerCase().includes(normalized)
@@ -251,7 +283,29 @@ export function UsersPage({ canView, canAdd, canEdit, isAdmin }: UsersPageProps)
       if (roleFilter !== 'all' && primaryRole(user) !== roleFilter) return false
       return true
     })
-  }, [query, roleFilter, users])
+
+    const value = (user: ApiUser): string | number => {
+      switch (sort.key) {
+        case 'id': return user.id
+        case 'role': return roleLabel(primaryRole(user), t)
+        case 'position': return user.position
+        case 'status': return user.isActive ? 0 : 1
+        default: return `${user.lastName} ${user.firstName}`
+      }
+    }
+    const direction = sort.dir === 'asc' ? 1 : -1
+    return [...matches].sort((a, b) => {
+      const va = value(a)
+      const vb = value(b)
+      const cmp = typeof va === 'number' && typeof vb === 'number'
+        ? va - vb
+        : String(va).localeCompare(String(vb), 'pl', { numeric: true })
+      return cmp * direction
+    })
+  }, [query, roleFilter, users, sort, t])
+
+  const toggleSort = (key: SortKey) =>
+    setSort((prev) => (prev.key === key ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }))
 
   // const activeCount = filteredUsers.filter((item) => item.isActive).length
 
@@ -326,17 +380,6 @@ export function UsersPage({ canView, canAdd, canEdit, isAdmin }: UsersPageProps)
     }
 
     createMutation.mutate(toCreatePayload(formState))
-  }
-
-  const handleToggleActive = (user: ApiUser) => {
-    updateMutation.mutate({
-      id: user.id,
-      payload: { isActive: !user.isActive },
-      noticeTitle: user.isActive ? t('users.notices.deactivatedTitle') : t('users.notices.activatedTitle'),
-      noticeMessage: user.isActive
-        ? t('users.notices.deactivatedMessage', { name: fullName(user) })
-        : t('users.notices.activatedMessage', { name: fullName(user) }),
-    })
   }
 
   if (!canView) {
@@ -446,13 +489,13 @@ export function UsersPage({ canView, canAdd, canEdit, isAdmin }: UsersPageProps)
                 <thead className="sticky top-0 z-10">
                   <tr className="bg-[var(--background)]/95 backdrop-blur supports-[backdrop-filter]:bg-[var(--background)]/80">
                     {isAdmin ? (
-                      <th className="border-b border-[var(--border)] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">{t('users.table.idLabel')}</th>
+                      <SortableTh label={t('users.table.idLabel')} sortKey="id" sort={sort} onSort={toggleSort} />
                     ) : null}
-                    <th className="border-b border-[var(--border)] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">{t('users.table.headers.user')}</th>
-                    <th className="border-b border-[var(--border)] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">{t('users.table.headers.role')}</th>
-                    <th className="border-b border-[var(--border)] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">{t('users.table.headers.position')}</th>
+                    <SortableTh label={t('users.table.headers.user')} sortKey="name" sort={sort} onSort={toggleSort} />
+                    <SortableTh label={t('users.table.headers.role')} sortKey="role" sort={sort} onSort={toggleSort} />
+                    <SortableTh label={t('users.table.headers.position')} sortKey="position" sort={sort} onSort={toggleSort} />
                     <th className="border-b border-[var(--border)] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">{t('users.table.headers.contact')}</th>
-                    <th className="border-b border-[var(--border)] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">{t('users.table.headers.status')}</th>
+                    <SortableTh label={t('users.table.headers.status')} sortKey="status" sort={sort} onSort={toggleSort} />
                   </tr>
                 </thead>
 
@@ -493,24 +536,12 @@ export function UsersPage({ canView, canAdd, canEdit, isAdmin }: UsersPageProps)
                         <p className="mt-0.5 text-[11px] text-[var(--muted-foreground)]">{user.email}</p>
                       </td>
                       <td className="border-b border-[var(--border)] px-4 py-3 align-top">
-                        {canEdit ? (
-                          <button
-                            type="button"
-                            onClick={() => handleToggleActive(user)}
-                            onDoubleClick={(event) => event.stopPropagation()}
-                            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium transition hover:brightness-110 ${statusClassName(user.isActive)}`}
-                          >
-                            {user.isActive ? <UserCheck size={12} /> : <UserX size={12} />}
-                            {user.isActive ? t('users.statuses.active') : t('users.statuses.inactive')}
-                          </button>
-                        ) : (
-                          <span
-                            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium ${statusClassName(user.isActive)}`}
-                          >
-                            {user.isActive ? <UserCheck size={12} /> : <UserX size={12} />}
-                            {user.isActive ? t('users.statuses.active') : t('users.statuses.inactive')}
-                          </span>
-                        )}
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium ${statusClassName(user.isActive)}`}
+                        >
+                          {user.isActive ? <UserCheck size={12} /> : <UserX size={12} />}
+                          {user.isActive ? t('users.statuses.active') : t('users.statuses.inactive')}
+                        </span>
                       </td>
                     </tr>
                   ))}
@@ -707,7 +738,7 @@ export function UsersPage({ canView, canAdd, canEdit, isAdmin }: UsersPageProps)
           <div className="flex shrink-0 justify-end gap-2 border-t border-[var(--border)] px-5 py-3">
             <Button type="button" variant="outline" onClick={closeModal}>{t('users.actions.close')}</Button>
             {canEdit ? (
-              <Button type="button" onClick={startEditing}>
+              <Button type="button" onClick={startEditing} className="bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] hover:bg-[var(--sidebar-primary)]/90 shadow-[0_4px_14px_color-mix(in_oklch,var(--sidebar-primary),transparent_65%)]">
                 <PencilLine size={14} />
                 {t('users.actions.edit')}
               </Button>
@@ -717,14 +748,22 @@ export function UsersPage({ canView, canAdd, canEdit, isAdmin }: UsersPageProps)
         <div className="flex shrink-0 justify-between gap-2 border-t border-[var(--border)] px-5 py-3">
           <div>
             {isEditMode && (
-              <Button type="button" variant="destructive" onClick={() => setShowDeleteConfirm(true)}>
-                {t('users.actions.delete', 'Usuń')}
-              </Button>
+              viewedUser?.deleteBlockedReason ? (
+                // Linked users can't be deleted at all — explain why instead of offering the button
+                <p className="flex max-w-[260px] items-start gap-1.5 text-[11px] leading-snug text-[var(--muted-foreground)]">
+                  <Lock size={13} className="mt-px shrink-0" />
+                  {viewedUser.deleteBlockedReason}. Możesz go dezaktywować.
+                </p>
+              ) : (
+                <Button type="button" onClick={() => setShowDeleteConfirm(true)} className="bg-rose-500 text-white hover:bg-rose-600 shadow-[0_4px_14px_rgb(244_63_94/0.3)] disabled:bg-rose-500/40 disabled:shadow-none">
+                  {t('users.actions.delete', 'Usuń')}
+                </Button>
+              )
             )}
           </div>
           <div className="flex gap-2">
             <Button type="button" variant="outline" onClick={cancelForm}>{t('users.actions.cancel')}</Button>
-            <Button type="button" onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending || deleteMutation.isPending}>
+            <Button type="button" onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending || deleteMutation.isPending} className="bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] hover:bg-[var(--sidebar-primary)]/90 shadow-[0_4px_14px_color-mix(in_oklch,var(--sidebar-primary),transparent_65%)]">
               {(createMutation.isPending || updateMutation.isPending) ? <Loader2 size={14} className="animate-spin" /> : null}
               {isEditMode ? t('users.actions.save') : t('users.actions.addUser')}
             </Button>
@@ -746,7 +785,7 @@ export function UsersPage({ canView, canAdd, canEdit, isAdmin }: UsersPageProps)
               </Button>
               <Button
                 type="button"
-                variant="destructive"
+                className="bg-rose-500 text-white hover:bg-rose-600 shadow-[0_4px_14px_rgb(244_63_94/0.3)] disabled:bg-rose-500/40 disabled:shadow-none"
                 onClick={() => {
                   if (editingId) deleteMutation.mutate(editingId)
                 }}

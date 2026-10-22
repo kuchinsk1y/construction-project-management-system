@@ -26,5 +26,6 @@ export function formatAmount(value: number | string | null | undefined, fraction
 /** Formats a money amount with its currency code, e.g. "4 528,67 PLN". */
 export function formatMoney(value: number | string | null | undefined, currency?: string | null): string {
   const formatted = formatAmount(value)
-  return formatted === '-' ? formatted : `${formatted} ${currency || 'PLN'}`
+  // Non-breaking space so the currency never wraps onto its own line
+  return formatted === '-' ? formatted : `${formatted}\u00A0${currency || 'PLN'}`
 }

@@ -1,7 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Wrench, X, Loader2, Send } from 'lucide-react'
 import { toPng } from 'html-to-image'
 import type { UserProfile } from '@/types/auth'
+
+const REVEAL_MS = 6000
+const SHAKE_FLIPS = 4 // direction changes…
+const SHAKE_WINDOW_MS = 900 // …within this time
+const SHAKE_MIN_SWING_PX = 40 // each swing at least this far
 
 export function BugReporter({ profile }: { profile: UserProfile | null }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -11,6 +16,58 @@ export function BugReporter({ profile }: { profile: UserProfile | null }) {
   const [isSending, setIsSending] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
+  // The button stays tucked behind the right edge until summoned
+  const [isRevealed, setIsRevealed] = useState(false)
+  const hideTimer = useRef<number | undefined>(undefined)
+  const isHovered = useRef(false)
+
+  const reveal = () => {
+    setIsRevealed(true)
+    window.clearTimeout(hideTimer.current)
+    hideTimer.current = window.setTimeout(() => {
+      if (!isHovered.current) setIsRevealed(false)
+    }, REVEAL_MS)
+  }
+
+  // A quick left-right "shake" of the mouse slides the button in
+  useEffect(() => {
+    let lastX: number | null = null
+    let direction = 0
+    let travel = 0
+    let flips: number[] = []
+
+    const onMove = (event: MouseEvent) => {
+      if (lastX === null) {
+        lastX = event.clientX
+        return
+      }
+      const dx = event.clientX - lastX
+      lastX = event.clientX
+      if (dx === 0) return
+      const dir = Math.sign(dx)
+      if (dir === direction) {
+        travel += Math.abs(dx)
+        return
+      }
+      // Count a direction change only after a real swing, not jitter
+      if (direction !== 0 && travel >= SHAKE_MIN_SWING_PX) {
+        const now = performance.now()
+        flips = [...flips.filter((t) => now - t < SHAKE_WINDOW_MS), now]
+        if (flips.length >= SHAKE_FLIPS) {
+          flips = []
+          reveal()
+        }
+      }
+      direction = dir
+      travel = Math.abs(dx)
+    }
+
+    window.addEventListener('mousemove', onMove, { passive: true })
+    return () => {
+      window.removeEventListener('mousemove', onMove)
+      window.clearTimeout(hideTimer.current)
+    }
+  }, [])
 
   const handleCapture = async () => {
     setIsCapturing(true)
@@ -18,7 +75,7 @@ export function BugReporter({ profile }: { profile: UserProfile | null }) {
     try {
       const dataUrl = await toPng(document.body, {
         filter: (node) => {
-          if (node.id === 'bug-reporter-widget' || node.id === 'bug-reporter-modal') {
+          if (node.id === 'bug-reporter-widget' || node.id === 'bug-reporter-modal' || node.id === 'bug-reporter-handle') {
             return false
           }
           return true
@@ -89,19 +146,39 @@ export function BugReporter({ profile }: { profile: UserProfile | null }) {
 
   return (
     <>
+      {/* Thin edge handle: discoverable on hover / tap (touch screens can't shake a mouse) */}
+      <button
+        id="bug-reporter-handle"
+        type="button"
+        onMouseEnter={reveal}
+        onClick={reveal}
+        aria-label="Pokaż przycisk zgłaszania problemu"
+        title="Zgłoś problem — lub potrząśnij myszką"
+        className={`fixed bottom-24 right-0 z-[9999] h-12 w-1.5 rounded-l-full bg-[var(--sidebar-primary)] opacity-40 transition-all duration-300 hover:w-2.5 hover:opacity-90 ${
+          isRevealed || isOpen ? 'pointer-events-none translate-x-full opacity-0' : ''
+        }`}
+      />
+
       <button
         id="bug-reporter-widget"
         type="button"
         onClick={handleCapture}
+        onMouseEnter={() => { isHovered.current = true; reveal() }}
+        onMouseLeave={() => { isHovered.current = false; reveal() }}
+        onFocus={reveal}
         disabled={isCapturing}
-        className="fixed bottom-6 right-6 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--sidebar-primary)] text-white shadow-lg transition-transform hover:scale-110 active:scale-95 disabled:opacity-70 disabled:pointer-events-none"
+        tabIndex={isRevealed ? 0 : -1}
+        aria-hidden={!isRevealed}
+        className={`fixed bottom-20 right-4 z-[9999] flex h-11 w-11 items-center justify-center rounded-full bg-[var(--sidebar-primary)] text-white shadow-xl transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:scale-110 active:scale-95 disabled:opacity-70 disabled:pointer-events-none ${
+          isRevealed && !isOpen ? 'translate-x-0 opacity-100' : 'pointer-events-none translate-x-[calc(100%+2rem)] opacity-0'
+        }`}
         title="Zgłoś problem / Pomysł"
       >
         {isCapturing ? <Loader2 size={20} className="animate-spin" /> : <Wrench size={20} />}
       </button>
 
       {isOpen && (
-        <div id="bug-reporter-modal" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+        <div id="bug-reporter-modal" className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
           <div className="w-full max-w-lg rounded-2xl bg-[var(--card)] p-5 shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between mb-4 border-b border-[var(--border)] pb-3">
               <h3 className="text-lg font-bold text-[var(--foreground)]">Zgłoś problem</h3>

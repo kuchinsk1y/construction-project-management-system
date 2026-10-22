@@ -4,6 +4,8 @@ import { ProjectsController } from './projects.controller';
 import { ProjectsService } from './projects.service';
 import { DashboardController } from './dashboard.controller';
 import { DashboardService } from './dashboard.service';
+import { GeoController } from './geo.controller';
+import { GeoService } from './geo.service';
 import { ProjectsSyncConsumer } from './projects-sync.consumer';
 import { PlannedExpensesModule } from '../planned-expenses/planned-expenses.module';
 import { MailModule } from '../mail/mail.module';
@@ -18,7 +20,7 @@ import { AuthModule } from '../auth/auth.module';
     MailModule,
     AuthModule,
   ],
-  controllers: [ProjectsController, DashboardController],
-  providers: [ProjectsService, ProjectsSyncConsumer, DashboardService],
+  controllers: [ProjectsController, DashboardController, GeoController],
+  providers: [ProjectsService, ProjectsSyncConsumer, DashboardService, GeoService],
 })
 export class ProjectsModule {}

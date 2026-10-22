@@ -74,10 +74,49 @@ export class UsersService {
   async list() {
     const rows = await this.prisma.user.findMany({
       orderBy: [{ createdAt: 'desc' }],
-      select: this.selectFields,
+      select: {
+        ...this.selectFields,
+        _count: {
+          select: {
+            project_department_foremen: true,
+            projects_projects_manager_idTousers: true,
+            projects_projects_created_byTousers: true,
+            projects_projects_updated_byTousers: true,
+            project_status_history: true,
+          },
+        },
+      },
     });
 
-    return rows.map((row) => this.toView(row));
+    // The UI disables "Usuń" up front with the same reasons remove() enforces
+    return rows.map(({ _count, ...row }) => ({
+      ...this.toView(row),
+      deleteBlockedReason: this.deleteBlockedReason({
+        foremanAssignments: _count.project_department_foremen,
+        managedProjects: _count.projects_projects_manager_idTousers,
+        history:
+          _count.projects_projects_created_byTousers +
+          _count.projects_projects_updated_byTousers +
+          _count.project_status_history,
+      }),
+    }));
+  }
+
+  private deleteBlockedReason(links: {
+    foremanAssignments: number;
+    managedProjects: number;
+    history: number;
+  }): string | null {
+    if (links.foremanAssignments > 0) {
+      return 'Nie można usunąć użytkownika, ponieważ jest przypisany jako st. brygadzista w projektach';
+    }
+    if (links.managedProjects > 0) {
+      return 'Nie można usunąć użytkownika, ponieważ jest kierownikiem projektu';
+    }
+    if (links.history > 0) {
+      return 'Nie można usunąć użytkownika, ponieważ posiada powiązane logi lub historię zmian projektów';
+    }
+    return null;
   }
 
   async create(dto: CreateUserDto) {

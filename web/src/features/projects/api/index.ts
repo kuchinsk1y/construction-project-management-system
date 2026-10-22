@@ -13,6 +13,7 @@ import type {
   ApiForemanUser,
   ApiWorkType,
   ApiWorkTypeDailyReport,
+  ResolvedLocation,
   CreateWorkTypePayload,
   ApiForemanAssignment,
   ApiResourcePlan,
@@ -237,4 +238,9 @@ export function searchFakturowniaInvoices(query: string, country?: string): Prom
 
 export function fetchWorkTypeDailyReports(workTypeId: string): Promise<ApiWorkTypeDailyReport[]> {
   return apiGet<ApiWorkTypeDailyReport[]>(`/projects/work-types/${workTypeId}/daily-reports`)
+}
+
+/** Coordinates + place name from a Google Maps link or "lat, lng" text */
+export function resolveLocation(input: string): Promise<ResolvedLocation> {
+  return apiGet<ResolvedLocation>(`/geo/resolve?input=${encodeURIComponent(input)}`)
 }

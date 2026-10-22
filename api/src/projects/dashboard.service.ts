@@ -300,23 +300,19 @@ export class DashboardService {
         attentionOrder[a.kind] - attentionOrder[b.kind] || b.days - a.days,
     );
 
-    // ── Settlement: same three states as the project Pulpit "Rozliczenia" donut ──
+    // ── Settlement by invoice status (same rules as the milestone invoices view):
+    // paid = ZAPŁACONE, issued = WYSTAWIONA, requests (OCZEKUJE) still count as remaining
     const settlementTotal = Number(milestoneTotals._sum.net_amount ?? 0);
-    const invoicedNet = Math.min(
-      settlementTotal,
-      invoices.reduce((sum, inv) => sum + Number(inv.net_value), 0),
-    );
-    const paidNet = Math.min(
-      invoicedNet,
-      invoices
-        .filter((inv) => inv.paid_at)
-        .reduce((sum, inv) => sum + Number(inv.net_value), 0),
+    const paidNet = Math.min(settlementTotal, invoiceBuckets.paid.net);
+    const issuedNet = Math.min(
+      settlementTotal - paidNet,
+      invoiceBuckets.issued.net + invoiceBuckets.overdue.net,
     );
     const settlement = {
       total: settlementTotal,
       paid: paidNet,
-      invoicedNotPaid: invoicedNet - paidNet,
-      remaining: Math.max(0, settlementTotal - invoicedNet),
+      invoicedNotPaid: issuedNet,
+      remaining: Math.max(0, settlementTotal - paidNet - issuedNet),
     };
 
     // ── Hours per week ───────────────────────────────────────────────────────
@@ -392,6 +388,10 @@ export class DashboardService {
         hoursLastWeek: hoursByWeek[WEEKS_IN_CHART - 2].hours,
       },
       projects: projectRows.slice(0, 6),
+      // Progress of every project (used by the projects Gantt)
+      projectProgress: Object.fromEntries(
+        projectIds.map((id) => [id, progressByProject.get(id) ?? null]),
+      ),
       invoices: { ...invoiceBuckets, attention: attention.slice(0, 4) },
       settlement,
       hoursByWeek,

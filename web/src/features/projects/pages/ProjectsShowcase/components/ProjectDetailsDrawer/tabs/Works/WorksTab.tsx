@@ -16,6 +16,7 @@ import {
 } from '@/features/projects/api'
 import type { ApiMilestone, CreateWorkTypePayload, ApiWorkType } from '@/features/projects/types'
 import { formatAmount } from '@/lib/format'
+import { getDepartmentIcon } from '@/constants/department-icons'
 import { WorkTypeDetailsView } from './WorkTypeDetailsView'
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -198,6 +199,7 @@ export function WorksTab({ projectId, milestones, formatBudget, currency, canEdi
       return {
         id: d.departmentId,
         name: d.departmentName,
+        icon: d.departmentIcon,
         label: foreman ? `${d.departmentName} (${foreman.foremanName})` : d.departmentName,
       }
     }),
@@ -378,6 +380,15 @@ export function WorksTab({ projectId, milestones, formatBudget, currency, canEdi
 
   // ── Table structure ───────────────────────────────────────────────────────
 
+  const sortedMilestones = useMemo(
+    () => [...milestones].sort(
+      (a, b) =>
+        Number(a.type === 'roboty_dodatkowe') - Number(b.type === 'roboty_dodatkowe') ||
+        a.milestoneNo.localeCompare(b.milestoneNo, 'pl', { numeric: true }),
+    ),
+    [milestones],
+  )
+
   // Group: for each milestone, collect rows (read or edit)
   type MilestoneGroup = {
     milestone: ApiMilestone
@@ -388,7 +399,7 @@ export function WorksTab({ projectId, milestones, formatBudget, currency, canEdi
 
   const milestoneGroups: MilestoneGroup[] = useMemo(() => {
     if (isEditMode) {
-      return milestones.map(milestone => {
+      return sortedMilestones.map(milestone => {
         const rows = editRows
           .filter(r => r.milestoneId === milestone.id)
           .map(r => ({ editRow: r }))
@@ -398,7 +409,7 @@ export function WorksTab({ projectId, milestones, formatBudget, currency, canEdi
         return { milestone, rows, percentSum: sum, isInvalid }
       })
     } else {
-      return milestones.map(milestone => {
+      return sortedMilestones.map(milestone => {
         const mWts = workTypes.filter(wt => wt.milestoneId === milestone.id)
         const sum = mWts.reduce((acc, wt) => acc + (wt.percentage ?? 100), 0)
         return {
@@ -409,7 +420,7 @@ export function WorksTab({ projectId, milestones, formatBudget, currency, canEdi
         }
       })
     }
-  }, [isEditMode, milestones, editRows, workTypes, milestonePercentSums])
+  }, [isEditMode, sortedMilestones, editRows, workTypes, milestonePercentSums])
 
   // ─── Render ────────────────────────────────────────────────────────────────
 
@@ -425,8 +436,10 @@ export function WorksTab({ projectId, milestones, formatBudget, currency, canEdi
         milestone={milestone}
         departmentLabel={dept?.name ?? detailedWork.departmentName}
         foremanName={foreman?.foremanName ?? null}
+        stageWorks={workTypes.filter(wt => wt.milestoneId === detailedWork.milestoneId)}
         formatBudget={(val) => formatBudget(val, currency)}
         onClose={() => navigate(`/projects/${projectId}/works`)}
+        onSelectWork={openWork}
       />
     )
   }
@@ -595,7 +608,7 @@ export function WorksTab({ projectId, milestones, formatBudget, currency, canEdi
 
 // ─── MilestoneRows ────────────────────────────────────────────────────────────
 
-type DeptOption = { id: number; name: string; label: string }
+type DeptOption = { id: number; name: string; icon: string; label: string }
 
 type MilestoneRowsProps = {
   milestone: ApiMilestone
@@ -725,9 +738,16 @@ function MilestoneRows({
                 {wt.totalQuantity ? formatAmount(wt.totalQuantity) : '-'} {wt.unit && <span className="font-normal text-[var(--muted-foreground)]">{wt.unit}</span>}
               </td>
               <td className="px-3 py-2">
-                <span className="inline-flex items-center rounded-md bg-[var(--sidebar-primary)]/10 px-2 py-0.5 text-[10px] font-bold text-[var(--sidebar-primary)] whitespace-nowrap">
-                  {deptOptions.find(d => d.id === wt.departmentId)?.label || wt.departmentName}
-                </span>
+                {(() => {
+                  const dept = deptOptions.find(d => d.id === wt.departmentId)
+                  const DeptIcon = getDepartmentIcon(dept?.icon).icon
+                  return (
+                    <span className="inline-flex items-center gap-1.5 rounded-md bg-[color-mix(in_oklch,var(--sidebar-primary)_10%,transparent)] px-2 py-0.5 text-[10px] font-bold text-[var(--sidebar-primary)] whitespace-nowrap">
+                      <DeptIcon size={12} className="shrink-0" />
+                      {dept?.label || wt.departmentName}
+                    </span>
+                  )
+                })()}
               </td>
               {isEditMode && <td className="px-1.5 py-1 text-center"></td>}
             </tr>
@@ -753,14 +773,10 @@ function MilestoneRows({
                 <input
                   type="text"
                   list={`suggestions-${editRow.id}`}
-                  className={`w-full bg-[var(--background)] border rounded-md px-2 py-1 text-[11px] outline-none transition ${!editRow.departmentId
-                    ? 'border-[var(--border)] opacity-40 cursor-not-allowed'
-                    : 'border-[var(--border)] focus:border-[var(--sidebar-primary)]'
-                    }`}
+                  className="w-full bg-[var(--background)] border border-[var(--border)] focus:border-[var(--sidebar-primary)] rounded-md px-2 py-1 text-[11px] outline-none transition"
                   placeholder="Rodzaj roboty..."
                   value={editRow.name}
                   onChange={e => updateEditRow(editRow.id, 'name', e.target.value)}
-                  disabled={!editRow.departmentId}
                 />
                 {workSuggestions.length > 0 && (
                   <datalist id={`suggestions-${editRow.id}`}>
@@ -839,10 +855,6 @@ function MilestoneRows({
                   value={editRow.departmentId}
                   onChange={e => {
                     updateEditRow(editRow.id, 'departmentId', e.target.value)
-                    // Reset name if dept changed
-                    if (e.target.value !== editRow.departmentId) {
-                      updateEditRow(editRow.id, 'name', '')
-                    }
                   }}
                 >
                   <option value="">Wybierz dział...</option>
