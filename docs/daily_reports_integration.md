@@ -1,6 +1,7 @@
 # 📋 Щоденні звіти, журнал робіт та інтеграція з TMA — план реалізації (ERP)
 
 > **Статус:** план / до реалізації. Код ще не змінювався.
+> **Стан TMA (22.10.2026):** відмітки працюють у бойових умовах; live-ендпоінт для ERP реалізований — розділ [6](#6-api-яке-надає-tma-live-режим). Наступний крок за ERP: клієнт до нього, етап 6 у розділі [12](#12-етапи-реалізації).
 > **Пов'язані системи:** ERP (цей репозиторій) і TMA — особистий кабінет працівника на базі Telegram Mini App (окремий фронтенд + бекенд).
 > **Схема БД TMA:** ведеться в drawdb.app (`tg_mini_app`), таблиці відміток описані в розділі [9](#9-що-реалізується-на-стороні-tma-довідково).
 
@@ -13,7 +14,7 @@
 3. [Загальна схема потоків](#3-загальна-схема-потоків)
 4. [Зміни в базі даних ERP](#4-зміни-в-базі-даних-erp)
 5. [Інтеграційне API ERP (для TMA)](#5-інтеграційне-api-erp-для-tma)
-6. [API, яке має надати TMA (live-режим)](#6-api-яке-має-надати-tma-live-режим)
+6. [API, яке надає TMA (live-режим) — ✅ реалізовано в TMA](#6-api-яке-надає-tma-live-режим)
 7. [Внутрішні ендпоінти ERP (для фронтенду ERP)](#7-внутрішні-ендпоінти-erp-для-фронтенду-erp)
 8. [Бізнес-логіка ERP](#8-бізнес-логіка-erp)
 9. [Що реалізується на стороні TMA (довідково)](#9-що-реалізується-на-стороні-tma-довідково)
@@ -386,61 +387,124 @@ Query: `projectId`, `dateFrom`, `dateTo`, `authorExternalId` (усі опціо�
 
 ---
 
-## 6. API, яке має надати TMA (live-режим)
+## 6. API, яке надає TMA (live-режим)
 
-ERP викликає TMA для live-режиму керівника проєкту. Ключ — той самий спільний секрет (заголовок `x-api-key`); в ERP — змінні `TMA_API_URL`, `TMA_API_KEY`.
+> ✅ **Реалізовано в TMA** 22.10.2026 і перевірено запитами з консолі. Опис з боку TMA — `docs/architecture/integration-api.md` у репозиторії TMA (`construction-staff-app`).
 
-### `GET /v1/integration/attendance/live`
+ERP викликає TMA для live-режиму керівника проєкту. Відмітки ERP у себе не зберігає, лише проксіює запит із кешем (див. [8.6](#86-live-режим)).
 
-Query (хоча б один із перших двох):
+### Адреса і ключ
+
+| Що | Значення |
+|---|---|
+| Повний шлях | `GET /api/v1/integration/attendance/live` |
+| `TMA_API_URL` в ERP | базова адреса API TMA **разом з `/api`**: локально `http://localhost:3009/api`, на бою `https://<домен TMA>/api` |
+| Заголовок | `x-api-key: <ключ>` |
+| `TMA_API_KEY` в ERP | той самий ключ, що в TMA лежить у змінній `INTEGRATION_API_KEY` |
+
+Це **інший** ключ, ніж ERP-шний `INTEGRATION_API_KEY`, з яким TMA ходить в ERP (у TMA він зветься `ERP_API_KEY`). Секрет може бути той самий, але змінні дві, щоб кожен бік міг змінити свій окремо.
+
+Коди відповідей:
+
+| Код | Коли |
+|---|---|
+| `200` | Дані. Нічого не знайшлося — порожній `brigades`, а не помилка |
+| `400` | Немає ні `projectId`, ні `managerErpId`; `projectId` не UUID; дата не `YYYY-MM-DD` або в майбутньому |
+| `401` | Немає ключа або він чужий |
+| `503` | У TMA не налаштовано `INTEGRATION_API_KEY` — інтеграційне API там вимкнене |
+
+### Параметри
+
+Потрібен хоча б один із перших двох.
 
 | Параметр | Опис |
 |---|---|
-| `projectId` | Бригади, які **сьогодні** працюють на цьому проєкті (за `attendance_sessions.project_id` / `work_days.project_id`). |
-| `managerErpId` | ERP `users.id` керівника; TMA шукає його за `users.erp_user_id`. Усі бригади керівника (`brigades.supervisor_id`), включно з тими, що ще не відкрили сесію. |
-| `date` | За замовчуванням — сьогодні (Europe/Warsaw). |
+| `projectId` | UUID проєкту ERP. Бригади, які **того дня** мали на ньому сесію чи відмітку. |
+| `managerErpId` | ERP `users.id` керівника; TMA шукає його за `users.erp_user_id`. Усі його неархівні бригади, включно з тими, що ще не відкрили сесію. |
+| `date` | `YYYY-MM-DD`, Europe/Warsaw. За замовчуванням — сьогодні. |
 
-**Відповідь (контракт, який очікує ERP):**
+Якщо передано і `projectId`, і `managerErpId` — бригади керівника, які працювали на цьому проєкті.
+
+### Відповідь
 
 ```json
 {
-  "date": "2026-10-09",
-  "generatedAt": "2026-10-09T09:15:03+02:00",
+  "date": "2026-10-22",
+  "generatedAt": "2026-10-22T09:06:18.285Z",
   "brigades": [
     {
-      "id": 12,
-      "name": "Kafar 1",
-      "projectId": "1c2d…",
-      "foreman": { "externalId": "123", "name": "Jan Kowalski" },
-      "lastSessionAt": "2026-10-09T07:02:11+02:00",
+      "id": 8,
+      "name": "Kafar Domanowo",
+      "projectId": "11111111-1111-4111-8111-111111111111",
+      "foreman": { "externalId": "3", "name": "Jan Brygadzista" },
+      "lastSessionAt": "2026-10-22T09:06:18.184Z",
       "members": [
         {
-          "externalId": "456",
-          "name": "Piotr Nowak",
+          "externalId": "42",
+          "name": "Andres Chuprin",
           "position": "Monter",
           "status": "open",
-          "checkInAt": "2026-10-09T07:03:40+02:00",
-          "checkInMethod": "qr",
-          "manualReason": null,
+          "checkInAt": "2026-10-22T09:06:18.250Z",
+          "checkInMethod": "manual",
+          "manualReason": "no_smartphone",
           "absenceReason": null,
           "absenceComment": null,
           "closeRequestedAt": null,
           "closedAt": null,
           "closeMethod": null,
           "workDescription": null,
-          "distanceToSiteM": 85
+          "distanceToSiteM": 100
+        },
+        {
+          "externalId": "45",
+          "name": "Nuraly Ahmedov",
+          "position": "Monter",
+          "status": "absent",
+          "checkInAt": null,
+          "checkInMethod": null,
+          "manualReason": null,
+          "absenceReason": { "code": "sick_leave", "name": "Zwolnienie lekarskie (L4)" },
+          "absenceComment": "L4 do piątku",
+          "closeRequestedAt": null,
+          "closedAt": null,
+          "closeMethod": null,
+          "workDescription": null,
+          "distanceToSiteM": null
         }
       ],
-      "totals": { "members": 8, "present": 6, "absent": 1, "notMarked": 1, "closed": 0 }
+      "totals": { "members": 5, "present": 3, "absent": 1, "notMarked": 1, "closed": 0 }
     }
   ],
-  "totals": { "members": 8, "present": 6, "absent": 1, "notMarked": 1, "closed": 0 }
+  "totals": { "members": 5, "present": 3, "absent": 1, "notMarked": 1, "closed": 0 }
 }
 ```
 
+- `members` — увесь склад бригади на дату, разом із бригадиром. Людина без запису теж у списку зі `status: "not_marked"`.
 - `status`: `not_marked` | `open` | `close_requested` | `closed` | `auto_closed` | `absent`.
-- `projectId` бригади — проєкт останньої сесії за дату; `null`, якщо сесії ще не було.
-- `absenceReason`: `{ "code": "sick", "name": "Choroba" }` або `null`.
+- `checkInMethod`: `qr` | `manual` | `self` (день бригадира, відкритий його ж сесією).
+- `manualReason`: `no_smartphone` | `dead_battery` | `telegram_unavailable` | `other`.
+- `closeMethod`: `worker_confirmed` | `foreman` | `self` | `auto`.
+- `absenceReason`: `{ code, name }` або `null`; `code` — `vacation` | `unpaid_leave` | `sick_leave` | `day_off` | `unexcused` | `intoxication` | `other`, `name` — польською.
+- `projectId` і `lastSessionAt` бригади — з останньої сесії за дату; `null`, якщо сесії ще не було.
+- `distanceToSiteM` — відстань до координат проєкту в момент відмітки початку дня, у метрах.
+- `totals.present` — у кого відмічено початок дня, хоч би як він потім закрився; `totals.closed` — `closed` + `auto_closed`. Верхні `totals` — сума по бригадах.
+- Координат людей у відповіді немає навмисно.
+
+### Чим реалізація відрізняється від первинного плану
+
+| Що | У первинному плані | Як зроблено в TMA |
+|---|---|---|
+| Шлях | `/v1/integration/attendance/live` | `/api/v1/integration/attendance/live`: усе API TMA живе під `/api`, тому `TMA_API_URL` закінчується на `/api` |
+| Коди причин відсутності | короткі, напр. `sick` | коди TMA малими літерами: `sick_leave`, `day_off` тощо (список вище) |
+| Час | з часовою зоною, `+02:00` | ISO 8601 в UTC, `…Z`. Для показу переводити в Europe/Warsaw |
+| `externalId` | — | ідентифікатор людини в TMA (`users.id`) текстом |
+| Кеш | — | TMA не кешує; кеш 15 с — на боці ERP, як в 8.6 |
+
+### Перевірка з консолі
+
+```bash
+curl -s -H "x-api-key: <TMA_API_KEY>" "<TMA_API_URL>/v1/integration/attendance/live?managerErpId=5"
+```
 
 ---
 
@@ -538,7 +602,7 @@ Soft delete: в одній транзакції `deleted_at = now()` для `for
 
 **Реалізація в ERP:**
 
-- `AttendanceModule` з `TmaClient` (`@nestjs/axios`, вже є в залежностях): таймаут 5 с, заголовок `x-api-key`.
+- `AttendanceModule` з `TmaClient` (`@nestjs/axios`, вже є в залежностях): таймаут 5 с, заголовок `x-api-key`. Змінні: `TMA_API_URL` (базова адреса API TMA разом з `/api`) і `TMA_API_KEY`; деталі — розділ [6](#адреса-і-ключ).
 - Кеш відповіді на 15 с за ключем `(projectId | managerErpId, date)` — в Redis (вже є в стеку) або в пам'яті. Захищає TMA, коли кілька людей одночасно дивляться один проєкт.
 - Права: `project_manager` бачить лише проєкти, де `projects.manager_id = currentUser.id`; admin / operational_director — усі.
 - Якщо TMA недоступна → `502` з `{ "code": "TMA_UNAVAILABLE" }`; фронтенд показує останні отримані дані з позначкою часу.
@@ -558,19 +622,22 @@ Soft delete: в одній транзакції `deleted_at = now()` для `for
 
 | Таблиця | Призначення |
 |---|---|
-| `absence_reasons` | Довідник причин відсутності (`code`, `name`, `requires_comment`). |
 | `attendance_sessions` | Сесія реєстрації бригадира (~5 хв), `project_id` = ERP `projects.id`. |
 | `attendance_qr_tokens` | Одноразові QR-токени (у БД — лише хеш). |
 | `work_days` | Стан дня працівника: `open` / `close_requested` / `closed` / `auto_closed` / `absent`. Унікальність `(user_id, work_date)`. |
 | `work_day_events` | Журнал дій (append-only) з геолокацією: `session_opened`, `qr_generated`, `qr_scanned`, `manual_check_in`, `marked_absent`, `close_requested`, `close_confirmed`, `close_rejected`, `closed_by_foreman`, `auto_closed`, `admin_corrected`. |
 
+Причини відсутності — фіксований перелік у коді TMA, без окремої таблиці; коментар обов'язковий завжди. Коди — у розділі [6](#відповідь).
+
 Логіка, від якої залежить ERP:
 
-- **Геолокація** — при відкритті сесії, генерації QR і закритті дня; відстань рахується до `latitude`/`longitude` проєкту з ERP, радіус — `geofenceRadiusM` (або значення за замовчуванням).
+- **Проєкти без координат** бригадир у TMA не бачить і сесію на них не відкриє: керівник має заповнити `location.latitude` / `location.longitude` проєкту в ERP.
+- **Геолокація** — при відкритті сесії, генерації QR і закритті дня. Сесію бригадир відкриває не далі ніж за **5 км** від координат проєкту (ERP радіуса не віддає; `geofenceRadiusM`, якщо з'явиться, матиме пріоритет). Працівник генерує QR не далі ніж за **300 м** від місця, де бригадир відкрив сесію. Місце з точністю гірше за 500 м не приймається.
+- **Сесія** закривається сама, щойно запис на день має кожен учасник бригади; нову можна відкрити, лише якщо хтось ще без запису.
 - **Правило часу QR:** згенерувати — поки сесія відкрита; відсканувати — поки дійсний токен.
 - **Автозакриття о 23:00** (scheduler) → `auto_closed`; наступного дня керівник проєкту з бригадиром розбираються.
 - **Форма рапорту:** TMA бере працівників з `work_days` за дату (час початку/кінця, `work_description` — як орієнтир), бригадир розподіляє години по типах робіт (з 5.2) і вказує об'єми, після чого TMA викликає 5.3. `report.id` генерується **один раз** при створенні чернетки і не змінюється при повторних спробах відправки.
-- **Ендпоінт live** — контракт у розділі [6](#6-api-яке-має-надати-tma-live-режим).
+- **Ендпоінт live** — контракт у розділі [6](#6-api-яке-надає-tma-live-режим).
 
 ---
 
@@ -608,7 +675,7 @@ Soft delete: в одній транзакції `deleted_at = now()` для `for
 | 3 | **Інтеграційне API для довідників:** доопрацювання `GET /projects` (5.1), `GET /projects/:id/work-types` (5.2) | 2 |
 | 4 | **Прийом рапортів:** `POST /reports` з валідацією, ідемпотентністю, транзакцією; `GET /reports`, `GET /reports/:id` | 2 |
 | 5 | **Внутрішні ендпоінти рапортів:** список, перегляд, редагування / видалення адміном з ревізіями | 1, 4 |
-| 6 | **Live-режим:** `TmaClient`, кеш, `GET /attendance/live` | 1, ендпоінт TMA (6) |
+| 6 | **Live-режим:** `TmaClient`, кеш, `GET /attendance/live` | 1, ендпоінт TMA (6) — ✅ готовий у TMA |
 | 7 | **Фронтенд:** вкладка рапортів, live-режим, факт у Works/Dashboard, журнал робіт | 5, 6 |
 | 8 | **Тести:** unit — валідація і розрахунок підсумку; e2e — повний цикл `POST` → прогрес типу робіт, повтор `eventId`, конфлікт `report.id`, ліміт 24 год | 4, 5 |
 | 9 | **Документація:** оновити `business_workflows.md`, `database_schema.md`, `PROJECT.md` (Крок 5 → 🟢) | 7 |
@@ -626,3 +693,4 @@ Soft delete: в одній транзакції `deleted_at = now()` для `for
 4. **Крок годин** — 0.25 год (15 хв) чи 0.5 год?
 5. **Обов'язковість рапорту.** Чи має ERP/TMA нагадувати бригадиру, якщо рапорт за день не подано (а працівники були відмічені)?
 6. **Радіус за замовчуванням** для геолокації, якщо `geofence_radius_m` не задано.
+   - ✅ **вирішено в TMA:** 5 км від координат проєкту; поле `geofence_radius_m` в ERP поки не потрібне.

@@ -50,6 +50,7 @@
 - [ ] **SMTP-акаунт** для відправки листів — вхід у систему працює через код на email, без SMTP ніхто не залогіниться. Для Gmail потрібен *App Password*.
 - [ ] Файл **`google-credentials.json`** (ключ сервісного акаунта Google) з доступом до таблиці `PROJECTS_SPREADSHEET_ID`.
 - [ ] Ключ **`INTEGRATION_API_KEY`** для зовнішньої інтеграції (TMA), якщо вона використовується.
+- [ ] Для live-режиму реєстрації: адреса API TMA **`TMA_API_URL`** (разом з `/api`) і ключ **`TMA_API_KEY`** — той самий, що в TMA лежить у `INTEGRATION_API_KEY` (див. `daily_reports_integration.md`, розділ 6).
 
 ### 0.1. DNS-запис у home.pl
 
@@ -273,6 +274,9 @@ PROJECTS_SHEET_NAME=Zakres
 
 # Інтеграція (заголовок x-api-key)
 INTEGRATION_API_KEY=<openssl rand -hex 32>
+# Live-режим реєстрації: запити ERP до TMA
+TMA_API_URL=https://<домен TMA>/api
+TMA_API_KEY=<той самий ключ, що в TMA у INTEGRATION_API_KEY>
 
 # Telegram: куди надходять звіти з кнопки зворотного зв'язку (bug reporter)
 TELEGRAM_BOT_TOKEN=<токен від @BotFather>
