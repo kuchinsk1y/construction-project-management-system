@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { ArrowLeft, FileText, Plus, Trash2, CheckCircle2, AlertTriangle, Edit3, Link as LinkIcon, Layers } from 'lucide-react' // Calculator, PieChart, Banknote,
+import { ArrowLeft, FileText, Trash2, CheckCircle2, AlertTriangle, Edit3, Link as LinkIcon, Layers, Paperclip } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import type { ApiMilestone, ApiMilestoneInvoice, ApiWorkType } from '@/features/projects/types'
+import type { ApiInvoice, ApiMilestone, ApiMilestoneInvoice, ApiWorkType } from '@/features/projects/types'
 import { MilestoneInvoiceDonut } from './MilestoneInvoiceDonut'
 import { InvoicePreviewDrawer } from './InvoicePreviewDrawer'
 
@@ -9,11 +9,14 @@ type MilestoneInvoicesViewProps = {
   milestone: ApiMilestone
   contractVal: number
   currency: string
-  canEditProject: boolean
+  canEditProject?: boolean
   canManageInvoiceDetails?: boolean
+  /** "Akcje" column (edit / delete): admin and financial director */
+  showActions?: boolean
   onClose: () => void
-  onAddInvoiceClick: (milestone: ApiMilestone) => void
-  onFakturowniaClick: (milestone: ApiMilestone) => void
+  /** Invoices requested with works protocols (shared between milestones) */
+  invoices?: ApiInvoice[]
+  onOpenInvoice: (invoice: ApiInvoice) => void
   onEditInvoiceClick?: (milestone: ApiMilestone, invoice: ApiMilestoneInvoice) => void
   onRemoveInvoiceClick: (milestoneId: string, invoiceId: string) => void
   formatBudget: (val: number, currency?: string) => string
@@ -24,11 +27,11 @@ export function MilestoneInvoicesView({
   milestone,
   contractVal,
   currency,
-  canEditProject,
   canManageInvoiceDetails = false,
+  showActions = false,
   onClose,
-  onAddInvoiceClick,
-  onFakturowniaClick,
+  invoices = [],
+  onOpenInvoice,
   onEditInvoiceClick,
   onRemoveInvoiceClick,
   formatBudget,
@@ -60,6 +63,7 @@ export function MilestoneInvoicesView({
   const isOverbudget = invoicedNet > milestoneTotal + 0.1
 
   const milestoneWorks = works.filter(w => w.milestoneId === milestone.id)
+  const sharedInvoice = (row: ApiMilestoneInvoice) => (row.invoiceId ? invoices.find((i) => i.id === row.invoiceId) : undefined)
 
   return (
     <div className="w-full flex-1 flex flex-col min-h-0 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-sm gap-4 animate-tab-content relative">
@@ -173,25 +177,9 @@ export function MilestoneInvoicesView({
           <FileText size={14} className="text-[var(--sidebar-primary)]" />
           Lista wystawionych faktur
         </h3>
-        {canEditProject && (
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              onClick={() => onFakturowniaClick(milestone)}
-              className="rounded-md text-xs h-8 bg-transparent text-[var(--sidebar-primary)] border border-[var(--sidebar-primary)]/40 hover:bg-[var(--sidebar-primary)]/10 transition-colors"
-            >
-              Powiąż z Fakturownią
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => onAddInvoiceClick(milestone)}
-              className="rounded-md text-xs h-8 bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] shadow-[0_4px_12px_color-mix(in_oklch,var(--sidebar-primary),transparent_75%)] hover:bg-[var(--sidebar-primary)]/90"
-            >
-              <Plus size={13} className="mr-1" />
-              Dodaj Fakturę
-            </Button>
-          </div>
-        )}
+        <span className="text-[11px] text-[var(--muted-foreground)]">
+          Nowe faktury powstają przez „Zamknij roboty” w tabeli etapów
+        </span>
       </div>
 
       {/* 4. Data Table */}
@@ -207,7 +195,7 @@ export function MilestoneInvoicesView({
                   <th className="px-3 py-1.5 border-r border-[var(--border)] text-center whitespace-nowrap">Status</th>
                   <th className="px-3 py-1.5 border-r border-[var(--border)] text-center whitespace-nowrap w-16">Link</th>
                   <th className="px-3 py-1.5 border-r border-[var(--border)] w-1/3">Uwagi</th>
-                  {canManageInvoiceDetails && <th className="px-2 py-1.5 text-right w-16">Akcje</th>}
+                  {showActions && <th className="px-2 py-1.5 text-right w-16">Akcje</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border)] font-medium">
@@ -215,16 +203,33 @@ export function MilestoneInvoicesView({
                   <tr
                     key={inv.id}
                     style={{ animationDelay: `${index * 25}ms` }}
-                    className={`group transition-colors hover:bg-[var(--sidebar-primary)]/5 align-middle ${inv.link ? 'cursor-pointer' : 'cursor-default'}`}
+                    className={`group transition-colors hover:bg-[color-mix(in_oklch,var(--sidebar-primary)_5%,transparent)] align-middle ${inv.link || sharedInvoice(inv) || canManageInvoiceDetails ? 'cursor-pointer' : 'cursor-default'}`}
                     onClick={() => {
-                      if (inv.link) {
+                      const shared = sharedInvoice(inv)
+                      if (shared) {
+                        onOpenInvoice(shared)
+                      } else if (canManageInvoiceDetails && onEditInvoiceClick) {
+                        // Finance has no actions column: a click opens the older invoice for editing
+                        onEditInvoiceClick(milestone, inv)
+                      } else if (inv.link) {
                         setPreviewUrl(inv.link)
                         setIsPreviewOpen(true)
                       }
                     }}
                   >
                     <td className="px-3 py-2 border-r border-[var(--border)] text-[var(--foreground)] font-bold">
-                      {inv.invoiceNumber || <span className="text-zinc-400 font-normal italic">Brak numeru</span>}
+                      <div className="flex flex-col gap-0.5">
+                        <span>{inv.invoiceNumber || <span className="text-zinc-400 font-normal italic">Brak numeru</span>}</span>
+                        {sharedInvoice(inv) ? (
+                          <span className="flex items-center gap-1 text-[10px] font-medium text-[var(--muted-foreground)]" title="Faktura z protokołu odbioru robót">
+                            <Paperclip size={10} />
+                            {sharedInvoice(inv)!.allocations.length > 1
+                              ? `wspólna: ${sharedInvoice(inv)!.allocations.map((a) => a.milestoneNo).join(', ')}`
+                              : 'z protokołu'}
+                            {inv.percent != null ? ` · ${Number(inv.percent.toFixed(2))}%` : ''}
+                          </span>
+                        ) : null}
+                      </div>
                     </td>
                     <td className="px-3 py-2 border-r border-[var(--border)] text-[var(--foreground)] text-center whitespace-nowrap font-medium">
                       {inv.issuedDate ? new Date(inv.issuedDate).toLocaleDateString('pl-PL') : '-'}
@@ -257,8 +262,17 @@ export function MilestoneInvoicesView({
                     <td className="px-3 py-2 border-r border-[var(--border)] text-[var(--muted-foreground)] text-[10px] leading-snug">
                       {inv.note ? <span className="line-clamp-2" title={inv.note}>{inv.note}</span> : '-'}
                     </td>
-                    {canManageInvoiceDetails && (
+                    {showActions && (
                       <td className="px-2 py-2 text-right">
+                        {sharedInvoice(inv) ? (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); onOpenInvoice(sharedInvoice(inv)!) }}
+                            className="p-1.5 text-zinc-400 hover:text-[var(--sidebar-primary)] rounded-md transition-all"
+                            title="Zarządzaj fakturą"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                        ) : (
                         <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={(e) => { e.stopPropagation(); onEditInvoiceClick && onEditInvoiceClick(milestone, inv) }}
@@ -275,6 +289,7 @@ export function MilestoneInvoicesView({
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
+                        )}
                       </td>
                     )}
                   </tr>
@@ -288,7 +303,7 @@ export function MilestoneInvoicesView({
               <FileText className="w-6 h-6 opacity-50" />
             </div>
             <div>
-              Brak wystawionych faktur dla tego etapu.<br />Kliknij <strong className="text-[var(--foreground)]">"Dodaj Fakturę"</strong> aby rozpocząć rozliczanie.
+              Brak faktur dla tego etapu.<br />Użyj <strong className="text-[var(--foreground)]">„Zamknij roboty”</strong> w tabeli etapów, aby poprosić o fakturę.
             </div>
           </div>
         )}

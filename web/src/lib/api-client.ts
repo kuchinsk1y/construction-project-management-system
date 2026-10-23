@@ -134,3 +134,22 @@ export async function apiDelete<T>(path: string): Promise<T> {
 
   return parseResponse<T>(response)
 }
+
+/** Multipart upload (file + fields); the browser sets the boundary header itself */
+export async function apiPostForm<T>(path: string, form: FormData): Promise<T> {
+  const response = await fetch(`${resolveBaseUrl()}${path}`, {
+    method: 'POST',
+    headers: await authHeaders(),
+    body: form,
+  })
+  return parseResponse<T>(response)
+}
+
+/** Authorized file download, e.g. to open a protected document in a new tab */
+export async function apiGetBlob(path: string): Promise<Blob> {
+  const response = await fetch(`${resolveBaseUrl()}${path}`, { headers: await authHeaders() })
+  if (!response.ok) {
+    await parseResponse<unknown>(response)
+  }
+  return response.blob()
+}

@@ -154,8 +154,9 @@ export function BugReporter({ profile }: { profile: UserProfile | null }) {
         onClick={reveal}
         aria-label="Pokaż przycisk zgłaszania problemu"
         title="Zgłoś problem — lub potrząśnij myszką"
-        className={`fixed bottom-24 right-0 z-[9999] h-12 w-1.5 rounded-l-full bg-[var(--sidebar-primary)] opacity-40 transition-all duration-300 hover:w-2.5 hover:opacity-90 ${
-          isRevealed || isOpen ? 'pointer-events-none translate-x-full opacity-0' : ''
+        // Wide enough to stick out from under overlay scrollbars (Firefox on Windows 11, macOS)
+        className={`fixed bottom-24 right-0 z-[9999] h-16 w-4 rounded-l-full bg-[var(--sidebar-primary)] shadow-sm transition-all duration-300 hover:w-5 hover:opacity-100 ${
+          isRevealed || isOpen ? 'pointer-events-none translate-x-full opacity-0' : 'opacity-60'
         }`}
       />
 

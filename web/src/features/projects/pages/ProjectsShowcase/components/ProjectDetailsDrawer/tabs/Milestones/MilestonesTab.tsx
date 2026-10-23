@@ -1,13 +1,17 @@
 import { useState } from 'react'
-import { Layers, Loader2, Plus, FileText, Calculator, PieChart } from 'lucide-react'
-import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/react-query'
+import { Layers, Loader2, Plus, FileText, Calculator, PieChart, ClipboardCheck, Table2, Grid3x3, Receipt } from 'lucide-react'
+import { useMutation, useQuery, useQueryClient, type UseMutationResult } from '@tanstack/react-query'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { createMilestoneInvoice, deleteMilestoneInvoice, updateMilestoneInvoice } from '@/features/projects/api'
+import { createMilestoneInvoice, deleteMilestoneInvoice, fetchProjectInvoices, updateMilestoneInvoice } from '@/features/projects/api'
 import { InvoiceFormDrawer } from './InvoiceFormDrawer'
 import { MilestoneInvoicesView } from './MilestoneInvoicesView'
 import { FakturowniaImportDrawer } from './FakturowniaImportDrawer'
-import type { ApiMilestone, CreateMilestoneInvoicePayload, CreateMilestonePayload, ApiProject, ApiMilestoneInvoice, ApiWorkType } from '@/features/projects/types'
+import { CloseWorksDrawer } from './CloseWorksDrawer'
+import { InvoiceManageDrawer } from './InvoiceManageDrawer'
+import { MilestonesInvoiceMatrix } from './MilestonesInvoiceMatrix'
+import { InvoicesInboxDrawer, type Filter as InboxFilter } from './InvoicesInboxDrawer'
+import type { ApiInvoice, ApiMilestone, CreateMilestoneInvoicePayload, CreateMilestonePayload, ApiProject, ApiMilestoneInvoice, ApiWorkType } from '@/features/projects/types'
 
 type MilestonesTabProps = {
   milestones: ApiMilestone[]
@@ -91,6 +95,58 @@ export function MilestonesTab({
 
   const [isFakturowniaDrawerOpen, setIsFakturowniaDrawerOpen] = useState(false)
   const [fakturowniaFromForm, setFakturowniaFromForm] = useState(false)
+  const [isCloseWorksOpen, setIsCloseWorksOpen] = useState(false)
+  const [openInvoiceId, setOpenInvoiceId] = useState<string | null>(null)
+  const [isInboxOpen, setIsInboxOpen] = useState(false)
+  // An invoice opened from the list replaces it; closing the invoice brings the list back
+  const [returnToInbox, setReturnToInbox] = useState(false)
+  const [inboxFilter, setInboxFilter] = useState<InboxFilter | undefined>(undefined)
+  // "list" = milestone tables, "matrix" = milestones × invoices (who was invoiced when)
+  const [view, setView] = useState<'list' | 'matrix'>(() => {
+    try {
+      return localStorage.getItem('erp_milestones_view') === 'matrix' ? 'matrix' : 'list'
+    } catch {
+      return 'list'
+    }
+  })
+  const changeView = (v: 'list' | 'matrix') => {
+    setView(v)
+    try {
+      localStorage.setItem('erp_milestones_view', v)
+    } catch {
+      /* storage unavailable */
+    }
+  }
+
+  // Invoices requested with works protocols (one invoice can settle several milestones)
+  const { data: projectInvoices = [] } = useQuery({
+    queryKey: ['project-invoices', editingProject?.id],
+    queryFn: () => fetchProjectInvoices(editingProject!.id),
+    enabled: !!editingProject?.id,
+  })
+  // Requests waiting for finance: shared invoices plus older single-milestone ones
+  const pendingInvoices =
+    projectInvoices.filter((i) => !i.status || i.status === 'OCZEKUJE').length +
+    milestones.reduce((s, m) => s + (m.invoices ?? []).filter((r) => !r.invoiceId && (!r.status || r.status === 'OCZEKUJE')).length, 0)
+  const openInvoice: ApiInvoice | null = projectInvoices.find((i) => i.id === openInvoiceId) ?? null
+
+  const invoiceManageDrawer = openInvoice ? (
+    <InvoiceManageDrawer
+      key={openInvoice.id}
+      invoice={openInvoice}
+      onClose={() => {
+        setOpenInvoiceId(null)
+        if (returnToInbox) {
+          setReturnToInbox(false)
+          setIsInboxOpen(true)
+        }
+      }}
+      canManage={canManageInvoiceDetails}
+      country={editingProject?.country}
+      currency={currency}
+      formatBudget={formatBudget}
+    />
+  ) : null
   
   if (detailedMilestoneId && detailedMilestone) {
     return (
@@ -101,15 +157,10 @@ export function MilestonesTab({
           currency={currency}
           canEditProject={canEditProject}
           canManageInvoiceDetails={canManageInvoiceDetails}
+          showActions={canManageInvoiceDetails}
           onClose={() => navigate(`/projects/${projectId}/milestones`)}
-          onAddInvoiceClick={(m) => {
-            setEditingInvoice(null)
-            setActiveInvoiceMilestone(m)
-          }}
-          onFakturowniaClick={(m) => {
-            setActiveInvoiceMilestone(m)
-            setIsFakturowniaDrawerOpen(true)
-          }}
+          invoices={projectInvoices}
+          onOpenInvoice={(inv) => setOpenInvoiceId(inv.id)}
           onEditInvoiceClick={(m, inv) => {
             setEditingInvoice(inv)
             setActiveInvoiceMilestone(m)
@@ -172,6 +223,7 @@ export function MilestonesTab({
             setFakturowniaFromForm(false)
           }}
         />
+        {invoiceManageDrawer}
       </>
     )
   }
@@ -238,8 +290,55 @@ export function MilestonesTab({
             <span>Harmonogram i Tabela Etapów (Kamienie Milowe)</span>
           </div>
 
+          <div className="flex items-center gap-2">
+            <div className="flex p-0.5 rounded-lg border border-[var(--border)] bg-[var(--muted)]">
+              {([
+                ['list', 'Etapy', Table2],
+                ['matrix', 'Faktury', Grid3x3],
+              ] as const).map(([value, label, Icon]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => changeView(value)}
+                  className={`flex items-center gap-1.5 h-7 px-2.5 rounded-md text-[11px] font-semibold transition-colors ${
+                    view === value ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm' : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                  }`}
+                  title={value === 'matrix' ? 'Etapy × faktury: co i kiedy zafakturowano' : 'Tabela etapów'}
+                >
+                  <Icon size={12} />
+                  {label}
+                </button>
+              ))}
+            </div>
+          {canManageInvoiceDetails && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsInboxOpen(true)}
+              className="text-[11px] h-8 px-4 rounded-md flex items-center gap-1.5 font-bold shadow-sm border-[color-mix(in_oklch,var(--sidebar-primary)_40%,transparent)] text-[var(--sidebar-primary)] hover:bg-[color-mix(in_oklch,var(--sidebar-primary)_8%,transparent)]"
+            >
+              <Receipt size={13} />
+              <span>Zarządzaj fakturami</span>
+              {pendingInvoices > 0 ? (
+                <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] text-[10px] leading-[18px] text-center">
+                  {pendingInvoices}
+                </span>
+              ) : null}
+            </Button>
+          )}
           {canEditProject && (
             <div className="flex items-center gap-2">
+              {/* Close works with an acceptance protocol: request an invoice for one or several milestones */}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsCloseWorksOpen(true)}
+                disabled={milestones.length === 0}
+                className="text-[11px] h-8 px-4 rounded-md flex items-center gap-1.5 font-bold shadow-sm border-[color-mix(in_oklch,var(--sidebar-primary)_40%,transparent)] text-[var(--sidebar-primary)] hover:bg-[color-mix(in_oklch,var(--sidebar-primary)_8%,transparent)]"
+              >
+                <ClipboardCheck size={13} />
+                <span>Zamknij roboty</span>
+              </Button>
               {/* Dodaj / Edytuj etapy */}
               <Button
                 type="button"
@@ -251,6 +350,7 @@ export function MilestonesTab({
               </Button>
             </div>
           )}
+          </div>
         </div>
       </div>
 
@@ -259,6 +359,16 @@ export function MilestonesTab({
         <div className="flex items-center justify-center py-6">
           <Loader2 className="animate-spin text-[var(--sidebar-primary)]" size={24} />
         </div>
+      ) : view === 'matrix' ? (
+        <MilestonesInvoiceMatrix
+          milestones={milestones}
+          invoices={projectInvoices}
+          contractVal={contractVal}
+          currency={currency}
+          formatBudget={formatBudget}
+          onOpenInvoice={(inv) => setOpenInvoiceId(inv.id)}
+          onOpenMilestone={(m) => navigate(`/projects/${projectId}/milestones/faktury/${m.id}`)}
+        />
       ) : (
         <div className="flex-1 flex flex-col min-h-0 gap-4">
           {/* Kamienie Milowe Table */}
@@ -451,14 +561,43 @@ export function MilestonesTab({
         </div>
       )}
 
-      <InvoiceFormDrawer
-        isOpen={!!activeInvoiceMilestone}
-        onClose={() => setActiveInvoiceMilestone(null)}
-        onSubmit={(data) => addInvoiceMutation.mutate(data)}
-        isSubmitting={addInvoiceMutation.isPending}
-        milestone={activeInvoiceMilestone}
-        contractVal={contractVal}
-      />
+      {editingProject && isCloseWorksOpen ? (
+        <CloseWorksDrawer
+          isOpen={isCloseWorksOpen}
+          onClose={() => setIsCloseWorksOpen(false)}
+          projectId={editingProject.id}
+          milestones={milestones}
+          works={works}
+          invoices={projectInvoices}
+          contractVal={contractVal}
+          currency={currency}
+          formatBudget={formatBudget}
+        />
+      ) : null}
+      {isInboxOpen ? (
+        <InvoicesInboxDrawer
+          onClose={() => {
+            setIsInboxOpen(false)
+            setInboxFilter(undefined)
+          }}
+          milestones={milestones}
+          invoices={projectInvoices}
+          currency={currency}
+          formatBudget={formatBudget}
+          filter={inboxFilter}
+          onFilterChange={setInboxFilter}
+          onOpenInvoice={(inv) => {
+            setIsInboxOpen(false)
+            setReturnToInbox(true)
+            setOpenInvoiceId(inv.id)
+          }}
+          onOpenMilestone={(m) => {
+            setIsInboxOpen(false)
+            navigate(`/projects/${projectId}/milestones/faktury/${m.id}`)
+          }}
+        />
+      ) : null}
+      {invoiceManageDrawer}
 
       {/* Back Footer */}
       <div className="border-t border-[var(--border)] pt-3 flex items-center justify-end">

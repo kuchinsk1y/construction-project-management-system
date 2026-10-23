@@ -9,6 +9,44 @@ export type ApiMilestoneInvoice = {
   paidAt?: string | null
   status?: string
   link?: string | null
+  /** Shared invoice (works protocol) this row belongs to */
+  invoiceId?: string | null
+  /** Share of the milestone settled by this row, in % */
+  percent?: number | null
+}
+
+/** Invoice requested with a works acceptance protocol; may settle several milestones */
+export type ApiInvoice = {
+  id: string
+  projectId: string
+  invoiceNumber: string | null
+  status: string
+  issuedDate: string | null
+  paidAt: string | null
+  link: string | null
+  note: string
+  totalNet: number
+  createdAt: string
+  createdBy: string | null
+  protocol: { fileName: string; mimeType: string | null } | null
+  allocations: {
+    rowId: string
+    milestoneId: string
+    milestoneNo: string
+    description: string
+    type: string
+    percent: number | null
+    netValue: number
+  }[]
+  works: { id: string; name: string; unit: string | null; totalQuantity: number | null; milestoneId: string | null }[]
+}
+
+export type UpdateInvoicePayload = {
+  invoiceNumber?: string | null
+  status?: string
+  link?: string | null
+  issuedDate?: string | null
+  note?: string
 }
 
 export type ApiMilestone = {

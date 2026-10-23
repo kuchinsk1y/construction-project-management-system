@@ -15,6 +15,7 @@ import { PlannedExpensesModule } from './planned-expenses/planned-expenses.modul
 import { IntegrationModule } from './integration/integration.module';
 import { FeedbackModule } from './feedback/feedback.module';
 import { AttendanceModule } from './attendance/attendance.module';
+import { InvoicesModule } from './invoices/invoices.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { AttendanceModule } from './attendance/attendance.module';
     IntegrationModule,
     FeedbackModule,
     AttendanceModule,
+    InvoicesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

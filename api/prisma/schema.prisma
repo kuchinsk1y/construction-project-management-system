@@ -30,6 +30,8 @@ model User {
   user_roles                          user_roles[]
   contractors                         contractors?                 @relation(fields: [contractor_id], references: [id])
 
+  invoices_created invoices[] @relation("invoices_created_byTousers")
+
   @@map("users")
 }
 
@@ -140,13 +142,53 @@ model milestones_invoices {
   id             String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   milestone_id   String     @db.Uuid
   invoice_number String?    @db.VarChar(100)
-  net_value      Decimal    @db.Decimal(8, 2)
+  net_value      Decimal    @db.Decimal(15, 2)
   note           String
   issued_date    DateTime?  @db.Date
   paid_at        DateTime?  @db.Date
   status         String     @default("OCZEKUJE") @db.VarChar(50)
   link           String?    @db.VarChar(500)
+  /// Shared invoice this row belongs to (one invoice can settle several milestones)
+  invoice_id     String?    @db.Uuid
+  /// Share of the milestone settled by this row, in %
+  percent        Decimal?   @db.Decimal(5, 2)
   milestones     milestones @relation(fields: [milestone_id], references: [id], onDelete: Cascade)
+  invoices       invoices?  @relation(fields: [invoice_id], references: [id], onDelete: Cascade)
+}
+
+/// Invoice requested by a works acceptance protocol; split into milestones_invoices rows per milestone
+model invoices {
+  id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  project_id          String                @db.Uuid
+  invoice_number      String?               @db.VarChar(100)
+  status              String                @default("OCZEKUJE") @db.VarChar(50)
+  issued_date         DateTime?             @db.Date
+  paid_at             DateTime?             @db.Date
+  link                String?               @db.VarChar(500)
+  note                String                @default("")
+  protocol_file_id    String?               @db.VarChar(200)
+  protocol_file_name  String?               @db.VarChar(255)
+  protocol_mime_type  String?               @db.VarChar(150)
+  created_by          Int?
+  created_at          DateTime              @default(now()) @db.Timestamptz(0)
+  updated_at          DateTime              @default(now()) @updatedAt @db.Timestamptz(0)
+  projects            projects              @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  author              User?                 @relation("invoices_created_byTousers", fields: [created_by], references: [id], onDelete: SetNull)
+  milestones_invoices milestones_invoices[]
+  invoice_works       invoice_works[]
+
+  @@index([project_id])
+}
+
+/// Works closed by an invoice protocol (whole works only)
+model invoice_works {
+  invoice_id         String             @db.Uuid
+  work_type_id       String             @db.Uuid
+  invoices           invoices           @relation(fields: [invoice_id], references: [id], onDelete: Cascade)
+  project_work_types project_work_types @relation(fields: [work_type_id], references: [id], onDelete: Cascade)
+
+  @@id([invoice_id, work_type_id])
+  @@index([work_type_id])
 }
 
 model planned_expenses {
@@ -232,6 +274,7 @@ model project_work_types {
   created_at                   DateTime?                      @default(now()) @db.Timestamptz(0)
   updated_at                   DateTime?                      @default(now()) @db.Timestamptz(0)
   daily_reports                daily_reports[]
+  invoice_works                invoice_works[]
   departments                  departments                    @relation(fields: [department_id], references: [id])
   milestones                   milestones?                    @relation(fields: [milestone_id], references: [id], onDelete: Cascade)
   projects                     projects                       @relation(fields: [project_id], references: [id], onDelete: Cascade)
@@ -273,6 +316,7 @@ model projects {
   created_at                       DateTime?                      @default(now()) @db.Timestamptz(0)
   updated_at                       DateTime?                      @default(now()) @db.Timestamptz(0)
   daily_reports                    daily_reports[]
+  invoices                         invoices[]
   milestones                       milestones[]
   planned_expenses                 planned_expenses[]
   project_budget_items             project_budget_items[]
@@ -330,6 +374,6 @@ model google_sheets_sync_errors {
   action        String   @db.VarChar(100)
   payload       String?  @db.Text
   error_message String   @db.Text
-  user_id       Int?     
+  user_id       Int?
   created_at    DateTime @default(now()) @db.Timestamp(6)
 }

@@ -67,7 +67,11 @@ export function InvoiceFormDrawer({
     ? Math.round(((milestone.percentage / 100) * contractVal) * 100) / 100
     : (milestone.netAmount || 0)
 
-  const alreadyInvoicedPct = milestone.invoicingPercentage || 0
+  // Share already requested/issued; invoicingPercentage is the invoicing step, not progress
+  const invoicedSum = (milestone.invoices ?? [])
+    .filter((i) => i.id !== initialData?.id)
+    .reduce((sum, i) => sum + i.netValue, 0)
+  const alreadyInvoicedPct = milestoneTotal > 0 ? Math.min(100, (invoicedSum / milestoneTotal) * 100) : 0
   const maxRemainingPct = Math.max(0, 100 - alreadyInvoicedPct)
   const maxRemainingNet = Math.max(0, milestoneTotal - (milestoneTotal * alreadyInvoicedPct / 100))
 

@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPost, apiPut } from '@/lib/api-client'
+import { apiDelete, apiGet, apiGetBlob, apiPatch, apiPost, apiPostForm, apiPut } from '@/lib/api-client'
 import type {
   ApiContractor,
   ApiProject,
@@ -8,6 +8,8 @@ import type {
   CreateMilestonePayload,
   CreateMilestoneInvoicePayload,
   ApiMilestoneInvoice,
+  ApiInvoice,
+  UpdateInvoicePayload,
   ApiDepartment,
   ApiProjectDepartment,
   ApiForemanUser,
@@ -300,4 +302,32 @@ export function isOnSite(status: AttendanceStatus) {
 /** Who is on site today: live check-ins from TMA (proxied and cached by the API) */
 export function fetchProjectAttendance(projectId: string): Promise<AttendanceLive> {
   return apiGet<AttendanceLive>(`/attendance/live?projectId=${encodeURIComponent(projectId)}`)
+}
+
+export function fetchProjectInvoices(projectId: string): Promise<ApiInvoice[]> {
+  return apiGet<ApiInvoice[]>(`/projects/${projectId}/invoices`)
+}
+
+/** Closes works with an acceptance protocol; creates invoice requests in every affected milestone */
+export function createInvoiceProtocol(
+  projectId: string,
+  data: { allocations: { milestoneId: string; percent: number }[]; workIds: string[]; issuedDate?: string; note?: string },
+  protocol: File,
+): Promise<ApiInvoice> {
+  const form = new FormData()
+  form.append('data', JSON.stringify(data))
+  form.append('protocol', protocol)
+  return apiPostForm<ApiInvoice>(`/projects/${projectId}/invoices`, form)
+}
+
+export function updateInvoice(id: string, payload: UpdateInvoicePayload): Promise<ApiInvoice> {
+  return apiPatch<ApiInvoice>(`/invoices/${id}`, payload)
+}
+
+export function deleteInvoice(id: string): Promise<{ success: boolean }> {
+  return apiDelete<{ success: boolean }>(`/invoices/${id}`)
+}
+
+export function fetchInvoiceProtocol(id: string): Promise<Blob> {
+  return apiGetBlob(`/invoices/${id}/protocol`)
 }

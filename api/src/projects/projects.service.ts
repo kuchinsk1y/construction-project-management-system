@@ -541,6 +541,8 @@ export class ProjectsService {
         paidAt: inv.paid_at?.toISOString().split('T')[0] ?? null,
         status: inv.status,
         link: inv.link,
+        invoiceId: inv.invoice_id,
+        percent: inv.percent != null ? Number(inv.percent) : null,
       }))
     }));
   }
@@ -775,8 +777,6 @@ export class ProjectsService {
       }
     });
 
-    await this.recalculateMilestoneInvoicing(milestoneId, Number(milestone.net_amount));
-
     // A new invoice awaiting acceptance is a request from the project manager — notify finance
     if (invoice.status === 'OCZEKUJE') {
       this.notifyFinancialDirectorsAboutInvoiceRequest(milestone, invoice, requesterId).catch((error) =>
@@ -881,13 +881,6 @@ export class ProjectsService {
       }
     });
 
-    const milestone = await this.prisma.milestones.findUnique({
-      where: { id: milestoneId },
-    });
-    if (milestone) {
-      await this.recalculateMilestoneInvoicing(milestoneId, Number(milestone.net_amount));
-    }
-
     return {
       id: updated.id,
       invoiceNumber: updated.invoice_number,
@@ -911,29 +904,7 @@ export class ProjectsService {
       where: { id: invoiceId },
     });
 
-    const milestone = await this.prisma.milestones.findUnique({
-      where: { id: milestoneId },
-    });
-    
-    if (milestone) {
-      await this.recalculateMilestoneInvoicing(milestoneId, Number(milestone.net_amount));
-    }
-
     return { success: true };
-  }
-
-  private async recalculateMilestoneInvoicing(milestoneId: string, netAmount: number) {
-    const invoices = await this.prisma.milestones_invoices.findMany({
-      where: { milestone_id: milestoneId },
-    });
-    
-    const totalInvoiced = invoices.reduce((sum, inv) => sum + Number(inv.net_value), 0);
-    const newPercentage = netAmount > 0 ? (totalInvoiced / netAmount) * 100 : 0;
-    
-    await this.prisma.milestones.update({
-      where: { id: milestoneId },
-      data: { invoicing_percentage: Math.min(newPercentage, 100) },
-    });
   }
 
   // --- Departments & Foremen Reference ---

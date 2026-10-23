@@ -133,6 +133,10 @@ export class MailService {
       issuedDate: string | null;
       note: string | null;
       invoicesUrl: string;
+      /** Split across milestones, e.g. "KM 1 – 84 000,00 PLN (50%)" */
+      breakdown?: string[];
+      /** Closed works listed in the acceptance protocol */
+      works?: string[];
     },
   ): Promise<void> {
     try {
@@ -146,6 +150,10 @@ export class MailService {
       ];
       if (details.issuedDate)
         rows.push(['Data wystawienia', escapeHtml(details.issuedDate)]);
+      if (details.breakdown?.length)
+        rows.push(['Podział na etapy', details.breakdown.map(escapeHtml).join('<br>')]);
+      if (details.works?.length)
+        rows.push([`Roboty (${details.works.length})`, details.works.map(escapeHtml).join('<br>')]);
       if (details.note)
         rows.push(['Uwagi', escapeHtml(details.note).replace(/\n/g, '<br>')]);
 
