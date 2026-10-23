@@ -1,8 +1,7 @@
 import { useState, useMemo, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { fetchWorkTypes } from '@/features/projects/api'
+import { fetchProjectAttendance, fetchWorkTypes, isOnSite } from '@/features/projects/api'
 import {
-  Building2,
   CheckCircle2,
   CircleDollarSign,
   Clock,
@@ -14,9 +13,10 @@ import {
   PieChart,
   Briefcase,
   LayoutList,
-  List
+  List,
+  Users,
 } from 'lucide-react'
-import { ProjectActiveWorkers } from './ProjectActiveWorkers'
+import { ProjectActiveWorkers, type WorkersViewMode } from './ProjectActiveWorkers'
 import { ProjectWorksGantt } from './ProjectWorksGantt'
 import type { ApiMilestone, ApiProject } from '@/features/projects/types'
 
@@ -198,7 +198,7 @@ type ProjectDashboardTabProps = {
 }
 
 export function ProjectDashboardTab({ project, milestones, formatBudget }: ProjectDashboardTabProps) {
-  const [workersViewMode, setWorkersViewMode] = useState<'company' | 'grouped' | 'list'>('grouped')
+  const [workersViewMode, setWorkersViewMode] = useState<WorkersViewMode>('brigade')
 
   const { data: workTypes = [] } = useQuery({
     queryKey: ['work-types', project.id],
@@ -206,15 +206,19 @@ export function ProjectDashboardTab({ project, milestones, formatBudget }: Proje
     enabled: !!project.id,
   })
 
-  const { data: activeWorkers = [] } = useQuery({
-    queryKey: ['workers-attendance'],
-    queryFn: async () => {
-      const response = await fetch(`/mock/workers-attendance.json?t=${Date.now()}`)
-      if (!response.ok) throw new Error('Network response was not ok')
-      return response.json() as Promise<unknown[]>
-    },
-    enabled: project.status?.toUpperCase() === 'ACTIVE'
+  // Live check-ins from TMA; polled while the tab is visible
+  const attendance = useQuery({
+    queryKey: ['attendance-live', project.id],
+    queryFn: () => fetchProjectAttendance(project.id),
+    enabled: project.status?.toUpperCase() === 'ACTIVE' && !!project.id,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
+    retry: 1,
   })
+  const onSiteCount = useMemo(
+    () => (attendance.data?.brigades ?? []).reduce((sum, b) => sum + b.members.filter((m) => isOnSite(m.status)).length, 0),
+    [attendance.data],
+  )
 
   // Calculate Progress
   const { totalMilestones, completedMilestones, overallProgress } = useMemo(() => {
@@ -413,9 +417,9 @@ export function ProjectDashboardTab({ project, milestones, formatBudget }: Proje
                 {project.status?.toUpperCase() === 'ACTIVE' ? (
                   <>
                     Obecni na budowie
-                    {activeWorkers.length > 0 && (
+                    {onSiteCount > 0 && (
                       <span className="text-[10px] bg-[var(--sidebar-primary)]/10 text-[var(--sidebar-primary)] px-1.5 py-0.5 rounded-sm font-extrabold">
-                        {activeWorkers.length}
+                        {onSiteCount}
                       </span>
                     )}
                   </>
@@ -428,18 +432,18 @@ export function ProjectDashboardTab({ project, milestones, formatBudget }: Proje
               {project.status?.toUpperCase() === 'ACTIVE' && (
                 <div className="flex bg-[var(--muted)]/50 p-0.5 rounded-lg border border-[var(--border)]">
                   <button
-                    onClick={() => setWorkersViewMode('company')}
-                    className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold transition-all ${workersViewMode === 'company'
+                    onClick={() => setWorkersViewMode('brigade')}
+                    className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold transition-all ${workersViewMode === 'brigade'
                       ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm'
                       : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
                       }`}
                   >
-                    <Building2 size={12} />
-                    <span className="hidden xl:inline">Firma</span>
+                    <Users size={12} />
+                    <span className="hidden xl:inline">Brygada</span>
                   </button>
                   <button
-                    onClick={() => setWorkersViewMode('grouped')}
-                    className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold transition-all ${workersViewMode === 'grouped'
+                    onClick={() => setWorkersViewMode('position')}
+                    className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold transition-all ${workersViewMode === 'position'
                       ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm'
                       : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
                       }`}
@@ -464,7 +468,7 @@ export function ProjectDashboardTab({ project, milestones, formatBudget }: Proje
 
           <div className="flex-1 overflow-hidden min-h-0 flex flex-col">
             {project.status?.toUpperCase() === 'ACTIVE' ? (
-              <ProjectActiveWorkers viewMode={workersViewMode} />
+              <ProjectActiveWorkers viewMode={workersViewMode} data={attendance.data} isLoading={attendance.isLoading} error={attendance.error} />
             ) : (
               <div className="flex flex-col gap-5 p-6 bg-[var(--background)] h-full justify-center min-h-0 overflow-y-auto custom-scrollbar">
                 <div className="grid grid-cols-2 gap-6">

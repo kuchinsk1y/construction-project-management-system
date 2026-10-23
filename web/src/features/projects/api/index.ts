@@ -247,3 +247,57 @@ export function fetchWorkTypeDailyReports(workTypeId: string): Promise<ApiWorkTy
 export function resolveLocation(input: string): Promise<ResolvedLocation> {
   return apiGet<ResolvedLocation>(`/geo/resolve?input=${encodeURIComponent(input)}`)
 }
+
+export type AttendanceStatus = 'not_marked' | 'open' | 'close_requested' | 'closed' | 'auto_closed' | 'absent'
+
+export type AttendanceTotals = {
+  members: number
+  present: number
+  absent: number
+  notMarked: number
+  closed: number
+}
+
+export type AttendanceMember = {
+  externalId: string
+  name: string
+  position: string | null
+  status: AttendanceStatus
+  checkInAt: string | null
+  checkInMethod: 'qr' | 'manual' | 'self' | null
+  manualReason: string | null
+  absenceReason: { code: string; name: string } | null
+  absenceComment: string | null
+  closeRequestedAt: string | null
+  closedAt: string | null
+  closeMethod: string | null
+  workDescription: string | null
+  distanceToSiteM: number | null
+}
+
+export type AttendanceBrigade = {
+  id: number
+  name: string
+  projectId: string | null
+  foreman: { externalId: string; name: string } | null
+  lastSessionAt: string | null
+  members: AttendanceMember[]
+  totals: AttendanceTotals
+}
+
+export type AttendanceLive = {
+  date: string
+  generatedAt: string
+  brigades: AttendanceBrigade[]
+  totals: AttendanceTotals
+}
+
+/** Checked in and not finished yet */
+export function isOnSite(status: AttendanceStatus) {
+  return status === 'open' || status === 'close_requested'
+}
+
+/** Who is on site today: live check-ins from TMA (proxied and cached by the API) */
+export function fetchProjectAttendance(projectId: string): Promise<AttendanceLive> {
+  return apiGet<AttendanceLive>(`/attendance/live?projectId=${encodeURIComponent(projectId)}`)
+}
