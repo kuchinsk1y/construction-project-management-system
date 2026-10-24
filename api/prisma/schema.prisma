@@ -317,6 +317,7 @@ model projects {
   updated_at                       DateTime?                      @default(now()) @db.Timestamptz(0)
   daily_reports                    daily_reports[]
   invoices                         invoices[]
+  project_location                 project_locations?
   milestones                       milestones[]
   planned_expenses                 planned_expenses[]
   project_budget_items             project_budget_items[]
@@ -376,4 +377,19 @@ model google_sheets_sync_errors {
   error_message String   @db.Text
   user_id       Int?
   created_at    DateTime @default(now()) @db.Timestamp(6)
+}
+
+/// Site location of a project (one row per project). Written together with the project's own
+/// latitude/longitude on create and edit; the gathering point is filled in later.
+model project_locations {
+  id                        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  project_id                String   @unique @db.Uuid
+  latitude                  Decimal  @db.Decimal(10, 7)
+  longitude                 Decimal  @db.Decimal(10, 7)
+  /// Where the crew gathers before going on site; not filled by the project form
+  gathering_point_latitude  Decimal? @db.Decimal(10, 7)
+  gathering_point_longitude Decimal? @db.Decimal(10, 7)
+  created_at                DateTime @default(now()) @db.Timestamptz(0)
+  updated_at                DateTime @default(now()) @updatedAt @db.Timestamptz(0)
+  projects                  projects @relation(fields: [project_id], references: [id], onDelete: Cascade)
 }

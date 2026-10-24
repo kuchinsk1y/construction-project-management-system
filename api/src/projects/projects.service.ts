@@ -228,6 +228,11 @@ export class ProjectsService {
         pin_url: dto.pinUrl ?? null,
         latitude: dto.latitude,
         longitude: dto.longitude,
+        // Same coordinates in the separate locations table, in the same write
+        project_location:
+          dto.latitude != null && dto.longitude != null
+            ? { create: { latitude: dto.latitude, longitude: dto.longitude } }
+            : undefined,
         power: dto.power ?? null,
         warranty_percent: dto.warrantyPercent ?? null,
       },
@@ -435,6 +440,16 @@ export class ProjectsService {
         pin_url: dto.pinUrl,
         latitude: dto.latitude,
         longitude: dto.longitude,
+        // Keep the locations table in step; the gathering point is left as it is
+        project_location:
+          dto.latitude != null && dto.longitude != null
+            ? {
+                upsert: {
+                  create: { latitude: dto.latitude, longitude: dto.longitude },
+                  update: { latitude: dto.latitude, longitude: dto.longitude },
+                },
+              }
+            : undefined,
         power: dto.power ?? null,
         warranty_percent: dto.warrantyPercent ?? null,
       },

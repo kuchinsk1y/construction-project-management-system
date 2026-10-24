@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import type { ApiWorkType } from '@/features/projects/types'
 import { Activity } from 'lucide-react'
 
@@ -18,24 +19,19 @@ export function ProjectWorksGantt({ works }: ProjectWorksGanttProps) {
   const [viewMode, setViewMode] = useState<'14d' | '30d' | 'project'>('project')
   const [tooltip, setTooltip] = useState<{ x: number, y: number, work: any } | null>(null)
 
+  // The tooltip lives in a portal with viewport coordinates, so a short card never clips it
   const handleMouseMove = (e: React.MouseEvent, work: any) => {
-    if (!containerRef.current) return
-    const rect = containerRef.current.getBoundingClientRect()
-
     const tooltipWidth = 260
-    const tooltipHeight = 130
+    const tooltipHeight = 140
 
-    let xPos = e.clientX - rect.left + 15
-    let yPos = e.clientY - rect.top + 15
+    let xPos = e.clientX + 15
+    let yPos = e.clientY + 15
 
-    // Prevent overflow right edge
-    if (e.clientX + tooltipWidth > window.innerWidth) {
-      xPos = e.clientX - rect.left - tooltipWidth - 10
+    if (xPos + tooltipWidth > window.innerWidth - 8) {
+      xPos = e.clientX - tooltipWidth - 10
     }
-
-    // Prevent overflow bottom edge
-    if (e.clientY + tooltipHeight > window.innerHeight) {
-      yPos = e.clientY - rect.top - tooltipHeight - 10
+    if (yPos + tooltipHeight > window.innerHeight - 8) {
+      yPos = e.clientY - tooltipHeight - 10
     }
 
     setTooltip({
@@ -387,9 +383,9 @@ export function ProjectWorksGantt({ works }: ProjectWorksGanttProps) {
       </div>
 
       {/* Floating Custom Tooltip */}
-      {tooltip && (
+      {tooltip && createPortal(
         <div
-          className="absolute z-[100] pointer-events-none bg-[var(--popover)] border border-[var(--border)] rounded-xl shadow-2xl p-3 flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-100 min-w-[240px]"
+          className="fixed z-[200] pointer-events-none bg-[var(--popover)] border border-[var(--border)] rounded-xl shadow-2xl p-3 flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-100 min-w-[240px]"
           style={{ top: tooltip.y, left: tooltip.x }}
         >
           <div className="font-bold text-[13px] text-[var(--foreground)] leading-tight">{tooltip.work.name}</div>
@@ -418,7 +414,8 @@ export function ProjectWorksGantt({ works }: ProjectWorksGanttProps) {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )
