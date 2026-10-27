@@ -109,6 +109,7 @@ const emptyForm: CreateProjectPayload = {
   pinUrl: '',
   latitude: undefined,
   longitude: undefined,
+  gatheringPoints: [],
   vatRate: undefined,
   warrantyPercent: undefined,
   warrantyMonths: undefined,
@@ -156,6 +157,8 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
   const hasRole = (role: string) => normalizedRole === role || normalizedRoles.includes(role)
   const isContractor = hasRole('contractor') && !hasRole('admin') && !hasRole('administrator') && !hasRole('operational_director') && !hasRole('project_manager')
   const canManageInvoiceDetails = hasRole('admin') || hasRole('administrator') || hasRole('financial_director')
+  // Paid invoices can only be changed by an admin
+  const isAdmin = hasRole('admin') || hasRole('administrator')
 
   const projects = useMemo(() => {
     if (!rawProjects) return []
@@ -514,6 +517,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
       pinUrl: raw.pinUrl ?? '',
       latitude: raw.latitude ?? undefined,
       longitude: raw.longitude ?? undefined,
+      gatheringPoints: (raw.gatheringPoints ?? []).map((g) => ({ ...g, key: g.id })),
       warrantyPercent: raw.warrantyPercent ? Number(raw.warrantyPercent) : undefined,
     })
     setFormError('')
@@ -549,6 +553,18 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
       return
     }
 
+    const points = formState.gatheringPoints ?? []
+    const unnamed = points.findIndex((g) => !g.name.trim())
+    if (unnamed >= 0) {
+      setFormError(`Podaj nazwę punktu zbiórki nr ${unnamed + 1}.`)
+      return
+    }
+    const unplaced = points.findIndex((g) => g.latitude == null || g.longitude == null)
+    if (unplaced >= 0) {
+      setFormError(`Podaj lokalizację punktu zbiórki „${points[unplaced].name.trim()}” (link Google Maps lub współrzędne).`)
+      return
+    }
+
     const payload: CreateProjectPayload = {
       name: formState.name.trim(),
       contractorId: formState.contractorId,
@@ -568,6 +584,13 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
       pinUrl: formState.pinUrl || undefined,
       latitude: formState.latitude,
       longitude: formState.longitude,
+      // Only what the API expects: form keys and pasted links stay in the browser
+      gatheringPoints: points.map((g) => ({
+        ...(g.id ? { id: g.id } : {}),
+        name: g.name.trim(),
+        latitude: g.latitude!,
+        longitude: g.longitude!,
+      })) as CreateProjectPayload['gatheringPoints'],
       warrantyPercent: formState.warrantyPercent || undefined,
     }
 
@@ -799,6 +822,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
         setFormError={setFormError}
         canEditProject={canEditProject}
         canManageInvoiceDetails={canManageInvoiceDetails}
+        isAdmin={isAdmin}
         canDeleteProject={canDeleteProject}
         canEditPlannedExpenses={canEditPlannedExpenses}
         canEditProjectDepartments={canEditProjectDepartments}
@@ -988,6 +1012,7 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
         setFormError={setFormError}
         canEditProject={canEditProject}
         canManageInvoiceDetails={canManageInvoiceDetails}
+        isAdmin={isAdmin}
         canDeleteProject={canDeleteProject}
         canEditPlannedExpenses={canEditPlannedExpenses}
         canEditProjectDepartments={canEditProjectDepartments}

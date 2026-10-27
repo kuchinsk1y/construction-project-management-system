@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   AlertTriangle,
   ArrowRight,
@@ -15,7 +14,7 @@ import {
   X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { fetchInvoiceProtocol, updateInvoice, updateMilestoneInvoice } from '@/features/projects/api'
+import { fetchInvoiceProtocol } from '@/features/projects/api'
 import type { ApiInvoice, ApiMilestone, ApiMilestoneInvoice } from '@/features/projects/types'
 
 type InvoicesInboxDrawerProps = {
@@ -25,9 +24,9 @@ type InvoicesInboxDrawerProps = {
   currency: string
   formatBudget: (val: number, currency?: string) => string
   /** Opens the full invoice form (number, Fakturownia, link, status) */
-  onOpenInvoice: (invoice: ApiInvoice) => void
+  /** Opens the invoice form for a shared invoice id or an older single-milestone invoice row id */
+  onOpenInvoice: (id: string) => void
   /** Older single-milestone invoices are edited on the milestone page */
-  onOpenMilestone: (milestone: ApiMilestone) => void
   /** Kept by the parent so the list reopens on the same tab after editing an invoice */
   filter?: Filter
   onFilterChange?: (filter: Filter) => void
@@ -77,13 +76,10 @@ export function InvoicesInboxDrawer({
   currency,
   formatBudget,
   onOpenInvoice,
-  onOpenMilestone,
   filter: controlledFilter,
   onFilterChange,
 }: InvoicesInboxDrawerProps) {
-  const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
-  const [confirmPaid, setConfirmPaid] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [openingProtocol, setOpeningProtocol] = useState<string | null>(null)
 
@@ -173,25 +169,8 @@ export function InvoicesInboxDrawer({
   })
   const ordered = filter === 'paid' || filter === 'all' ? [...visible].reverse() : visible
 
-  const markPaid = useMutation({
-    mutationFn: async (e: Entry): Promise<void> => {
-      await (e.shared
-        ? updateInvoice(e.shared.id, { status: 'ZAPŁACONE' })
-        : updateMilestoneInvoice(e.legacy!.milestone.id, e.legacy!.row.id, { netValue: e.legacy!.row.netValue, status: 'ZAPŁACONE' }))
-    },
-    onSuccess: () => {
-      setConfirmPaid(null)
-      queryClient.invalidateQueries({ queryKey: ['milestones'] })
-      queryClient.invalidateQueries({ queryKey: ['project-invoices'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
-    },
-    onError: (e: Error) => setError(e.message),
-  })
-
-  const open = (e: Entry) => {
-    if (e.shared) onOpenInvoice(e.shared)
-    else onOpenMilestone(e.legacy!.milestone)
-  }
+  // Every action opens the invoice form; issuing and payment are confirmed there
+  const open = (e: Entry) => onOpenInvoice(e.key)
 
   const openProtocol = async (inv: ApiInvoice) => {
     setOpeningProtocol(inv.id)
@@ -311,7 +290,6 @@ export function InvoicesInboxDrawer({
           ) : (
             ordered.map((e) => {
               const st = STATUS_STYLE[e.status]
-              const confirming = confirmPaid === e.key
               return (
                 <div
                   key={e.key}
@@ -379,37 +357,16 @@ export function InvoicesInboxDrawer({
                     ) : null}
 
                     <div className="ml-auto flex items-center gap-2">
-                      {confirming ? (
-                        <>
-                          <span className="text-[11px] text-[var(--muted-foreground)]">Oznaczyć jako zapłaconą (dziś)?</span>
-                          <Button type="button" variant="outline" onClick={() => setConfirmPaid(null)} className="h-7 px-3 text-[11px] rounded-lg">
-                            Nie
-                          </Button>
-                          <Button
-                            type="button"
-                            onClick={() => markPaid.mutate(e)}
-                            disabled={markPaid.isPending}
-                            className="h-7 px-3 text-[11px] rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
-                          >
-                            {markPaid.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Tak, zapłacona'}
-                          </Button>
-                        </>
-                      ) : e.status === 'OCZEKUJE' ? (
+                      {e.status === 'OCZEKUJE' ? (
                         <Button type="button" onClick={() => open(e)} className={`h-7 px-3 text-[11px] gap-1.5 ${PRIMARY_BTN}`}>
                           <FileText className="w-3.5 h-3.5" />
-                          Wystaw fakturę
+                          Zatwierdź
                         </Button>
                       ) : e.status === 'WYSTAWIONA' ? (
                         <>
-                          <Button type="button" variant="outline" onClick={() => open(e)} className="h-7 px-3 text-[11px] rounded-lg">
-                            Szczegóły
-                          </Button>
                           <Button
                             type="button"
-                            onClick={() => {
-                              setError('')
-                              setConfirmPaid(e.key)
-                            }}
+                            onClick={() => open(e)}
                             className="h-7 px-3 text-[11px] gap-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
                           >
                             <CheckCircle2 className="w-3.5 h-3.5" />

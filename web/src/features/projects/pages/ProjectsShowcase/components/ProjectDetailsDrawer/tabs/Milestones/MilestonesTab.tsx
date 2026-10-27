@@ -8,10 +8,10 @@ import { InvoiceFormDrawer } from './InvoiceFormDrawer'
 import { MilestoneInvoicesView } from './MilestoneInvoicesView'
 import { FakturowniaImportDrawer } from './FakturowniaImportDrawer'
 import { CloseWorksDrawer } from './CloseWorksDrawer'
-import { InvoiceManageDrawer } from './InvoiceManageDrawer'
+import { InvoiceManageDrawer, type ManagedInvoice } from './InvoiceManageDrawer'
 import { MilestonesInvoiceMatrix } from './MilestonesInvoiceMatrix'
 import { InvoicesInboxDrawer, type Filter as InboxFilter } from './InvoicesInboxDrawer'
-import type { ApiInvoice, ApiMilestone, CreateMilestoneInvoicePayload, CreateMilestonePayload, ApiProject, ApiMilestoneInvoice, ApiWorkType } from '@/features/projects/types'
+import type { ApiMilestone, CreateMilestoneInvoicePayload, CreateMilestonePayload, ApiProject, ApiMilestoneInvoice, ApiWorkType } from '@/features/projects/types'
 
 type MilestonesTabProps = {
   milestones: ApiMilestone[]
@@ -19,6 +19,7 @@ type MilestonesTabProps = {
   editingProject: ApiProject | null
   canEditProject: boolean
   canManageInvoiceDetails?: boolean
+  isAdmin?: boolean
   editingMilestoneId: string | null
   handleMilestoneSubmit: (e: React.FormEvent) => void
   createMilestoneMutation: UseMutationResult<ApiMilestone, Error, CreateMilestonePayload, unknown>
@@ -37,6 +38,7 @@ export function MilestonesTab({
   editingProject,
   canEditProject,
   canManageInvoiceDetails = false,
+  isAdmin = false,
   // deleteMilestoneMutation,
   handleCloseDrawer,
   formatBudget,
@@ -128,7 +130,37 @@ export function MilestonesTab({
   const pendingInvoices =
     projectInvoices.filter((i) => !i.status || i.status === 'OCZEKUJE').length +
     milestones.reduce((s, m) => s + (m.invoices ?? []).filter((r) => !r.invoiceId && (!r.status || r.status === 'OCZEKUJE')).length, 0)
-  const openInvoice: ApiInvoice | null = projectInvoices.find((i) => i.id === openInvoiceId) ?? null
+  // Shared invoice, or an older single-milestone invoice shown in the same form
+  const openInvoice: ManagedInvoice | null = (() => {
+    if (!openInvoiceId) return null
+    const shared = projectInvoices.find((i) => i.id === openInvoiceId)
+    if (shared) return shared
+    for (const m of milestones) {
+      const row = (m.invoices ?? []).find((r) => r.id === openInvoiceId && !r.invoiceId)
+      if (row) {
+        return {
+          id: row.id,
+          projectId: m.projectId,
+          invoiceNumber: row.invoiceNumber,
+          status: row.status ?? 'OCZEKUJE',
+          issuedDate: row.issuedDate,
+          paidAt: row.paidAt ?? null,
+          link: row.link ?? null,
+          note: row.note ?? '',
+          totalNet: row.netValue,
+          createdAt: row.issuedDate ?? '',
+          createdBy: null,
+          protocol: null,
+          allocations: [
+            { rowId: row.id, milestoneId: m.id, milestoneNo: m.milestoneNo, description: m.description, type: m.type, percent: null, netValue: row.netValue },
+          ],
+          works: [],
+          legacyMilestoneId: m.id,
+        }
+      }
+    }
+    return null
+  })()
 
   const invoiceManageDrawer = openInvoice ? (
     <InvoiceManageDrawer
@@ -141,7 +173,8 @@ export function MilestonesTab({
           setIsInboxOpen(true)
         }
       }}
-      canManage={canManageInvoiceDetails}
+      // A paid invoice is final: finance sees it read-only, an admin can still correct it
+      canManage={canManageInvoiceDetails && (isAdmin || !['ZAPŁACONE', 'ZAPŁACONA'].includes(openInvoice.status))}
       country={editingProject?.country}
       currency={currency}
       formatBudget={formatBudget}
@@ -158,6 +191,7 @@ export function MilestonesTab({
           canEditProject={canEditProject}
           canManageInvoiceDetails={canManageInvoiceDetails}
           showActions={canManageInvoiceDetails}
+          isAdmin={isAdmin}
           onClose={() => navigate(`/projects/${projectId}/milestones`)}
           invoices={projectInvoices}
           onOpenInvoice={(inv) => setOpenInvoiceId(inv.id)}
@@ -567,8 +601,6 @@ export function MilestonesTab({
           onClose={() => setIsCloseWorksOpen(false)}
           projectId={editingProject.id}
           milestones={milestones}
-          works={works}
-          invoices={projectInvoices}
           contractVal={contractVal}
           currency={currency}
           formatBudget={formatBudget}
@@ -586,14 +618,10 @@ export function MilestonesTab({
           formatBudget={formatBudget}
           filter={inboxFilter}
           onFilterChange={setInboxFilter}
-          onOpenInvoice={(inv) => {
+          onOpenInvoice={(id) => {
             setIsInboxOpen(false)
             setReturnToInbox(true)
-            setOpenInvoiceId(inv.id)
-          }}
-          onOpenMilestone={(m) => {
-            setIsInboxOpen(false)
-            navigate(`/projects/${projectId}/milestones/faktury/${m.id}`)
+            setOpenInvoiceId(id)
           }}
         />
       ) : null}

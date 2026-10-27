@@ -85,6 +85,13 @@ export function MilestonesInvoiceMatrix({
     )
   }
 
+  /** Rows an invoice touches in its column: one invoice over several milestones is drawn as one joined block */
+  const spans = new Map<string, { first: number; last: number; count: number }>()
+  for (const c of columns) {
+    const hit = rows.flatMap((m, idx) => (cells.has(`${m.id}:${c.key}`) ? [idx] : []))
+    if (hit.length) spans.set(c.key, { first: hit[0], last: hit[hit.length - 1], count: hit.length })
+  }
+
   const shade = (i: number) => (i % 2 === 0 ? 'bg-[color-mix(in_srgb,var(--sidebar-primary)_6%,transparent)]' : '')
   const grandTotal = columns.reduce((s, c) => s + c.total, 0)
 
@@ -117,12 +124,17 @@ export function MilestonesInvoiceMatrix({
                 </div>
                 <div className="text-[10px] text-[var(--muted-foreground)] truncate max-w-[110px] ml-auto">{c.number ?? 'bez numeru'}</div>
                 <div className="mt-1 text-[11px] font-bold text-[var(--foreground)] whitespace-nowrap">{formatBudget(c.total, currency)}</div>
+                {(spans.get(c.key)?.count ?? 0) > 1 ? (
+                  <div className="mt-1 ml-auto w-fit rounded-full bg-[color-mix(in_srgb,var(--sidebar-primary)_16%,transparent)] px-1.5 text-[9px] font-bold text-[var(--sidebar-primary)]">
+                    {spans.get(c.key)!.count} {spans.get(c.key)!.count >= 5 ? "etapów" : "etapy"}
+                  </div>
+                ) : null}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {rows.map((m) => {
+          {rows.map((m, rowIdx) => {
             const total = milestoneTotal(m)
             const invoiced = (m.invoices ?? []).reduce((s, r) => s + r.netValue, 0)
             const pct = total > 0 ? Math.min(100, (invoiced / total) * 100) : 0
@@ -159,6 +171,32 @@ export function MilestonesInvoiceMatrix({
                 </td>
                 {columns.map((c, i) => {
                   const value = cells.get(`${m.id}:${c.key}`)
+                  const span = spans.get(c.key)
+                  const joined = span && span.count > 1 && rowIdx >= span.first && rowIdx <= span.last
+                  if (joined) {
+                    const isFirst = rowIdx === span.first
+                    const isLast = rowIdx === span.last
+                    // One block from the first to the last milestone of the invoice; rows in between keep the line
+                    return (
+                      <td
+                        key={c.key}
+                        className={`relative border-r border-[var(--border)] p-0 group-hover:bg-[var(--muted)] ${shade(i)} ${isLast ? 'border-b' : ''}`}
+                      >
+                        <div
+                          className={`absolute inset-x-1.5 border-x border-[color-mix(in_srgb,var(--sidebar-primary)_45%,transparent)] bg-[color-mix(in_srgb,var(--sidebar-primary)_13%,transparent)] ${
+                            isFirst ? 'top-1.5 rounded-t-lg border-t' : 'top-0'
+                          } ${isLast ? 'bottom-1.5 rounded-b-lg border-b' : '-bottom-px'}`}
+                        />
+                        <div
+                          className={`relative px-3 py-2 text-right tabular-nums whitespace-nowrap ${
+                            value ? `font-semibold ${amountColor(c.status)}` : ''
+                          }`}
+                        >
+                          {value ? formatAmount(value) : ' '}
+                        </div>
+                      </td>
+                    )
+                  }
                   return (
                     <td
                       key={c.key}

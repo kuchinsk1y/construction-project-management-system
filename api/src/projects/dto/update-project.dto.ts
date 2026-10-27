@@ -8,8 +8,12 @@ import {
   Max,
   Min,
   MinLength,
+  IsArray,
+  ArrayMaxSize,
+  ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { GatheringPointDto } from './gathering-point.dto';
 
 export class UpdateProjectDto {
   @IsString()
@@ -102,4 +106,12 @@ export class UpdateProjectDto {
   @IsNumber()
   @Type(() => Number)
   warrantyPercent?: number;
+
+  /** Gathering points on site. On update the list replaces the saved one (missing points are removed). */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(50)
+  @ValidateNested({ each: true })
+  @Type(() => GatheringPointDto)
+  gatheringPoints?: GatheringPointDto[];
 }

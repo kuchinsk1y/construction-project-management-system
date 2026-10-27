@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { AlertTriangle, ArrowLeft, CalendarRange, Coins, Edit, ExternalLink, FileText, Loader2, MapPin, Trash2, UserRoundCheck, X, LayoutDashboard, Settings, Milestone, Users, Wrench, Clock } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, CalendarRange, Coins, Edit, ExternalLink, FileText, Flag, Loader2, MapPin, Trash2, UserRoundCheck, X, LayoutDashboard, Settings, Milestone, Users, Wrench, Clock } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useQuery, type UseMutationResult } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
@@ -22,6 +22,7 @@ import { PlannedExpensesTab } from '@/features/projects/pages/ProjectsShowcase/c
 import { ProjectDashboardTab } from '@/features/projects/pages/ProjectsShowcase/components/ProjectDetailsDrawer/tabs/Dashboard/ProjectDashboardTab'
 import { HoursPlanTab } from '@/features/projects/pages/ProjectsShowcase/components/ProjectDetailsDrawer/tabs/HoursPlan/HoursPlanTab'
 import { LocationField, type LocationValue } from '@/features/projects/pages/ProjectsShowcase/components/ProjectDetailsDrawer/LocationField'
+import { GatheringPointsField } from '@/features/projects/pages/ProjectsShowcase/components/ProjectDetailsDrawer/GatheringPointsField'
 type ProjectDetailsDrawerProps = {
   isOpen?: boolean
   editingProject: ApiProject | null
@@ -34,6 +35,7 @@ type ProjectDetailsDrawerProps = {
   setFormError: (err: string) => void
   canEditProject: boolean
   canManageInvoiceDetails?: boolean
+  isAdmin?: boolean
   canDeleteProject: boolean
   handleCloseDrawer: () => void
   handleCreate: (e: React.FormEvent) => void
@@ -100,6 +102,7 @@ export function ProjectDetailsDrawer({
   setFormError,
   canEditProject,
   canManageInvoiceDetails = false,
+  isAdmin = false,
   canDeleteProject,
   handleCloseDrawer,
   handleCreate,
@@ -189,6 +192,7 @@ export function ProjectDetailsDrawer({
         pinUrl: editingProject.pinUrl ?? '',
         latitude: editingProject.latitude ?? undefined,
         longitude: editingProject.longitude ?? undefined,
+        gatheringPoints: (editingProject.gatheringPoints ?? []).map((g) => ({ ...g, key: g.id })),
         vatRate: editingProject.vatRate ? Number(editingProject.vatRate) : undefined,
         warrantyPercent: editingProject.warrantyPercent ? Number(editingProject.warrantyPercent) : undefined,
         warrantyMonths: editingProject.warrantyMonths ?? undefined,
@@ -222,6 +226,7 @@ export function ProjectDetailsDrawer({
         pinUrl: editingProject.pinUrl ?? '',
         latitude: editingProject.latitude ?? undefined,
         longitude: editingProject.longitude ?? undefined,
+        gatheringPoints: (editingProject.gatheringPoints ?? []).map((g) => ({ ...g, key: g.id })),
         vatRate: editingProject.vatRate ? Number(editingProject.vatRate) : undefined,
         warrantyPercent: editingProject.warrantyPercent ? Number(editingProject.warrantyPercent) : undefined,
         warrantyMonths: editingProject.warrantyMonths ?? undefined,
@@ -532,6 +537,12 @@ export function ProjectDetailsDrawer({
                     </label>
                   </div>
                 </div>
+
+                {/* Gathering points on site */}
+                <GatheringPointsField
+                  value={formState.gatheringPoints ?? []}
+                  onChange={(points) => setField('gatheringPoints', points)}
+                />
               </div>
 
               {formError && (
@@ -728,7 +739,7 @@ export function ProjectDetailsDrawer({
               {/* Read-only view */}
               <div className="w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 md:p-5 shadow-sm space-y-4 animate-tab-content">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 items-stretch">
-                  {/* Left Column: Basic Info & Financials */}
+                  {/* Left: basic info, contract, timeline */}
                   <div className="lg:col-span-7 flex flex-col gap-2">
                     {/* Basic Info Card */}
                     <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/35 p-3.5 space-y-3">
@@ -821,35 +832,14 @@ export function ProjectDetailsDrawer({
                         </div>
                       </div>
                     </div>
-                  </div>
-
-                  {/* Right Column: Location & Timeline */}
-                  <div className="lg:col-span-5 flex flex-col gap-2">
-                    {/* Location Card */}
-                    <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/35 p-3.5 space-y-3">
-                      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)] border-b border-[var(--border)] pb-2">
-                        <MapPin size={14} className="text-[var(--sidebar-primary)]" />
-                        <span>{t('projects.form.sections.location')}</span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3 pt-0.5">
-                        <div>
-                          <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--muted-foreground)]">{t('projects.form.labels.country')}</span>
-                          <p className="text-xs font-semibold text-[var(--foreground)] mt-0.5">{formState.country || '-'}</p>
-                        </div>
-                        <div>
-                          <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--muted-foreground)]">{t('projects.form.labels.city')}</span>
-                          <p className="text-xs font-semibold text-[var(--foreground)] mt-0.5">{formState.city || '-'}</p>
-                        </div>
-                      </div>
-                    </div>
 
                     {/* Timeline Card */}
-                    <div className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--background)]/35 p-3.5 space-y-3 flex flex-col justify-between">
+                    <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]/35 p-3.5 space-y-3">
                       <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)] border-b border-[var(--border)] pb-2">
                         <CalendarRange size={14} className="text-[var(--sidebar-primary)]" />
                         <span>Okresy i terminy realizacji</span>
                       </div>
-                      <div className="space-y-3 pt-0.5 flex-1 flex flex-col justify-around">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-0.5">
                         {/* Planned Dates */}
                         <div className="space-y-1.5 border-l-2 border-[var(--sidebar-primary)]/45 pl-2.5">
                           <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]/80 block">
@@ -883,6 +873,92 @@ export function ProjectDetailsDrawer({
                             </div>
                           </div>
                         </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right: location takes the left column height; long lists of points scroll inside */}
+                  <div className="lg:col-span-5 relative">
+                    {/* Location Card */}
+                    <div className="flex h-full flex-col gap-3 rounded-xl border border-[var(--border)] bg-[var(--background)]/35 p-3.5 lg:absolute lg:inset-0">
+                      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--muted-foreground)] border-b border-[var(--border)] pb-2">
+                        <MapPin size={14} className="text-[var(--sidebar-primary)]" />
+                        <span>{t('projects.form.sections.location')}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 pt-0.5">
+                        <div>
+                          <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--muted-foreground)]">{t('projects.form.labels.country')}</span>
+                          <p className="text-xs font-semibold text-[var(--foreground)] mt-0.5">{formState.country || '-'}</p>
+                        </div>
+                        <div>
+                          <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--muted-foreground)]">{t('projects.form.labels.city')}</span>
+                          <p className="text-xs font-semibold text-[var(--foreground)] mt-0.5">{formState.city || '-'}</p>
+                        </div>
+                      </div>
+
+                      {/* Site pin */}
+                      {formState.latitude != null && formState.longitude != null ? (
+                        <a
+                          href={formState.pinUrl || `https://www.google.com/maps?q=${formState.latitude},${formState.longitude}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="group flex items-center gap-2.5 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 transition-colors hover:border-[color-mix(in_oklch,var(--sidebar-primary)_45%,var(--border))]"
+                          title="Otwórz w Google Maps"
+                        >
+                          <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_oklch,var(--sidebar-primary)_12%,transparent)] text-[var(--sidebar-primary)]">
+                            <MapPin size={14} />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-xs font-semibold text-[var(--foreground)]">Budowa</span>
+                            <span className="block text-[10px] tabular-nums text-[var(--muted-foreground)]">
+                              {formState.latitude.toFixed(6)}, {formState.longitude.toFixed(6)}
+                            </span>
+                          </span>
+                          <ExternalLink size={13} className="shrink-0 text-[var(--muted-foreground)] transition-colors group-hover:text-[var(--sidebar-primary)]" />
+                        </a>
+                      ) : null}
+
+                      {/* Gathering points on site */}
+                      <div className="flex min-h-0 flex-1 flex-col gap-1.5">
+                        <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
+                          <Flag size={11} className="text-[var(--sidebar-primary)]" />
+                          Punkty zbiórki
+                          {(formState.gatheringPoints?.length ?? 0) > 0 ? (
+                            <span className="rounded-full bg-[color-mix(in_oklch,var(--sidebar-primary)_12%,transparent)] px-1.5 text-[9px] text-[var(--sidebar-primary)]">
+                              {formState.gatheringPoints!.length}
+                            </span>
+                          ) : null}
+                        </div>
+                        {formState.gatheringPoints?.length ? (
+                          <ul className="min-h-0 max-h-72 lg:max-h-none flex-1 divide-y divide-[var(--border)] overflow-y-auto custom-scrollbar rounded-lg border border-[var(--border)] bg-[var(--card)]">
+                            {formState.gatheringPoints.map((g, i) => (
+                              <li key={g.key}>
+                                <a
+                                  href={`https://www.google.com/maps?q=${g.latitude},${g.longitude}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="group flex items-center gap-2.5 px-3 py-2 transition-colors hover:bg-[color-mix(in_oklch,var(--sidebar-primary)_5%,transparent)]"
+                                  title="Otwórz w Google Maps"
+                                >
+                                  <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_oklch,var(--sidebar-primary)_12%,transparent)] text-[10px] font-bold text-[var(--sidebar-primary)]">
+                                    {i + 1}
+                                  </span>
+                                  <span className="min-w-0 flex-1">
+                                    <span className="block truncate text-xs font-semibold text-[var(--foreground)]">{g.name}</span>
+                                    <span className="block text-[10px] tabular-nums text-[var(--muted-foreground)]">
+                                      {g.latitude?.toFixed(6)}, {g.longitude?.toFixed(6)}
+                                    </span>
+                                  </span>
+                                  <ExternalLink size={13} className="shrink-0 text-[var(--muted-foreground)] transition-colors group-hover:text-[var(--sidebar-primary)]" />
+                                </a>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="rounded-lg border border-dashed border-[var(--border)] px-3 py-2 text-[11px] text-[var(--muted-foreground)]">
+                            Brak punktów zbiórki — dodasz je w edycji projektu.
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1229,6 +1305,13 @@ export function ProjectDetailsDrawer({
                           </label>
                         </div>
                       </div>
+
+                      {/* Gathering points on site */}
+                      <GatheringPointsField
+                        key={`${editingProject?.id}-${isEditing ? 'edit' : 'view'}-points`}
+                        value={formState.gatheringPoints ?? []}
+                        onChange={(points) => setField('gatheringPoints', points)}
+                      />
                     </div>
 
                     {formError && (
@@ -1302,6 +1385,7 @@ export function ProjectDetailsDrawer({
               editingProject={editingProject}
               canEditProject={canEditProject}
               canManageInvoiceDetails={canManageInvoiceDetails}
+              isAdmin={isAdmin}
               editingMilestoneId={editingMilestoneId}
               handleMilestoneSubmit={handleMilestoneSubmit}
               createMilestoneMutation={createMilestoneMutation}

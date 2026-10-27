@@ -201,7 +201,7 @@ export const pl = {
       dateTitle: 'Filtruj po dacie',
       dateAria: 'Wybierz datę projektu',
       datePlaceholder: 'Aktywny w dniu',
-      reset: 'Wyczysc filtry',
+      reset: 'Wyczyść filtry',
       idle: 'Filtry nie sa aktywne',
     },
   },

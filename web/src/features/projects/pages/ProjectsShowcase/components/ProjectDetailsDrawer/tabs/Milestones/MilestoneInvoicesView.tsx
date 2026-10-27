@@ -13,6 +13,8 @@ type MilestoneInvoicesViewProps = {
   canManageInvoiceDetails?: boolean
   /** "Akcje" column (edit / delete): admin and financial director */
   showActions?: boolean
+  /** Admin may still edit and delete paid invoices */
+  isAdmin?: boolean
   onClose: () => void
   /** Invoices requested with works protocols (shared between milestones) */
   invoices?: ApiInvoice[]
@@ -29,6 +31,7 @@ export function MilestoneInvoicesView({
   currency,
   canManageInvoiceDetails = false,
   showActions = false,
+  isAdmin = false,
   onClose,
   invoices = [],
   onOpenInvoice,
@@ -63,6 +66,10 @@ export function MilestoneInvoicesView({
   const isOverbudget = invoicedNet > milestoneTotal + 0.1
 
   const milestoneWorks = works.filter(w => w.milestoneId === milestone.id)
+  const isPaidRow = (row: ApiMilestoneInvoice) => row.status === 'ZAPŁACONE' || row.status === 'ZAPŁACONA'
+  // Paid invoices are final: their actions are left to the admin
+  const rowHasActions = (row: ApiMilestoneInvoice) => showActions && (isAdmin || !isPaidRow(row))
+  const actionsColumn = (milestone.invoices ?? []).some(rowHasActions)
   const sharedInvoice = (row: ApiMilestoneInvoice) => (row.invoiceId ? invoices.find((i) => i.id === row.invoiceId) : undefined)
 
   return (
@@ -195,7 +202,7 @@ export function MilestoneInvoicesView({
                   <th className="px-3 py-1.5 border-r border-[var(--border)] text-center whitespace-nowrap">Status</th>
                   <th className="px-3 py-1.5 border-r border-[var(--border)] text-center whitespace-nowrap w-16">Link</th>
                   <th className="px-3 py-1.5 border-r border-[var(--border)] w-1/3">Uwagi</th>
-                  {showActions && <th className="px-2 py-1.5 text-right w-16">Akcje</th>}
+                  {actionsColumn && <th className="px-2 py-1.5 text-right w-16">Akcje</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border)] font-medium">
@@ -203,12 +210,12 @@ export function MilestoneInvoicesView({
                   <tr
                     key={inv.id}
                     style={{ animationDelay: `${index * 25}ms` }}
-                    className={`group transition-colors hover:bg-[color-mix(in_oklch,var(--sidebar-primary)_5%,transparent)] align-middle ${inv.link || sharedInvoice(inv) || canManageInvoiceDetails ? 'cursor-pointer' : 'cursor-default'}`}
+                    className={`group transition-colors hover:bg-[color-mix(in_oklch,var(--sidebar-primary)_5%,transparent)] align-middle ${inv.link || sharedInvoice(inv) || (canManageInvoiceDetails && (isAdmin || !isPaidRow(inv))) ? 'cursor-pointer' : 'cursor-default'}`}
                     onClick={() => {
                       const shared = sharedInvoice(inv)
                       if (shared) {
                         onOpenInvoice(shared)
-                      } else if (canManageInvoiceDetails && onEditInvoiceClick) {
+                      } else if (canManageInvoiceDetails && onEditInvoiceClick && (isAdmin || !isPaidRow(inv))) {
                         // Finance has no actions column: a click opens the older invoice for editing
                         onEditInvoiceClick(milestone, inv)
                       } else if (inv.link) {
@@ -262,9 +269,9 @@ export function MilestoneInvoicesView({
                     <td className="px-3 py-2 border-r border-[var(--border)] text-[var(--muted-foreground)] text-[10px] leading-snug">
                       {inv.note ? <span className="line-clamp-2" title={inv.note}>{inv.note}</span> : '-'}
                     </td>
-                    {showActions && (
+                    {actionsColumn && (
                       <td className="px-2 py-2 text-right">
-                        {sharedInvoice(inv) ? (
+                        {!rowHasActions(inv) ? null : sharedInvoice(inv) ? (
                           <button
                             onClick={(e) => { e.stopPropagation(); onOpenInvoice(sharedInvoice(inv)!) }}
                             className="p-1.5 text-zinc-400 hover:text-[var(--sidebar-primary)] rounded-md transition-all"

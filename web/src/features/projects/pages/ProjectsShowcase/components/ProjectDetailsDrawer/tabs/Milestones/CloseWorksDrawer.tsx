@@ -5,7 +5,6 @@ import {
   AlertTriangle,
   Calendar,
   Check,
-  ChevronDown,
   ClipboardCheck,
   FileUp,
   Loader2,
@@ -18,21 +17,20 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createInvoiceProtocol } from '@/features/projects/api'
-import type { ApiInvoice, ApiMilestone, ApiWorkType } from '@/features/projects/types'
+import type { ApiMilestone } from '@/features/projects/types'
 
 type CloseWorksDrawerProps = {
   isOpen: boolean
   onClose: () => void
   projectId: string
   milestones: ApiMilestone[]
-  works: ApiWorkType[]
-  invoices: ApiInvoice[]
   contractVal: number
   currency: string
   formatBudget: (val: number, currency?: string) => string
 }
 
-const ACCEPT = '.pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx'
+// The acceptance protocol is accepted as PDF only
+const ACCEPT = 'application/pdf,.pdf'
 const MAX_FILE_MB = 20
 
 const round2 = (n: number) => Math.round(n * 100) / 100
@@ -65,8 +63,6 @@ export function CloseWorksDrawer({
   onClose,
   projectId,
   milestones,
-  works,
-  invoices,
   contractVal,
   currency,
   formatBudget,
@@ -74,11 +70,9 @@ export function CloseWorksDrawer({
   const queryClient = useQueryClient()
   const fileInput = useRef<HTMLInputElement>(null)
 
-  const [selectedWorks, setSelectedWorks] = useState<Set<string>>(new Set())
-  // Milestones picked without works (e.g. additional works with no work list)
+  // Milestones chosen for this invoice request (whole milestones, the share is picked with the % buttons)
   const [pickedMilestones, setPickedMilestones] = useState<Set<string>>(new Set())
   const [percentOverride, setPercentOverride] = useState<Record<string, number>>({})
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const [search, setSearch] = useState('')
   const [showSettled, setShowSettled] = useState(false)
   const [issuedDate, setIssuedDate] = useState(() => new Date().toISOString().split('T')[0])
@@ -100,13 +94,6 @@ export function CloseWorksDrawer({
     }
   }, [isOpen, onClose])
 
-  /** Works already closed by a protocol, with the invoice that closed them */
-  const closedBy = useMemo(() => {
-    const map = new Map<string, ApiInvoice>()
-    for (const inv of invoices) for (const w of inv.works) map.set(w.id, inv)
-    return map
-  }, [invoices])
-
   const groups = useMemo(() => {
     const q = search.trim().toLowerCase()
     return [...milestones].sort(byNo).map((m) => {
@@ -115,16 +102,10 @@ export function CloseWorksDrawer({
       const invoiced = (m.invoices ?? []).reduce((s, i) => s + i.netValue, 0)
       const remainingPct = total > 0 ? Math.max(0, round2(100 - (invoiced / total) * 100)) : 0
       const step = invoicingStep(m.invoicingPercentage)
-      const mWorks = works
-        .filter((w) => w.milestoneId === m.id)
-        .sort((a, b) => a.name.localeCompare(b.name, 'pl', { numeric: true }))
-      const openWorks = mWorks.filter((w) => !closedBy.has(w.id))
-      const matches = (text: string) => !q || text.toLowerCase().includes(q)
-      const milestoneMatches = matches(`${m.milestoneNo} ${m.description}`)
-      const visibleWorks = milestoneMatches ? mWorks : mWorks.filter((w) => matches(w.name))
-      return { m, isRD, total, invoiced, remainingPct, step, mWorks, openWorks, visibleWorks, milestoneMatches }
+      const matches = !q || `${m.milestoneNo} ${m.description}`.toLowerCase().includes(q)
+      return { m, isRD, total, invoiced, remainingPct, step, matches }
     })
-  }, [milestones, works, closedBy, contractVal, search])
+  }, [milestones, contractVal, search])
 
   /** Invoice steps allowed for a milestone: multiples of its invoicing %, plus "the rest" when it does not fit a step */
   const stepsFor = (step: number, remainingPct: number) => {
@@ -135,54 +116,23 @@ export function CloseWorksDrawer({
   }
 
   const lineFor = (g: (typeof groups)[number]) => {
-    const chosen = g.mWorks.filter((w) => selectedWorks.has(w.id))
-    const included = chosen.length > 0 || pickedMilestones.has(g.m.id)
-    if (!included || g.remainingPct <= 0) return null
+    if (!pickedMilestones.has(g.m.id) || g.remainingPct <= 0) return null
     const steps = stepsFor(g.step, g.remainingPct)
-    let suggested: number
-    if (g.openWorks.length > 0 && chosen.length === g.openWorks.length) {
-      // Everything still open is closed now: invoice the rest
-      suggested = g.remainingPct
-    } else if (chosen.length > 0) {
-      const share = chosen.reduce((s, w) => s + (w.percentage ?? 100 / Math.max(1, g.mWorks.length)), 0)
-      suggested = [...steps].reverse().find((p) => p <= share + 1e-6) ?? steps[0]
-    } else {
-      suggested = steps[steps.length - 1]
-    }
-    const percent = percentOverride[g.m.id] ?? suggested
+    // Suggest the first step; the % buttons change it
+    const percent = percentOverride[g.m.id] ?? steps[0]
     const netValue = Math.abs(percent - g.remainingPct) < 0.01 ? round2(g.total - g.invoiced) : round2((g.total * percent) / 100)
-    return { percent, netValue, steps, chosenCount: chosen.length }
+    return { percent, netValue, steps }
   }
 
   const lines = groups.map((g) => ({ g, line: lineFor(g) })).filter((x) => x.line)
   const totalNet = round2(lines.reduce((s, x) => s + x.line!.netValue, 0))
 
-  const toggleWork = (id: string) =>
-    setSelectedWorks((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-
   const toggleMilestone = (g: (typeof groups)[number]) => {
     if (g.remainingPct <= 0) return
-    if (g.openWorks.length === 0) {
-      setPickedMilestones((prev) => {
-        const next = new Set(prev)
-        if (next.has(g.m.id)) next.delete(g.m.id)
-        else next.add(g.m.id)
-        return next
-      })
-      return
-    }
-    const allOn = g.openWorks.every((w) => selectedWorks.has(w.id))
-    setSelectedWorks((prev) => {
+    setPickedMilestones((prev) => {
       const next = new Set(prev)
-      for (const w of g.openWorks) {
-        if (allOn) next.delete(w.id)
-        else next.add(w.id)
-      }
+      if (next.has(g.m.id)) next.delete(g.m.id)
+      else next.add(g.m.id)
       return next
     })
     setPercentOverride((prev) => {
@@ -194,6 +144,10 @@ export function CloseWorksDrawer({
 
   const pickFile = (f: File | undefined | null) => {
     if (!f) return
+    if (f.type !== 'application/pdf' && !f.name.toLowerCase().endsWith('.pdf')) {
+      setError('Protokół musi być plikiem PDF.')
+      return
+    }
     if (f.size > MAX_FILE_MB * 1024 * 1024) {
       setError(`Plik protokołu może mieć maksymalnie ${MAX_FILE_MB} MB.`)
       return
@@ -208,7 +162,7 @@ export function CloseWorksDrawer({
         projectId,
         {
           allocations: lines.map((x) => ({ milestoneId: x.g.m.id, percent: x.line!.percent })),
-          workIds: [...selectedWorks],
+          workIds: [],
           issuedDate: issuedDate || undefined,
           note: note.trim() || undefined,
         },
@@ -225,7 +179,7 @@ export function CloseWorksDrawer({
 
   const submit = () => {
     setError('')
-    if (lines.length === 0) return setError('Wybierz roboty lub etapy do zafakturowania.')
+    if (lines.length === 0) return setError('Wybierz etapy do zafakturowania.')
     if (!file) return setError('Dołącz protokół odbioru robót.')
     mutation.mutate()
   }
@@ -236,7 +190,7 @@ export function CloseWorksDrawer({
     (g) =>
       g.total > 0 &&
       (showSettled || g.remainingPct > 0) &&
-      (g.milestoneMatches || g.visibleWorks.length > 0),
+      g.matches,
   )
   const settledCount = groups.filter((g) => g.total > 0 && g.remainingPct <= 0).length
   const inputCls =
@@ -255,7 +209,7 @@ export function CloseWorksDrawer({
             <div className="min-w-0">
               <h3 className="font-bold text-base leading-tight">Zamknij roboty</h3>
               <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
-                Wybierz wykonane roboty i dołącz protokół — powstanie prośba o fakturę
+                Wybierz etapy i procent do zafakturowania, dołącz protokół
               </p>
             </div>
           </div>
@@ -277,7 +231,7 @@ export function CloseWorksDrawer({
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Szukaj etapu lub roboty…"
+                placeholder="Szukaj etapu…"
                 className={inputCls}
               />
             </div>
@@ -303,14 +257,7 @@ export function CloseWorksDrawer({
               visibleGroups.map((g) => {
                 const line = lineFor(g)
                 const settled = g.remainingPct <= 0
-                const chosen = g.openWorks.filter((w) => selectedWorks.has(w.id)).length
-                const headState: 'on' | 'off' | 'mixed' =
-                  g.openWorks.length === 0
-                    ? pickedMilestones.has(g.m.id) ? 'on' : 'off'
-                    : chosen === 0 ? 'off' : chosen === g.openWorks.length ? 'on' : 'mixed'
-                // Collapsed by default; a search opens matching milestones
-                const isCollapsed = search.trim() ? false : (collapsed[g.m.id] ?? true)
-                const toggleOpen = () => setCollapsed((p) => ({ ...p, [g.m.id]: !isCollapsed }))
+                const checked = pickedMilestones.has(g.m.id)
                 const accent = g.isRD ? 'text-amber-600 dark:text-amber-400' : 'text-[var(--sidebar-primary)]'
                 const accentBg = g.isRD
                   ? 'bg-[color-mix(in_oklch,#f59e0b_12%,transparent)]'
@@ -323,54 +270,33 @@ export function CloseWorksDrawer({
                       line ? 'border-[color-mix(in_oklch,var(--sidebar-primary)_45%,var(--border))]' : 'border-[var(--border)]'
                     } ${settled ? 'opacity-60' : ''}`}
                   >
-                    {/* Milestone header: checkbox selects its works, the rest opens the work list */}
-                    <div className="flex items-center gap-3 px-3 py-2.5">
-                      <button
-                        type="button"
-                        disabled={settled}
-                        onClick={() => toggleMilestone(g)}
-                        className="shrink-0 disabled:cursor-not-allowed"
-                        title={settled ? 'Etap rozliczony' : 'Zaznacz wszystkie otwarte roboty etapu'}
-                      >
-                        {settled ? <Lock size={14} className="text-[var(--muted-foreground)]" /> : <Checkbox state={headState} />}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => (g.mWorks.length > 0 ? toggleOpen() : toggleMilestone(g))}
-                        className="flex items-center gap-3 min-w-0 flex-1 text-left"
-                        title={g.mWorks.length > 0 ? (isCollapsed ? 'Pokaż roboty' : 'Ukryj roboty') : undefined}
-                      >
-                        <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-bold ${accent} ${accentBg}`}>
-                          {g.m.milestoneNo}
+                    {/* Milestone row: a click selects the whole milestone */}
+                    <button
+                      type="button"
+                      disabled={settled}
+                      onClick={() => toggleMilestone(g)}
+                      className="flex w-full items-center gap-3 px-3 py-2.5 text-left disabled:cursor-not-allowed"
+                      title={settled ? 'Etap rozliczony' : undefined}
+                    >
+                      {settled ? <Lock size={14} className="shrink-0 text-[var(--muted-foreground)]" /> : <Checkbox state={checked ? 'on' : 'off'} />}
+                      <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-bold ${accent} ${accentBg}`}>
+                        {g.m.milestoneNo}
+                      </span>
+                      <span className="min-w-0 flex-1 leading-tight">
+                        <span className="block text-xs font-medium truncate" title={g.m.description}>
+                          {g.m.description}
                         </span>
-                        <span className="min-w-0 flex-1 leading-tight">
-                          <span className="block text-xs font-medium truncate" title={g.m.description}>
-                            {g.m.description}
-                          </span>
-                          {g.mWorks.length > 0 ? (
-                            <span className="block text-[10px] text-[var(--muted-foreground)]">
-                              {chosen > 0
-                                ? `wybrano ${chosen} z ${g.openWorks.length} otwartych`
-                                : `${g.mWorks.length} robót${g.openWorks.length < g.mWorks.length ? ` · ${g.mWorks.length - g.openWorks.length} zamkniętych` : ''}`}
-                            </span>
-                          ) : null}
+                        {!settled && g.step < 100 ? (
+                          <span className="block text-[10px] text-[var(--muted-foreground)]">fakturowanie co {fmtPct(g.step)}</span>
+                        ) : null}
+                      </span>
+                      <span className="text-right shrink-0 leading-tight">
+                        <span className="block text-xs font-semibold whitespace-nowrap">{formatBudget(g.total, currency)}</span>
+                        <span className="block text-[10px] text-[var(--muted-foreground)] whitespace-nowrap">
+                          {settled ? 'rozliczony' : `pozostało ${fmtPct(g.remainingPct)}`}
                         </span>
-                        <span className="text-right shrink-0 leading-tight">
-                          <span className="block text-xs font-semibold whitespace-nowrap">{formatBudget(g.total, currency)}</span>
-                          <span className="block text-[10px] text-[var(--muted-foreground)] whitespace-nowrap">
-                            {settled ? 'rozliczony' : `pozostało ${fmtPct(g.remainingPct)}`}
-                          </span>
-                        </span>
-                        {g.mWorks.length > 0 ? (
-                          <ChevronDown
-                            size={14}
-                            className={`shrink-0 text-[var(--muted-foreground)] transition-transform ${isCollapsed ? '-rotate-90' : ''}`}
-                          />
-                        ) : (
-                          <span className="w-3.5 shrink-0" />
-                        )}
-                      </button>
-                    </div>
+                      </span>
+                    </button>
 
                     {/* Invoice step for this milestone */}
                     {line ? (
@@ -396,62 +322,6 @@ export function CloseWorksDrawer({
                       </div>
                     ) : null}
 
-                    {/* Works */}
-                    {!isCollapsed && g.mWorks.length > 0 ? (
-                      <ul className="border-t border-[var(--border)] divide-y divide-[var(--border)]">
-                        {g.visibleWorks.map((w) => {
-                          const closed = closedBy.get(w.id)
-                          const checked = selectedWorks.has(w.id)
-                          const done = w.actualQuantity ?? 0
-                          const progress = w.totalQuantity > 0 ? Math.min(100, Math.round((done / w.totalQuantity) * 100)) : 0
-                          return (
-                            <li key={w.id}>
-                              <button
-                                type="button"
-                                disabled={!!closed || settled}
-                                onClick={() => toggleWork(w.id)}
-                                className={`w-full flex items-center gap-3 pl-9 pr-3 py-2 text-left transition-colors disabled:cursor-not-allowed ${
-                                  checked ? 'bg-[color-mix(in_oklch,var(--sidebar-primary)_6%,transparent)]' : 'hover:bg-[var(--muted)]'
-                                }`}
-                              >
-                                {closed ? <Lock size={13} className="text-[var(--muted-foreground)] shrink-0" /> : <Checkbox state={checked ? 'on' : 'off'} disabled={settled} />}
-                                <div className="min-w-0 flex-1">
-                                  <div className={`text-xs truncate ${closed ? 'text-[var(--muted-foreground)]' : ''}`} title={w.name}>
-                                    {w.name}
-                                  </div>
-                                  <div className="text-[10px] text-[var(--muted-foreground)] truncate">
-                                    {w.departmentName}
-                                    {w.percentage != null ? ` · ${fmtPct(w.percentage)} etapu` : ''}
-                                  </div>
-                                </div>
-                                {closed ? (
-                                  <span className="text-[10px] text-[var(--muted-foreground)] whitespace-nowrap">
-                                    zamknięta{closed.invoiceNumber ? ` · ${closed.invoiceNumber}` : ''}
-                                  </span>
-                                ) : (
-                                  <div className="flex items-center gap-2 shrink-0" title={`Wykonano ${progress}%`}>
-                                    <span className="text-[10px] tabular-nums text-[var(--muted-foreground)] whitespace-nowrap">
-                                      {Number(done.toFixed(2))} / {Number(w.totalQuantity.toFixed(2))} {w.unit ?? ''}
-                                    </span>
-                                    <span className="h-1 w-12 rounded-full bg-[var(--muted)] overflow-hidden">
-                                      <span
-                                        className={`block h-full rounded-full ${progress >= 100 ? 'bg-emerald-500' : 'bg-[var(--sidebar-primary)]'}`}
-                                        style={{ width: `${progress}%` }}
-                                      />
-                                    </span>
-                                  </div>
-                                )}
-                              </button>
-                            </li>
-                          )
-                        })}
-                      </ul>
-                    ) : null}
-                    {g.mWorks.length === 0 && !settled ? (
-                      <p className="border-t border-[var(--border)] px-3 py-2 pl-9 text-[11px] text-[var(--muted-foreground)]">
-                        Brak robót w etapie — zaznacz etap, aby go zafakturować.
-                      </p>
-                    ) : null}
                   </div>
                 )
               })
@@ -524,7 +394,7 @@ export function CloseWorksDrawer({
                     }`}
                   >
                     <FileUp className="w-4 h-4" />
-                    Wybierz lub upuść plik (PDF, zdjęcie)
+                    Wybierz lub upuść plik PDF
                   </button>
                 )}
               </div>
@@ -566,7 +436,7 @@ export function CloseWorksDrawer({
             </Button>
             <Button type="button" onClick={submit} disabled={mutation.isPending || lines.length === 0} className="h-10 px-5 gap-2 rounded-xl bg-[var(--sidebar-primary)] text-[var(--sidebar-primary-foreground)] hover:bg-[color-mix(in_oklch,var(--sidebar-primary)_88%,black)] shadow-[0_4px_14px_color-mix(in_oklch,var(--sidebar-primary),transparent_65%)] disabled:opacity-50 disabled:shadow-none">
               {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              {mutation.isPending ? 'Wysyłanie…' : 'Wyślij do fakturowania'}
+              {mutation.isPending ? 'Wysyłanie…' : 'Wyślij do zatwierdzenia'}
             </Button>
           </div>
         </div>

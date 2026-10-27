@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, ArrowDown, ArrowUp, CheckCircle2, ChevronsUpDown, Loader2, Lock, PencilLine, Plus, Search, UserCheck, UserX, X } from 'lucide-react' /* ShieldCheck */
+import { AlertTriangle, ArrowDown, ArrowUp, CheckCircle2, ChevronsUpDown, FilterX, Loader2, Lock, PencilLine, Plus, Search, UserCheck, UserX, X } from 'lucide-react' /* ShieldCheck */
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -440,8 +440,8 @@ export function UsersPage({ canView, canAdd, canEdit, isAdmin }: UsersPageProps)
         ) : null}
       </div>
 
-      <div className="grid grid-cols-1 gap-2 md:grid-cols-6 rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 shadow-sm animate-fade-in mb-3">
-        <label className="relative md:col-span-4">
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 shadow-sm animate-fade-in mb-3">
+        <label className="relative min-w-[200px] flex-1">
           <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)]" />
           <input
             value={query}
@@ -451,7 +451,7 @@ export function UsersPage({ canView, canAdd, canEdit, isAdmin }: UsersPageProps)
           />
         </label>
 
-        <label className="md:col-span-2">
+        <label className="w-full sm:w-[220px]">
           <select
             value={roleFilter}
             onChange={(event) => setRoleFilter(event.target.value as 'all' | UserRole)}
@@ -465,6 +465,21 @@ export function UsersPage({ canView, canAdd, canEdit, isAdmin }: UsersPageProps)
             ))}
           </select>
         </label>
+
+        {/* Reset filters — same as on the projects and contractors pages */}
+        <Button
+          type="button"
+          disabled={!query && roleFilter === 'all'}
+          onClick={() => {
+            setQuery('')
+            setRoleFilter('all')
+          }}
+          variant="outline"
+          className="h-8 shrink-0 gap-1.5 rounded-xl border-[color-mix(in_oklch,var(--sidebar-primary)_25%,transparent)] text-[var(--sidebar-primary)] hover:bg-[color-mix(in_oklch,var(--sidebar-primary)_10%,transparent)] hover:text-[var(--sidebar-primary)] disabled:border-[var(--border)] disabled:bg-transparent disabled:text-[var(--muted-foreground)] disabled:opacity-50 transition-all duration-200"
+        >
+          <FilterX size={14} />
+          <span>{t('projects.filters.reset')}</span>
+        </Button>
       </div>
 
       <article className="w-full overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-sm animate-fade-in mb-3">

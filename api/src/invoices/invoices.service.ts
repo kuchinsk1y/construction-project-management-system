@@ -13,16 +13,8 @@ import { ProtocolStorageService } from './protocol-storage.service';
 const PAID_STATUSES = ['ZAPŁACONE', 'ZAPŁACONA'];
 const STATUSES = ['OCZEKUJE', 'WYSTAWIONA', 'ZAPŁACONE'];
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
-const ALLOWED_MIME = [
-  'application/pdf',
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.ms-excel',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-];
+// The acceptance protocol is stored as PDF only
+const ALLOWED_MIME = ['application/pdf'];
 
 export type CreateProtocolInput = {
   allocations: { milestoneId: string; percent: number }[];
@@ -93,8 +85,9 @@ export class InvoicesService {
   async create(projectId: string, userId: number, input: CreateProtocolInput, file?: UploadedProtocol) {
     if (!file) throw new BadRequestException('Dołącz protokół odbioru robót');
     if (file.size > MAX_FILE_BYTES) throw new BadRequestException('Plik protokołu może mieć maksymalnie 20 MB');
-    if (!ALLOWED_MIME.includes(file.mimetype)) {
-      throw new BadRequestException('Protokół musi być plikiem PDF, obrazem, Word lub Excel');
+    // Check the type and the file itself (a PDF starts with "%PDF")
+    if (!ALLOWED_MIME.includes(file.mimetype) || file.buffer.subarray(0, 4).toString('latin1') !== '%PDF') {
+      throw new BadRequestException('Protokół musi być plikiem PDF');
     }
     if (!input.allocations?.length) throw new BadRequestException('Wybierz roboty do zafakturowania');
 

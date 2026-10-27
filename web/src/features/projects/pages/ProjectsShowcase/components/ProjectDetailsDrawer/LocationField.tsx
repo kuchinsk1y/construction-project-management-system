@@ -15,6 +15,8 @@ type LocationFieldProps = {
   /** Called with the detected place so the form can fill empty city/country */
   onPlaceResolved?: (place: NonNullable<ResolvedLocation['place']>) => void
   required?: boolean
+  /** Field caption; defaults to the project pin label */
+  label?: string
 }
 
 type Status =
@@ -34,7 +36,7 @@ function coordsText(lat?: number, lng?: number): string {
  * Project location: paste a Google Maps link (also short maps.app.goo.gl links) or type
  * "lat, lng". The backend extracts the coordinates and names the place.
  */
-export function LocationField({ value, onChange, onPlaceResolved, required = false }: LocationFieldProps) {
+export function LocationField({ value, onChange, onPlaceResolved, required = false, label = 'Pinezka / współrzędne' }: LocationFieldProps) {
   const [text, setText] = useState(() => value.pinUrl || coordsText(value.latitude, value.longitude))
   const [status, setStatus] = useState<Status>(() =>
     value.latitude != null && value.longitude != null ? { kind: 'loading' } : { kind: 'idle' },
@@ -98,7 +100,7 @@ export function LocationField({ value, onChange, onPlaceResolved, required = fal
   return (
     <div className="block">
       <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">
-        Pinezka / współrzędne {required ? <span className="text-rose-500">*</span> : null}
+        {label} {required ? <span className="text-rose-500">*</span> : null}
       </span>
       <div className="relative">
         <MapPin size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)]" />

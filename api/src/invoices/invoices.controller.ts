@@ -26,6 +26,8 @@ const CREATE_ROLES = ['admin', 'administrator', 'operational_director', 'project
 /** Who manages invoices: number, Fakturownia link, status, payment */
 const MANAGE_ROLES = ['admin', 'administrator', 'financial_director'];
 const STAFF_ROLES = [...new Set([...CREATE_ROLES, ...MANAGE_ROLES, 'viewer'])];
+const ADMIN_ROLES = ['admin', 'administrator'];
+const PAID_STATUSES = ['ZAPŁACONE', 'ZAPŁACONA'];
 
 @Controller()
 export class InvoicesController {
@@ -53,7 +55,7 @@ export class InvoicesController {
     @Body('data') data: string,
     @UploadedFile() file: Express.Multer.File | undefined,
   ) {
-    const userId = await this.requireRole(authorization, CREATE_ROLES);
+    const { userId } = await this.requireRole(authorization, CREATE_ROLES);
     return this.invoices.create(projectId, userId, this.parseCreate(data), file);
   }
 
@@ -63,7 +65,8 @@ export class InvoicesController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: UpdateInvoiceInput,
   ) {
-    await this.requireRole(authorization, MANAGE_ROLES);
+    const { roles } = await this.requireRole(authorization, MANAGE_ROLES);
+    await this.guardPaid(id, roles);
     return this.invoices.update(id, {
       invoiceNumber: body.invoiceNumber,
       status: body.status,
@@ -78,7 +81,8 @@ export class InvoicesController {
     @Headers('authorization') authorization: string | undefined,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    await this.requireRole(authorization, MANAGE_ROLES);
+    const { roles } = await this.requireRole(authorization, MANAGE_ROLES);
+    await this.guardPaid(id, roles);
     return this.invoices.remove(id);
   }
 
@@ -123,7 +127,18 @@ export class InvoicesController {
     };
   }
 
-  private async requireRole(authorization: string | undefined, allowed: string[]): Promise<number> {
+  /** A paid invoice is final: only an admin may still change or delete it */
+  private async guardPaid(id: string, roles: string[]) {
+    const invoice = await this.invoices.get(id);
+    if (PAID_STATUSES.includes(invoice.status) && !roles.some((r) => ADMIN_ROLES.includes(r))) {
+      throw new ForbiddenException('Zapłaconą fakturę może zmienić tylko administrator');
+    }
+  }
+
+  private async requireRole(
+    authorization: string | undefined,
+    allowed: string[],
+  ): Promise<{ userId: number; roles: string[] }> {
     const token = authorization?.match(/^Bearer\s+(.+)$/i)?.[1];
     if (!token) throw new UnauthorizedException();
     let userId: number | undefined;
@@ -137,6 +152,6 @@ export class InvoicesController {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { roles: true } });
     const roles = (user?.roles ?? []).map((r) => r.toLowerCase());
     if (!roles.some((r) => allowed.includes(r))) throw new ForbiddenException('Brak uprawnień');
-    return userId;
+    return { userId, roles };
   }
 }

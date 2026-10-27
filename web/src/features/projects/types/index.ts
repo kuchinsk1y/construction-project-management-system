@@ -193,6 +193,8 @@ export type ApiProject = {
   pinUrl?: string | null
   latitude?: number | null
   longitude?: number | null
+  /** Named spots on site where crews gather */
+  gatheringPoints?: GatheringPoint[]
   power?: number | null
   vatRate?: string | null
   warrantyPercent?: string | null
@@ -201,6 +203,24 @@ export type ApiProject = {
   holdReason?: string | null
   holdStartedAt?: string | null
   expectedResumeDate?: string | null
+}
+
+export type GatheringPoint = {
+  id: string
+  name: string
+  latitude: number
+  longitude: number
+}
+
+/** Gathering point while it is being edited in the project form (coordinates may still be missing) */
+export type GatheringPointDraft = {
+  /** Stable React key, also for points not saved yet */
+  key: string
+  id?: string
+  name: string
+  latitude?: number
+  longitude?: number
+  pinUrl?: string
 }
 
 export type CreateProjectPayload = {
@@ -221,6 +241,7 @@ export type CreateProjectPayload = {
   pinUrl?: string
   latitude?: number
   longitude?: number
+  gatheringPoints?: GatheringPointDraft[]
   power?: number
   vatRate?: number
   warrantyPercent?: number

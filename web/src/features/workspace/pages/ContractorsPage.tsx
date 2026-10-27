@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, CheckCircle2, Loader2, PencilLine, Plus, Search, Trash2, X } from 'lucide-react' /* Building2 */
+import { AlertTriangle, CheckCircle2, Loader2, PencilLine, Plus, Search, Trash2, X, FilterX } from 'lucide-react' /* Building2 */
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -285,18 +285,17 @@ export function ContractorsPage({ canView, canManage }: ContractorsPageProps) {
             className="h-8 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] pl-8 pr-3 text-sm outline-none transition focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/20"
           />
         </label>
-        {query && (
-          <Button
-            type="button"
-            onClick={() => setQuery('')}
-            variant="outline"
-            size="sm"
-            className="ml-auto shrink-0 gap-1.5 rounded-xl border-[var(--sidebar-primary)]/20 text-[var(--sidebar-primary)] hover:bg-[var(--sidebar-primary)]/10"
-          >
-            <X size={13} />
-            Wyczyść
-          </Button>
-        )}
+        {/* Reset filters — always visible, active once something is filtered (same as on the projects page) */}
+        <Button
+          type="button"
+          disabled={!query}
+          onClick={() => setQuery('')}
+          variant="outline"
+          className="h-8 shrink-0 gap-1.5 rounded-xl border-[color-mix(in_oklch,var(--sidebar-primary)_25%,transparent)] text-[var(--sidebar-primary)] hover:bg-[color-mix(in_oklch,var(--sidebar-primary)_10%,transparent)] hover:text-[var(--sidebar-primary)] disabled:border-[var(--border)] disabled:bg-transparent disabled:text-[var(--muted-foreground)] disabled:opacity-50 transition-all duration-200"
+        >
+          <FilterX size={14} />
+          <span>{t('projects.filters.reset')}</span>
+        </Button>
       </div>
 
       <article className="w-full overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-sm animate-fade-in mb-3">

@@ -15,12 +15,15 @@ import {
   X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { deleteInvoice, fetchInvoiceProtocol, updateInvoice } from '@/features/projects/api'
-import type { ApiInvoice } from '@/features/projects/types'
+import { deleteInvoice, deleteMilestoneInvoice, fetchInvoiceProtocol, updateInvoice, updateMilestoneInvoice } from '@/features/projects/api'
+import type { ApiInvoice, UpdateInvoicePayload } from '@/features/projects/types'
+
+/** Older invoices of a single milestone are shown in the same form; they are saved through the milestone API */
+export type ManagedInvoice = ApiInvoice & { legacyMilestoneId?: string }
 import { FakturowniaImportDrawer } from './FakturowniaImportDrawer'
 
 type InvoiceManageDrawerProps = {
-  invoice: ApiInvoice
+  invoice: ManagedInvoice
   onClose: () => void
   canManage: boolean
   country?: string | null
@@ -62,9 +65,17 @@ export function InvoiceManageDrawer({ invoice, onClose, canManage, country, curr
     queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
   }
 
+  const persist = async (payload: UpdateInvoicePayload): Promise<void> => {
+    if (invoice.legacyMilestoneId) {
+      await updateMilestoneInvoice(invoice.legacyMilestoneId, invoice.id, { ...payload, netValue: invoice.totalNet })
+    } else {
+      await updateInvoice(invoice.id, payload)
+    }
+  }
+
   const save = useMutation({
     mutationFn: () =>
-      updateInvoice(invoice.id, {
+      persist({
         invoiceNumber: invoiceNumber.trim() || null,
         status,
         link: link.trim() || null,
@@ -80,7 +91,7 @@ export function InvoiceManageDrawer({ invoice, onClose, canManage, country, curr
 
   // One click for an issued invoice: number and link are already there
   const markPaid = useMutation({
-    mutationFn: () => updateInvoice(invoice.id, { status: 'ZAPŁACONE' }),
+    mutationFn: () => persist({ status: 'ZAPŁACONE' }),
     onSuccess: () => {
       refresh()
       onClose()
@@ -89,7 +100,10 @@ export function InvoiceManageDrawer({ invoice, onClose, canManage, country, curr
   })
 
   const remove = useMutation({
-    mutationFn: () => deleteInvoice(invoice.id),
+    mutationFn: async (): Promise<void> => {
+      if (invoice.legacyMilestoneId) await deleteMilestoneInvoice(invoice.legacyMilestoneId, invoice.id)
+      else await deleteInvoice(invoice.id)
+    },
     onSuccess: () => {
       refresh()
       onClose()
@@ -210,48 +224,38 @@ export function InvoiceManageDrawer({ invoice, onClose, canManage, country, curr
                   </li>
                 ))}
               </ul>
-              <div className="grid grid-cols-2 gap-3 px-4 py-3 border-t border-[var(--border)] text-[11px]">
+              <div className="grid grid-cols-3 gap-3 px-4 py-3 border-t border-[var(--border)] text-[11px]">
                 <div>
                   <div className="text-[var(--muted-foreground)]">Wniosek</div>
                   <div className="font-medium">{formatDate(invoice.createdAt.split('T')[0])}</div>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <div className="text-[var(--muted-foreground)]">Zgłosił</div>
                   <div className="font-medium truncate">{invoice.createdBy ?? '—'}</div>
+                </div>
+                <div>
+                  <div className="text-[var(--muted-foreground)]">Protokół</div>
+                  {invoice.protocol ? (
+                    <button
+                      type="button"
+                      onClick={openProtocol}
+                      disabled={openingProtocol}
+                      className="flex items-center gap-1 font-semibold text-[var(--sidebar-primary)] hover:underline disabled:opacity-60"
+                      title={invoice.protocol.fileName}
+                    >
+                      {openingProtocol ? <Loader2 className="w-3 h-3 animate-spin" /> : <Paperclip className="w-3 h-3" />}
+                      Otwórz
+                    </button>
+                  ) : (
+                    <div className="font-medium">—</div>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* Protocol + closed works */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold">Zamknięte roboty ({invoice.works.length})</span>
-                {invoice.protocol ? (
-                  <button
-                    type="button"
-                    onClick={openProtocol}
-                    disabled={openingProtocol}
-                    className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--sidebar-primary)] hover:underline disabled:opacity-60"
-                    title={invoice.protocol.fileName}
-                  >
-                    {openingProtocol ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Paperclip className="w-3.5 h-3.5" />}
-                    Protokół
-                  </button>
-                ) : null}
-              </div>
-              {invoice.works.length ? (
-                <ul className="rounded-xl border border-[var(--border)] divide-y divide-[var(--border)] max-h-40 overflow-y-auto custom-scrollbar">
-                  {invoice.works.map((w) => (
-                    <li key={w.id} className="px-3 py-1.5 text-xs truncate" title={w.name}>
-                      {w.name}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-[11px] text-[var(--muted-foreground)]">Zafakturowano całe etapy bez listy robót.</p>
-              )}
-              {invoice.note && !canManage ? <p className="text-xs text-[var(--muted-foreground)] whitespace-pre-line">{invoice.note}</p> : null}
-            </div>
+            {invoice.note && !canManage ? (
+              <p className="text-xs text-[var(--muted-foreground)] whitespace-pre-line">{invoice.note}</p>
+            ) : null}
 
             {/* Finance: number, Fakturownia, status, payment */}
             {canManage ? (
