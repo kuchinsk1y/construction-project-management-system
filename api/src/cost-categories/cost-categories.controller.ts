@@ -1,3 +1,4 @@
+import { Roles, Role } from '../auth/access';
 import { Controller, Get, Post, Body } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { IsString, IsNotEmpty, IsOptional, IsBoolean } from 'class-validator';
@@ -30,6 +31,7 @@ export class CostCategoriesController {
   }
 
   @Post()
+  @Roles(Role.OperationalDirector)
   async create(@Body() dto: CreateCostCategoryDto) {
     // Check if exists
     const existing = await this.prisma.cost_categories.findFirst({

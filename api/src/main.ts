@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
+import { PrismaExceptionFilter } from './prisma/prisma-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -20,6 +21,8 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     }),
   );
+  // Missing / duplicate / linked records answer 404 / 409 instead of a 500
+  app.useGlobalFilters(new PrismaExceptionFilter());
   await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();

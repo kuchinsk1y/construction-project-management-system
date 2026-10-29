@@ -1,3 +1,4 @@
+import { ContractorAccess } from '../auth/access';
 import { Controller, Post, Body, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { FeedbackService } from './feedback.service';
@@ -8,6 +9,7 @@ export class FeedbackController {
 
   @Post()
   @UseInterceptors(FileInterceptor('image'))
+  @ContractorAccess('scoped')
   async sendFeedback(
     @Body('description') description: string,
     @Body('url') url: string,

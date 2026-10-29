@@ -1,3 +1,4 @@
+import { Roles, Role } from '../auth/access';
 import {
   Body,
   Controller,
@@ -22,16 +23,19 @@ export class UsersController {
   }
 
   @Post()
+  @Roles(Role.Admin)
   create(@Body() dto: CreateUserDto) {
     return this.usersService.create(dto);
   }
 
   @Patch(':id')
+  @Roles(Role.Admin)
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateUserDto) {
     return this.usersService.update(id, dto);
   }
 
   @Delete(':id')
+  @Roles(Role.Admin)
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.usersService.remove(id);
   }

@@ -4,6 +4,7 @@ import { Plus, X, Loader2, Trash2, Wallet } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { UseMutationResult } from '@tanstack/react-query'
 import type { ApiCostCategory, ApiPlannedExpense } from '@/features/projects/types'
+import type { PlannedExpensePlanItem } from '@/features/projects/api'
 
 type PlannedExpenseFormDrawerProps = {
   isOpen: boolean
@@ -12,10 +13,7 @@ type PlannedExpenseFormDrawerProps = {
   categories: ApiCostCategory[]
   editingExpenseId: string | null
   setEditingExpenseId: (id: string | null) => void
-  createCategoryMut: UseMutationResult<ApiCostCategory, Error, { name: string }, unknown>
-  createExpenseMut: UseMutationResult<ApiPlannedExpense, Error, { costCategoryId: string; plannedPercent: number }, unknown>
-  updateExpenseMut: UseMutationResult<ApiPlannedExpense, Error, { id: string; payload: { costCategoryId?: string; plannedPercent?: number } }, unknown>
-  deleteExpenseMut: UseMutationResult<void, Error, string, unknown>
+  savePlanMut: UseMutationResult<ApiPlannedExpense[], Error, PlannedExpensePlanItem[], unknown>
 }
 
 type FormRow = {
@@ -32,13 +30,9 @@ export function PlannedExpenseFormDrawer({
   categories,
   editingExpenseId,
   setEditingExpenseId,
-  createCategoryMut,
-  createExpenseMut,
-  updateExpenseMut,
-  deleteExpenseMut,
+  savePlanMut,
 }: PlannedExpenseFormDrawerProps) {
   const [rows, setRows] = useState<FormRow[]>([])
-  const [deletedIds, setDeletedIds] = useState<string[]>([])
   const [error, setError] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [prevIsOpen, setPrevIsOpen] = useState(isOpen)
@@ -78,7 +72,6 @@ export function PlannedExpenseFormDrawer({
   const handleClose = () => {
     setError('')
     setEditingExpenseId(null)
-    setDeletedIds([])
     onClose()
   }
 
@@ -87,10 +80,7 @@ export function PlannedExpenseFormDrawer({
   }
 
   const removeRow = (index: number) => {
-    const row = rows[index]
-    if (row.id && !row.isNew) {
-      setDeletedIds(prev => [...prev, row.id!])
-    }
+    // A removed row is just not sent on save; the server deletes it
     setRows(prev => prev.filter((_, i) => i !== index))
   }
 
@@ -123,46 +113,18 @@ export function PlannedExpenseFormDrawer({
     setError('')
 
     try {
-      // 1. Delete rows
-      for (const id of deletedIds) {
-        await deleteExpenseMut.mutateAsync(id)
-      }
-
-      // 2. Update or Create
-      // Cache created categories in this run to avoid duplicates
-      const localCatCache = new Map<string, string>()
-
-      for (const row of rows) {
-        const catNameStr = row.costCategoryName.trim()
-        const lowerName = catNameStr.toLowerCase()
-
-        let categoryId = localCatCache.get(lowerName)
-
-        if (!categoryId) {
-          // check if exists in DB
-          const existing = categories.find(c => c.name.toLowerCase() === lowerName)
-          if (existing) {
-            categoryId = existing.id
-          } else {
-            // create new
-            const newCat = await createCategoryMut.mutateAsync({ name: catNameStr })
-            categoryId = newCat.id
-            localCatCache.set(lowerName, categoryId)
+      // One request for the whole plan: removed rows are simply not sent
+      await savePlanMut.mutateAsync(
+        rows.map((row) => {
+          const name = row.costCategoryName.trim()
+          const existing = categories.find((c) => c.name.trim().toLowerCase() === name.toLowerCase())
+          return {
+            ...(row.id && !row.isNew ? { id: row.id } : {}),
+            ...(existing ? { costCategoryId: existing.id } : { costCategoryName: name }),
+            plannedPercent: Number(row.plannedPercent),
           }
-        }
-
-        if (row.id && !row.isNew) {
-          await updateExpenseMut.mutateAsync({
-            id: row.id,
-            payload: { costCategoryId: categoryId, plannedPercent: Number(row.plannedPercent) }
-          })
-        } else {
-          await createExpenseMut.mutateAsync({
-            costCategoryId: categoryId,
-            plannedPercent: Number(row.plannedPercent)
-          })
-        }
-      }
+        }),
+      )
 
       handleClose()
     } catch (err: unknown) {
@@ -174,7 +136,7 @@ export function PlannedExpenseFormDrawer({
 
   if (typeof document === 'undefined') return null
 
-  const isPending = isSaving || createCategoryMut.isPending || createExpenseMut.isPending || updateExpenseMut.isPending || deleteExpenseMut.isPending
+  const isPending = isSaving || savePlanMut.isPending
 
   const inputCls =
     'h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-2.5 text-xs text-[var(--foreground)] outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 disabled:opacity-50 disabled:cursor-not-allowed'
@@ -244,9 +206,9 @@ export function PlannedExpenseFormDrawer({
           <div className="flex flex-col">
             {rows.map((row, index) => (
               <div key={index} className={`flex gap-2 items-start relative group ${index > 0 ? 'pt-3 mt-3 border-t border-[var(--border)]' : ''}`}>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   {index === 0 && (
-                    <span className="block text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] ml-1 mb-1.5">Planowany wydatek</span>
+                    <span className="block whitespace-nowrap text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] ml-1 mb-1.5">Planowany wydatek</span>
                   )}
                   <input
                     type="text"
@@ -263,9 +225,10 @@ export function PlannedExpenseFormDrawer({
                   </datalist>
                 </div>
 
-                <div className="w-24">
+                {/* Wide enough for the caption on one line, so the first row lines up with the rest */}
+                <div className="w-44 shrink-0">
                   {index === 0 && (
-                    <span className="block text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] ml-1 mb-1.5">Planowany udział (%)</span>
+                    <span className="block whitespace-nowrap text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] ml-1 mb-1.5">Planowany udział (%)</span>
                   )}
                   <input
                     type="number"

@@ -1,3 +1,4 @@
+import { Public } from './access';
 import {
   Body,
   Controller,
@@ -12,6 +13,8 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { SendCodeDto } from './dto/send-code.dto';
 import { VerifyCodeDto } from './dto/verify-code.dto';
 
+// Sign-in endpoints work without a token
+@Public()
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}

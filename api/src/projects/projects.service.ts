@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -13,7 +14,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { GoogleSheetsService } from '../google-sheets/google-sheets.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
-import { CreateMilestoneDto } from './dto/create-milestone.dto';
+import { CreateMilestoneDto, SaveMilestonesDto } from './dto/create-milestone.dto';
 import { UpdateMilestoneDto } from './dto/update-milestone.dto';
 import { CreateWorkTypeDto } from './dto/create-work-type.dto';
 import { CreateResourcePlanDto } from './dto/create-resource-plan.dto';
@@ -70,9 +71,10 @@ export class ProjectsService {
     );
   }
 
-  async list() {
+  /** All projects, or only those of one contractor company (contractor accounts) */
+  async list(contractorId: string | null = null) {
     const rows = await this.prisma.projects.findMany({
-      where: { deleted_at: null },
+      where: { deleted_at: null, ...(contractorId ? { contractor_id: contractorId } : {}) },
       include: {
         gathering_points: {
           where: { deleted_at: null },
@@ -326,8 +328,9 @@ export class ProjectsService {
     });
   }
 
-  async listContractors() {
+  async listContractors(onlyId: string | null = null) {
     return this.prisma.contractors.findMany({
+      where: onlyId ? { id: onlyId } : undefined,
       select: { id: true, name: true },
       orderBy: { name: 'asc' },
     });
@@ -773,6 +776,87 @@ export class ProjectsService {
     };
   }
 
+  /**
+   * Saves the whole list of milestones (KM) and additional works (RD) at once: one transaction and
+   * one batch write to the sheet. Removed rows are soft-deleted, numbers may be swapped freely.
+   */
+  async saveMilestones(projectId: string, dto: SaveMilestonesDto) {
+    const project = await this.prisma.projects.findUnique({ where: { id: projectId, deleted_at: null } });
+    if (!project) throw new NotFoundException('Project not found');
+
+    const items = (dto.items ?? []).map((i) => ({ ...i, milestoneNo: i.milestoneNo.trim(), type: i.type ?? 'KM' }));
+    const numbers = items.map((i) => i.milestoneNo.toLowerCase());
+    const duplicate = numbers.find((n, idx) => numbers.indexOf(n) !== idx);
+    if (duplicate) throw new BadRequestException(`Numer ${duplicate.toUpperCase()} występuje więcej niż raz`);
+    const kmSum = items.filter((i) => i.type === 'KM').reduce((s, i) => s + Number(i.percentage ?? 0), 0);
+    if (kmSum > 100.01) throw new BadRequestException('Suma procentów kamieni milowych nie może przekraczać 100%');
+
+    const all = await this.prisma.milestones.findMany({ where: { project_id: projectId } });
+    const active = all.filter((m) => !m.deleted_at);
+    const activeIds = new Set(active.map((m) => m.id));
+    const foreign = items.find((i) => i.id && !activeIds.has(i.id));
+    if (foreign) throw new BadRequestException('Etap nie należy do tego projektu');
+
+    const budget = Number(project.contract_net_value ?? 0);
+    const keep = new Set(items.flatMap((i) => (i.id ? [i.id] : [])));
+    const suffix = (id: string) => `~${id.slice(0, 8)}`;
+
+    await this.prisma.$transaction(async (tx) => {
+      // Numbers are unique per project (also among deleted rows): free them before writing the final ones
+      const removedIds = active.filter((m) => !keep.has(m.id)).map((m) => m.id);
+      for (const m of all) {
+        const wanted = numbers.includes(m.milestone_no.trim().toLowerCase());
+        if (removedIds.includes(m.id)) {
+          await tx.milestones.update({
+            where: { id: m.id },
+            data: { deleted_at: new Date(), ...(wanted ? { milestone_no: `${m.milestone_no}${suffix(m.id)}` } : {}) },
+          });
+        } else if (m.deleted_at && wanted) {
+          await tx.milestones.update({ where: { id: m.id }, data: { milestone_no: `${m.milestone_no}${suffix(m.id)}` } });
+        } else if (keep.has(m.id)) {
+          await tx.milestones.update({ where: { id: m.id }, data: { milestone_no: `~tmp${suffix(m.id)}` } });
+        }
+      }
+
+      for (const item of items) {
+        const isKm = item.type === 'KM';
+        const percentage = isKm ? Number(item.percentage ?? 0) : 0;
+        const data = {
+          milestone_no: item.milestoneNo,
+          description: item.description,
+          type: item.type,
+          percentage,
+          net_amount: isKm ? (budget * percentage) / 100 : Number(item.netAmount ?? 0),
+          invoicing_percentage: isKm ? (item.invoicingPercentage ?? null) : null,
+        };
+        if (item.id) await tx.milestones.update({ where: { id: item.id }, data });
+        else await tx.milestones.create({ data: { project_id: projectId, ...data } });
+      }
+    });
+
+    // One batch to the sheet; a failure is logged and reported, the milestones are saved
+    const saved = await this.prisma.milestones.findMany({ where: { project_id: projectId, deleted_at: null } });
+    const spreadsheetId = this.config.getOrThrow<string>('PROJECTS_SPREADSHEET_ID');
+    const sheetName = this.config.get<string>('MILESTONES_SHEET_NAME', 'KamienieMilowe');
+    const sheetRows = saved.map((row) => ({
+      id: row.id,
+      projectId: project.id,
+      projectName: project.name,
+      milestoneNo: row.milestone_no,
+      type: row.type,
+      description: row.description ?? '',
+      percentage: Number(row.percentage),
+      netAmount: Number(row.net_amount),
+    }));
+    try {
+      await this.sheetsService.upsertRows(spreadsheetId, sheetName, sheetRows);
+    } catch (error) {
+      await this.handleSyncError(sheetName, 'SAVE_MILESTONES', error, sheetRows);
+    }
+
+    return this.listMilestones(projectId);
+  }
+
   async deleteMilestone(id: string) {
     const milestone = await this.prisma.milestones.findUnique({
       where: { id, deleted_at: null },
@@ -898,13 +982,14 @@ export class ProjectsService {
     );
   }
 
-  async updateMilestoneInvoice(milestoneId: string, invoiceId: string, dto: CreateMilestoneInvoiceDto) {
+  async updateMilestoneInvoice(milestoneId: string, invoiceId: string, dto: CreateMilestoneInvoiceDto, isAdmin = false) {
     const invoice = await this.prisma.milestones_invoices.findUnique({
       where: { id: invoiceId, milestone_id: milestoneId },
     });
     if (!invoice) {
       throw new NotFoundException('Invoice not found');
     }
+    this.assertEditable(invoice.status, isAdmin);
 
     const status = dto.status ?? invoice.status;
     const isPaid = PAID_INVOICE_STATUSES.includes(status);
@@ -933,19 +1018,27 @@ export class ProjectsService {
     };
   }
 
-  async deleteMilestoneInvoice(milestoneId: string, invoiceId: string) {
+  async deleteMilestoneInvoice(milestoneId: string, invoiceId: string, isAdmin = false) {
     const invoice = await this.prisma.milestones_invoices.findUnique({
       where: { id: invoiceId, milestone_id: milestoneId },
     });
     if (!invoice) {
       throw new NotFoundException('Invoice not found');
     }
+    this.assertEditable(invoice.status, isAdmin);
 
     await this.prisma.milestones_invoices.delete({
       where: { id: invoiceId },
     });
 
     return { success: true };
+  }
+
+  /** A paid invoice is final: only an admin may still change or delete it */
+  private assertEditable(status: string, isAdmin: boolean) {
+    if (PAID_INVOICE_STATUSES.includes(status) && !isAdmin) {
+      throw new ForbiddenException('Zapłaconą fakturę może zmienić tylko administrator');
+    }
   }
 
   // --- Departments & Foremen Reference ---

@@ -286,6 +286,61 @@ export class GoogleSheetsService {
     }
   }
 
+  /**
+   * Writes many records in one go: rows whose "id" is already in the sheet are updated with a single
+   * batch request, the rest are appended with a single append. Three or four API calls in total,
+   * instead of several per record.
+   */
+  async upsertRows(
+    spreadsheetId: string,
+    sheetName: string,
+    records: Record<string, unknown>[],
+  ): Promise<void> {
+    if (records.length === 0) return;
+    const headers = await this.getHeaders(spreadsheetId, sheetName);
+    const toValues = (data: Record<string, unknown>) => {
+      const lower: Record<string, unknown> = {};
+      for (const key of Object.keys(data)) lower[key.toLowerCase()] = data[key];
+      return headers.map((header) => this.stringifyValue(lower[header]));
+    };
+
+    const sheets = this.getSheetsClient();
+    const idCol = headers.indexOf('id');
+    const rowById = new Map<string, number>();
+    if (idCol !== -1) {
+      const col = this.numberToColumn(idCol + 1);
+      const response = await sheets.spreadsheets.values.get({ spreadsheetId, range: `${sheetName}!${col}:${col}` });
+      (response.data.values ?? []).forEach((row, i) => {
+        if (i > 0 && row?.[0]) rowById.set(String(row[0]).trim(), i + 1);
+      });
+    }
+
+    const lastCol = this.numberToColumn(headers.length);
+    const updates: { range: string; values: string[][] }[] = [];
+    const appends: string[][] = [];
+    for (const record of records) {
+      const rowNumber = rowById.get(String(record.id ?? '').trim());
+      if (rowNumber) updates.push({ range: `${sheetName}!A${rowNumber}:${lastCol}${rowNumber}`, values: [toValues(record)] });
+      else appends.push(toValues(record));
+    }
+
+    if (updates.length) {
+      await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId,
+        requestBody: { valueInputOption: 'USER_ENTERED', data: updates },
+      });
+    }
+    if (appends.length) {
+      await sheets.spreadsheets.values.append({
+        spreadsheetId,
+        range: `${sheetName}!A:A`,
+        valueInputOption: 'USER_ENTERED',
+        requestBody: { values: appends },
+      });
+    }
+    this.logger.log(`Sheet ${sheetName}: ${updates.length} updated, ${appends.length} appended in one batch`);
+  }
+
   private stringifyValue(val: unknown): string {
     if (val === null || val === undefined) {
       return '';

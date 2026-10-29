@@ -5,68 +5,55 @@ import {
   Delete,
   ForbiddenException,
   Get,
-  Headers,
   Param,
   ParseUUIDPipe,
   Patch,
   Post,
   Res,
-  UnauthorizedException,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { JwtService } from '@nestjs/jwt';
 import type { Response } from 'express';
-import { PrismaService } from '../prisma/prisma.service';
+import { ContractorAccess, CurrentUser, Role, Roles, type AuthUser } from '../auth/access';
 import { InvoicesService, type CreateProtocolInput, type UpdateInvoiceInput } from './invoices.service';
 
-/** Who may request invoices by closing works */
-const CREATE_ROLES = ['admin', 'administrator', 'operational_director', 'project_manager'];
-/** Who manages invoices: number, Fakturownia link, status, payment */
-const MANAGE_ROLES = ['admin', 'administrator', 'financial_director'];
-const STAFF_ROLES = [...new Set([...CREATE_ROLES, ...MANAGE_ROLES, 'viewer'])];
-const ADMIN_ROLES = ['admin', 'administrator'];
 const PAID_STATUSES = ['ZAPŁACONE', 'ZAPŁACONA'];
 
 @Controller()
 export class InvoicesController {
-  constructor(
-    private readonly invoices: InvoicesService,
-    private readonly jwt: JwtService,
-    private readonly prisma: PrismaService,
-  ) {}
+  constructor(private readonly invoices: InvoicesService) {}
 
+  /** Shown in the milestones tab, also to the project's contractor */
+  @ContractorAccess('param:projectId')
   @Get('projects/:projectId/invoices')
-  async list(
-    @Headers('authorization') authorization: string | undefined,
-    @Param('projectId', ParseUUIDPipe) projectId: string,
-  ) {
-    await this.requireRole(authorization, STAFF_ROLES);
+  list(@Param('projectId', ParseUUIDPipe) projectId: string) {
     return this.invoices.list(projectId);
   }
 
   /** Closes works with an acceptance protocol: multipart with `protocol` (file) and `data` (JSON) */
+  /** Who may request invoices by closing works */
+  @Roles(Role.OperationalDirector, Role.ProjectManager)
   @Post('projects/:projectId/invoices')
   @UseInterceptors(FileInterceptor('protocol', { limits: { fileSize: 25 * 1024 * 1024 } }))
-  async create(
-    @Headers('authorization') authorization: string | undefined,
+  create(
+    @CurrentUser() user: AuthUser,
     @Param('projectId', ParseUUIDPipe) projectId: string,
     @Body('data') data: string,
     @UploadedFile() file: Express.Multer.File | undefined,
   ) {
-    const { userId } = await this.requireRole(authorization, CREATE_ROLES);
-    return this.invoices.create(projectId, userId, this.parseCreate(data), file);
+    return this.invoices.create(projectId, user.id, this.parseCreate(data), file);
   }
 
+  /** Finance manages invoices: number, Fakturownia link, status, payment */
+  @Roles(Role.FinancialDirector)
   @Patch('invoices/:id')
   async update(
-    @Headers('authorization') authorization: string | undefined,
+    @CurrentUser() user: AuthUser,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: UpdateInvoiceInput,
   ) {
-    const { roles } = await this.requireRole(authorization, MANAGE_ROLES);
-    await this.guardPaid(id, roles);
+    await this.guardPaid(id, user);
     return this.invoices.update(id, {
       invoiceNumber: body.invoiceNumber,
       status: body.status,
@@ -76,23 +63,15 @@ export class InvoicesController {
     });
   }
 
+  @Roles(Role.FinancialDirector)
   @Delete('invoices/:id')
-  async remove(
-    @Headers('authorization') authorization: string | undefined,
-    @Param('id', ParseUUIDPipe) id: string,
-  ) {
-    const { roles } = await this.requireRole(authorization, MANAGE_ROLES);
-    await this.guardPaid(id, roles);
+  async remove(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
+    await this.guardPaid(id, user);
     return this.invoices.remove(id);
   }
 
   @Get('invoices/:id/protocol')
-  async protocol(
-    @Headers('authorization') authorization: string | undefined,
-    @Param('id', ParseUUIDPipe) id: string,
-    @Res() res: Response,
-  ) {
-    await this.requireRole(authorization, STAFF_ROLES);
+  async protocol(@Param('id', ParseUUIDPipe) id: string, @Res() res: Response) {
     const file = await this.invoices.protocol(id);
     res.setHeader('Content-Type', file.mimeType);
     res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(file.fileName)}`);
@@ -128,30 +107,10 @@ export class InvoicesController {
   }
 
   /** A paid invoice is final: only an admin may still change or delete it */
-  private async guardPaid(id: string, roles: string[]) {
+  private async guardPaid(id: string, user: AuthUser) {
     const invoice = await this.invoices.get(id);
-    if (PAID_STATUSES.includes(invoice.status) && !roles.some((r) => ADMIN_ROLES.includes(r))) {
+    if (PAID_STATUSES.includes(invoice.status) && !user.isAdmin) {
       throw new ForbiddenException('Zapłaconą fakturę może zmienić tylko administrator');
     }
-  }
-
-  private async requireRole(
-    authorization: string | undefined,
-    allowed: string[],
-  ): Promise<{ userId: number; roles: string[] }> {
-    const token = authorization?.match(/^Bearer\s+(.+)$/i)?.[1];
-    if (!token) throw new UnauthorizedException();
-    let userId: number | undefined;
-    try {
-      const payload = await this.jwt.verifyAsync<{ sub?: number }>(token);
-      userId = typeof payload.sub === 'number' ? payload.sub : undefined;
-    } catch {
-      throw new UnauthorizedException();
-    }
-    if (!userId) throw new UnauthorizedException();
-    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { roles: true } });
-    const roles = (user?.roles ?? []).map((r) => r.toLowerCase());
-    if (!roles.some((r) => allowed.includes(r))) throw new ForbiddenException('Brak uprawnień');
-    return { userId, roles };
   }
 }

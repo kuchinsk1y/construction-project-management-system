@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Plus, Trash2, X, Loader2, Calendar, Milestone, Wrench, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import type { UseMutationResult } from '@tanstack/react-query'
+import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/react-query'
+import { saveMilestones } from '@/features/projects/api'
 import type { ApiMilestone, CreateMilestonePayload } from '@/features/projects/types'
 import { formatAmount } from '@/lib/format'
 
@@ -21,6 +22,8 @@ type MilestoneFormDrawerProps = {
   deleteMilestoneMutation: UseMutationResult<void, Error, string, unknown>
   contractNetValue?: number
   isBulkEdit?: boolean
+  /** Project whose milestones are saved (all at once) */
+  projectId?: string
 }
 
 type MilestoneType = 'KM' | 'roboty_dodatkowe'
@@ -68,9 +71,19 @@ export function MilestoneFormDrawer({
   updateMilestonesBatchMutation,
   deleteMilestoneMutation,
   contractNetValue = 0,
+  projectId,
 }: MilestoneFormDrawerProps) {
+  const queryClient = useQueryClient()
+  // The whole list is saved in one request: one transaction and one batch to the sheet
+  const saveAll = useMutation({
+    mutationFn: (items: Parameters<typeof saveMilestones>[1]) => saveMilestones(projectId!, items),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['milestones'] })
+      await queryClient.invalidateQueries({ queryKey: ['projects'] })
+      setMilestoneError('')
+    },
+  })
   const [rows, setRows] = useState<FormRow[]>([])
-  const [deletedIds, setDeletedIds] = useState<string[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const [prevIsOpen, setPrevIsOpen] = useState(isOpen)
   const [rowToDelete, setRowToDelete] = useState<number | null>(null)
@@ -105,7 +118,6 @@ export function MilestoneFormDrawer({
   const handleClose = () => {
     setMilestoneError('')
     setEditingMilestoneId(null)
-    setDeletedIds([])
     onClose()
   }
 
@@ -115,10 +127,7 @@ export function MilestoneFormDrawer({
 
   const confirmDeleteRow = () => {
     if (rowToDelete === null) return
-    const row = rows[rowToDelete]
-    if (row.id && !row.isNew) {
-      setDeletedIds((prev) => [...prev, row.id!])
-    }
+    // A removed row is just not sent on save; the server soft-deletes it
     setRows((prev) => prev.filter((_, i) => i !== rowToDelete))
     setRowToDelete(null)
   }
@@ -190,52 +199,19 @@ export function MilestoneFormDrawer({
 
     setIsSaving(true)
     try {
-      // First, handle deletions
-      for (const id of deletedIds) {
-        await new Promise<void>((resolve, reject) => {
-          deleteMilestoneMutation.mutate(id, { onSuccess: () => resolve(), onError: (err) => reject(err) })
-        })
-      }
+      // One request for the whole list: removed rows are simply not sent
+      await saveAll.mutateAsync(
+        rows.map((row) => ({
+          ...(row.id && !row.isNew ? { id: row.id } : {}),
+          milestoneNo: row.milestoneNo.trim(),
+          description: row.description.trim(),
+          type: row.type,
+          ...(row.type === 'KM'
+            ? { percentage: Number(row.percentage), invoicingPercentage: row.invoicingPercentage != null ? Number(row.invoicingPercentage) : null }
+            : { netAmount: Number(row.netAmount) }),
+        })),
+      )
 
-      const newKMs: CreateMilestonePayload[] = []
-      const newRDs: CreateMilestonePayload[] = []
-
-      const updates: { id: string; payload: Partial<CreateMilestonePayload> }[] = []
-
-      for (const row of rows) {
-        if (row.id && !row.isNew) {
-          updates.push({
-            id: row.id,
-            payload: {
-              milestoneNo: row.milestoneNo.trim(),
-              description: row.description.trim(),
-              type: row.type,
-              ...(row.type === 'KM' ? { percentage: Number(row.percentage), invoicingPercentage: row.invoicingPercentage != null ? Number(row.invoicingPercentage) : null } : { netAmount: Number(row.netAmount) }),
-            },
-          })
-        } else {
-          if (row.type === 'KM') {
-            newKMs.push({ milestoneNo: row.milestoneNo.trim(), description: row.description.trim(), type: 'KM', percentage: Number(row.percentage), invoicingPercentage: row.invoicingPercentage != null ? Number(row.invoicingPercentage) : null })
-          } else {
-            newRDs.push({ milestoneNo: row.milestoneNo.trim(), description: row.description.trim(), type: 'roboty_dodatkowe', netAmount: Number(row.netAmount) })
-          }
-        }
-      }
-
-      if (updates.length > 0) {
-        await new Promise<void>((resolve, reject) => {
-          updateMilestonesBatchMutation.mutate(updates, { onSuccess: () => resolve(), onError: (err) => reject(err) })
-        })
-      }
-
-      const allNew = [...newKMs, ...newRDs]
-      if (allNew.length > 0) {
-        await new Promise<void>((resolve, reject) => {
-          createMilestonesBatchMutation.mutate(allNew, { onSuccess: () => resolve(), onError: (err) => reject(err) })
-        })
-      }
-
-      setDeletedIds([])
       handleClose()
     } catch (err: unknown) {
       setMilestoneError(err instanceof Error ? err.message : 'Błąd zapisu')
@@ -244,7 +220,7 @@ export function MilestoneFormDrawer({
     }
   }
 
-  const isPending = createMilestoneMutation.isPending || createMilestonesBatchMutation.isPending || updateMilestoneMutation.isPending || updateMilestonesBatchMutation.isPending || deleteMilestoneMutation.isPending || isSaving
+  const isPending = createMilestoneMutation.isPending || createMilestonesBatchMutation.isPending || updateMilestoneMutation.isPending || updateMilestonesBatchMutation.isPending || deleteMilestoneMutation.isPending || saveAll.isPending || isSaving
 
   const inputCls =
     'h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-2.5 text-xs outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 focus:border-[var(--sidebar-primary)] focus:ring-2 focus:ring-[var(--sidebar-primary)]/15 disabled:opacity-50 disabled:cursor-not-allowed'

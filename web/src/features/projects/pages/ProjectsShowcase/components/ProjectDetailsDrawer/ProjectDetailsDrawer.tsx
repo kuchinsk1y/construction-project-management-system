@@ -1492,6 +1492,7 @@ export function ProjectDetailsDrawer({
         deleteMilestoneMutation={deleteMilestoneMutation}
         contractNetValue={editingProject?.contract_net_value ? Number(editingProject.contract_net_value) : 0}
         isBulkEdit={isBulkEditMilestones}
+        projectId={editingProject?.id}
       />
     </>
   )

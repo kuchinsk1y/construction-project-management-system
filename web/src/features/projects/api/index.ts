@@ -62,6 +62,14 @@ export function createMilestone(
   return apiPost<ApiMilestone>(`/projects/${projectId}/milestones`, payload)
 }
 
+/** Saves the whole list of milestones in one request (rows not sent are removed) */
+export function saveMilestones(
+  projectId: string,
+  items: (Partial<CreateMilestonePayload> & { id?: string })[],
+): Promise<ApiMilestone[]> {
+  return apiPut<ApiMilestone[]>(`/projects/${projectId}/milestones`, { items })
+}
+
 export function updateMilestone(
   id: string,
   payload: Partial<CreateMilestonePayload>,
@@ -204,6 +212,19 @@ export function createPlannedExpense(projectId: string, payload: CreatePlannedEx
 
 export function updatePlannedExpense(projectId: string, id: string, payload: Partial<CreatePlannedExpensePayload>): Promise<ApiPlannedExpense> {
   return apiPut<ApiPlannedExpense>(`/projects/${projectId}/planned-expenses/${id}`, payload)
+}
+
+export type PlannedExpensePlanItem = {
+  id?: string
+  costCategoryId?: string
+  /** A new category is created on the server by name */
+  costCategoryName?: string
+  plannedPercent: number
+}
+
+/** Saves the whole plan in one request (rows not sent are removed) */
+export function savePlannedExpenses(projectId: string, items: PlannedExpensePlanItem[]): Promise<ApiPlannedExpense[]> {
+  return apiPut<ApiPlannedExpense[]>(`/projects/${projectId}/planned-expenses`, { items })
 }
 
 export function deletePlannedExpense(projectId: string, id: string): Promise<void> {

@@ -1,7 +1,10 @@
+import { Public } from '../auth/access';
 import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 import { IntegrationService } from './integration.service';
 import { ApiKeyGuard } from './guards/api-key.guard';
 
+// TMA authenticates with its own API key (ApiKeyGuard), not a user token
+@Public()
 @Controller('v1/integration/projects')
 @UseGuards(ApiKeyGuard)
 export class IntegrationController {

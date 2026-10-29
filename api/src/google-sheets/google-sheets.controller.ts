@@ -1,3 +1,4 @@
+import { Roles, Role } from '../auth/access';
 import { Controller, Get } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GoogleSheetsService } from './google-sheets.service';
@@ -7,6 +8,8 @@ import {
   ZakresProjectEntry,
 } from './interfaces';
 
+// Diagnostics of the Google Sheets sync: admin only
+@Roles(Role.Admin)
 @Controller('sheets')
 export class GoogleSheetsController {
   constructor(

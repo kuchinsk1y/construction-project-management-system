@@ -1,3 +1,4 @@
+import { Roles, Role } from '../auth/access';
 import {
   Controller,
   Get,
@@ -19,6 +20,7 @@ export class DepartmentsController {
   }
 
   @Post()
+  @Roles(Role.Admin)
   create(
     @Body()
     createDepartmentDto: {
@@ -32,6 +34,7 @@ export class DepartmentsController {
   }
 
   @Patch(':id')
+  @Roles(Role.Admin)
   update(
     @Param('id') id: string,
     @Body()
@@ -46,6 +49,7 @@ export class DepartmentsController {
   }
 
   @Delete(':id')
+  @Roles(Role.Admin)
   remove(@Param('id') id: string) {
     return this.departmentsService.remove(BigInt(id));
   }

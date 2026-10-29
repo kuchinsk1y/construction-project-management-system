@@ -147,15 +147,17 @@ export function ProjectsShowcase({ profile }: ProjectsShowcaseProps) {
   const projectTypes = useMemo(() => {
     return rawProjectTypes.filter((pt) => ['PV', 'MAGAZYN_ENERGII'].includes(pt.code))
   }, [rawProjectTypes])
-  const { data: users = [] } = useQuery<Array<{ id: number; firstName: string; lastName: string; position?: string; roles?: string[] }>>({
-    queryKey: ['users'],
-    queryFn: () => apiGet<Array<{ id: number; firstName: string; lastName: string; position?: string; roles?: string[] }>>('/users'),
-  })
-
   const normalizedRole = (profile?.role ?? '').toLowerCase()
   const normalizedRoles = (profile?.roles ?? []).map((entry) => entry.toLowerCase())
   const hasRole = (role: string) => normalizedRole === role || normalizedRoles.includes(role)
   const isContractor = hasRole('contractor') && !hasRole('admin') && !hasRole('administrator') && !hasRole('operational_director') && !hasRole('project_manager')
+  const { data: users = [] } = useQuery<Array<{ id: number; firstName: string; lastName: string; position?: string; roles?: string[] }>>({
+    queryKey: ['users'],
+    queryFn: () => apiGet<Array<{ id: number; firstName: string; lastName: string; position?: string; roles?: string[] }>>('/users'),
+    // The user list is internal; a contractor account gets the manager from the project itself
+    enabled: !isContractor,
+  })
+
   const canManageInvoiceDetails = hasRole('admin') || hasRole('administrator') || hasRole('financial_director')
   // Paid invoices can only be changed by an admin
   const isAdmin = hasRole('admin') || hasRole('administrator')

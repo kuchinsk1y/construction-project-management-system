@@ -4,12 +4,10 @@ import { Plus, Wallet, Coins, FileText, ShieldCheck, Calculator } from 'lucide-r
 import { Button } from '@/components/ui/button'
 import {
   getCostCategories,
-  createCostCategory,
   getPlannedExpenses,
-  createPlannedExpense,
-  updatePlannedExpense,
-  deletePlannedExpense,
+  savePlannedExpenses,
   fetchMilestones,
+  type PlannedExpensePlanItem,
 } from '@/features/projects/api'
 import type { ApiProject } from '@/features/projects/types'
 import { PlannedExpenseFormDrawer } from '@/features/projects/pages/ProjectsShowcase/components/ProjectDetailsDrawer/tabs/PlannedExpenses/PlannedExpenseFormDrawer'
@@ -34,34 +32,14 @@ export function PlannedExpensesTab({ project, canEdit = false }: PlannedExpenses
     queryFn: () => getPlannedExpenses(project.id),
   })
 
-  // Mutations
-  const createCategoryMut = useMutation({
-    mutationFn: createCostCategory,
+  // The whole plan is saved in one request (one transaction, one batch to the sheet)
+  const savePlanMut = useMutation({
+    mutationFn: (items: PlannedExpensePlanItem[]) => savePlannedExpenses(project.id, items),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['planned-expenses', project.id] })
       queryClient.invalidateQueries({ queryKey: ['cost-categories'] })
-    }
-  })
-
-  const createExpenseMut = useMutation({
-    mutationFn: (payload: { costCategoryId: string, plannedPercent: number }) => createPlannedExpense(project.id, payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['planned-expenses', project.id] })
-    }
-  })
-
-  const updateExpenseMut = useMutation({
-    mutationFn: (data: { id: string, payload: { costCategoryId?: string, plannedPercent?: number } }) =>
-      updatePlannedExpense(project.id, data.id, data.payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['planned-expenses', project.id] })
-    }
-  })
-
-  const deleteExpenseMut = useMutation({
-    mutationFn: (id: string) => deletePlannedExpense(project.id, id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['planned-expenses', project.id] })
-    }
+      queryClient.invalidateQueries({ queryKey: ['hours-plan', project.id] })
+    },
   })
 
   // State
@@ -232,10 +210,7 @@ export function PlannedExpensesTab({ project, canEdit = false }: PlannedExpenses
         categories={categories}
         editingExpenseId={editingExpenseId}
         setEditingExpenseId={setEditingExpenseId}
-        createCategoryMut={createCategoryMut}
-        createExpenseMut={createExpenseMut}
-        updateExpenseMut={updateExpenseMut}
-        deleteExpenseMut={deleteExpenseMut}
+        savePlanMut={savePlanMut}
       />
     </div>
   )

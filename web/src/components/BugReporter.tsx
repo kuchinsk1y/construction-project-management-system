@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Wrench, X, Loader2, Send } from 'lucide-react'
 import { toPng } from 'html-to-image'
 import type { UserProfile } from '@/types/auth'
+import { apiPostForm } from '@/lib/api-client'
 
 const REVEAL_MS = 6000
 const SHAKE_FLIPS = 4 // direction changes…
@@ -116,18 +117,8 @@ export function BugReporter({ profile }: { profile: UserProfile | null }) {
         formData.append('image', blob, 'screenshot.png')
       }
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/feedback`, {
-        method: 'POST',
-        body: formData,
-        // Let the browser set the Content-Type to multipart/form-data with boundary
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        }
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to send feedback')
-      }
+      // Same client as the rest of the app: correct API address and a fresh access token
+      await apiPostForm('/feedback', formData)
 
       setSuccess(true)
       setTimeout(() => {

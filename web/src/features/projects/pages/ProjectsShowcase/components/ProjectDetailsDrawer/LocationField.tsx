@@ -17,6 +17,8 @@ type LocationFieldProps = {
   required?: boolean
   /** Field caption; defaults to the project pin label */
   label?: string
+  /** Row layout (list editors): no caption, smaller input, one-line result */
+  compact?: boolean
 }
 
 type Status =
@@ -36,7 +38,14 @@ function coordsText(lat?: number, lng?: number): string {
  * Project location: paste a Google Maps link (also short maps.app.goo.gl links) or type
  * "lat, lng". The backend extracts the coordinates and names the place.
  */
-export function LocationField({ value, onChange, onPlaceResolved, required = false, label = 'Pinezka / współrzędne' }: LocationFieldProps) {
+export function LocationField({
+  value,
+  onChange,
+  onPlaceResolved,
+  required = false,
+  label = 'Pinezka / współrzędne',
+  compact = false,
+}: LocationFieldProps) {
   const [text, setText] = useState(() => value.pinUrl || coordsText(value.latitude, value.longitude))
   const [status, setStatus] = useState<Status>(() =>
     value.latitude != null && value.longitude != null ? { kind: 'loading' } : { kind: 'idle' },
@@ -96,6 +105,50 @@ export function LocationField({ value, onChange, onPlaceResolved, required = fal
       : 'border-[var(--border)] focus:border-[var(--sidebar-primary)] focus:ring-[var(--sidebar-primary)]/15'
 
   const mapsHref = hasCoords ? `https://www.google.com/maps?q=${value.latitude},${value.longitude}` : null
+
+  if (compact) {
+    return (
+      <div className="min-w-0">
+        <div className="relative">
+          <MapPin size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)]" />
+          <input
+            value={text}
+            onChange={(e) => handleChange(e.target.value)}
+            onBlur={() => {
+              if (text.trim() && !hasCoords && status.kind !== 'loading') {
+                window.clearTimeout(timer.current)
+                void resolve(text.trim(), true)
+              }
+            }}
+            placeholder="Link Google Maps lub 54.352, 18.646"
+            aria-invalid={status.kind === 'error'}
+            className={`h-9 w-full rounded-lg border bg-[var(--background)] pl-8 pr-8 text-xs outline-none transition duration-150 ease-in-out placeholder:text-zinc-500/70 focus:ring-2 ${borderCls}`}
+          />
+          <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2">
+            {status.kind === 'loading' ? (
+              <Loader2 size={13} className="animate-spin text-[var(--muted-foreground)]" />
+            ) : status.kind === 'ok' ? (
+              <CheckCircle2 size={13} className="text-emerald-500" />
+            ) : status.kind === 'error' ? (
+              <AlertCircle size={13} className="text-rose-500" />
+            ) : null}
+          </span>
+        </div>
+        {status.kind === 'ok' && hasCoords ? (
+          <p className="mt-1 flex items-center gap-1.5 text-[10px] text-[var(--muted-foreground)] min-w-0">
+            <span className="truncate" title={status.place?.label ?? undefined}>{status.place?.label || 'Lokalizacja zapisana'}</span>
+            {mapsHref ? (
+              <a href={mapsHref} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-0.5 font-semibold text-[var(--sidebar-primary)] hover:underline">
+                Mapa <ExternalLink size={10} />
+              </a>
+            ) : null}
+          </p>
+        ) : status.kind === 'error' ? (
+          <p className="mt-1 text-[10px] font-medium text-rose-500">{status.message}</p>
+        ) : null}
+      </div>
+    )
+  }
 
   return (
     <div className="block">

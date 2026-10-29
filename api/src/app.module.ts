@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
+import { AccessGuard } from './auth/access.guard';
 import { BullModule } from '@nestjs/bullmq';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -44,6 +46,7 @@ import { InvoicesModule } from './invoices/invoices.module';
     InvoicesModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  // Every endpoint requires login and the right role unless marked @Public()
+  providers: [AppService, { provide: APP_GUARD, useClass: AccessGuard }],
 })
 export class AppModule { }
