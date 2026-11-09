@@ -15,7 +15,6 @@ import { UpdateProjectDto } from './dto/update-project.dto';
 import { CreateMilestoneDto, SaveMilestonesDto } from './dto/create-milestone.dto';
 import { UpdateMilestoneDto } from './dto/update-milestone.dto';
 import { CreateWorkTypeDto } from './dto/create-work-type.dto';
-import { CreateResourcePlanDto } from './dto/create-resource-plan.dto';
 import { CreateMilestoneInvoiceDto } from './dto/create-milestone-invoice.dto';
 import { ProjectsService } from './projects.service';
 
@@ -230,28 +229,6 @@ export class ProjectsController {
     @Body() body: { assignments: { departmentId: number; foremanIds: number[]; works?: { id?: string; name: string }[] }[] },
   ) {
     return this.projectsService.batchSyncDepartments(projectId, body.assignments);
-  }
-
-  // --- Resource Plans ---
-
-  @Get('work-types/:workTypeId/resource-plans')
-  listResourcePlans(@Param('workTypeId') workTypeId: string) {
-    return this.projectsService.listResourcePlans(workTypeId);
-  }
-
-  @Post('work-types/:workTypeId/resource-plans')
-  @Roles(Role.OperationalDirector, Role.ProjectManager)
-  createResourcePlan(
-    @Param('workTypeId') workTypeId: string,
-    @Body() dto: CreateResourcePlanDto,
-  ) {
-    return this.projectsService.createResourcePlan(workTypeId, dto);
-  }
-
-  @Delete('resource-plans/:id')
-  @Roles(Role.OperationalDirector, Role.ProjectManager)
-  deleteResourcePlan(@Param('id') id: string) {
-    return this.projectsService.deleteResourcePlan(id);
   }
 
   // --- Hours Plan ---

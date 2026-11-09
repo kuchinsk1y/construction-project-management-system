@@ -35,14 +35,26 @@ export type AuthUser = {
   /** Contractor account without any staff role: read-only access to its own projects */
   isContractorOnly: boolean;
   isAdmin: boolean;
+  /** Which app issued the token: "erp" (e-mail sign-in) or "brigade" (brigade app, phone + Telegram) */
+  audience: 'erp' | 'brigade';
 };
+
+/** Audience claim of tokens issued to the brigade app */
+export const BRIGADE_AUDIENCE = 'brigade';
 
 export const IS_PUBLIC = 'access:public';
 export const ROLES = 'access:roles';
 export const CONTRACTOR_ACCESS = 'access:contractor';
+export const BRIGADE_ACCESS = 'access:brigade';
 
 /** No login needed (sign-in, health check, integrations with their own API key) */
 export const Public = () => SetMetadata(IS_PUBLIC, true);
+
+/**
+ * Endpoint of the brigade app: needs a brigade token (phone + Telegram sign-in).
+ * ERP tokens are not accepted here, and brigade tokens are accepted nowhere else.
+ */
+export const BrigadeAccess = () => SetMetadata(BRIGADE_ACCESS, true);
 
 /** Only these roles (admin always passes). Without it any logged-in staff member is allowed. */
 export const Roles = (...roles: string[]) => SetMetadata(ROLES, roles);

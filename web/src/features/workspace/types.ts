@@ -1,2 +1,2 @@
-export type WorkspaceSection = 'dashboard' | 'projects' | 'works' | 'resources' | 'settings' | 'users' | 'contractors' | 'departments'
+export type WorkspaceSection = 'dashboard' | 'projects' | 'works' | 'settings' | 'users' | 'contractors' | 'departments'
 

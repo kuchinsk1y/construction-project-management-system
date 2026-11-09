@@ -11,6 +11,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import {
   ADMIN_ROLES,
   AuthUser,
+  BRIGADE_ACCESS,
+  BRIGADE_AUDIENCE,
   CONTRACTOR_ACCESS,
   ContractorScope,
   hasAnyRole,
@@ -50,6 +52,15 @@ export class AccessGuard implements CanActivate {
     const user = await this.authenticate(request);
     request.user = user;
 
+    // The brigade app and ERP use separate tokens: each opens only its own endpoints
+    const brigadeRoute = this.reflector.getAllAndOverride<boolean>(BRIGADE_ACCESS, targets) ?? false;
+    if (brigadeRoute !== (user.audience === 'brigade')) {
+      throw new UnauthorizedException(
+        brigadeRoute ? 'Zaloguj się w aplikacji brygadzisty' : 'Ten token nie daje dostępu do ERP',
+      );
+    }
+    if (brigadeRoute) return true;
+
     if (user.isContractorOnly) {
       const scope = this.reflector.getAllAndOverride<ContractorScope | undefined>(CONTRACTOR_ACCESS, targets);
       if (!scope) throw new ForbiddenException('Brak uprawnień');
@@ -72,9 +83,12 @@ export class AccessGuard implements CanActivate {
     if (!token) throw new UnauthorizedException();
 
     let userId: number | undefined;
+    let audience: AuthUser['audience'] = 'erp';
     try {
-      const payload = await this.jwt.verifyAsync<{ sub?: number }>(token);
+      const payload = await this.jwt.verifyAsync<{ sub?: number; aud?: string | string[] }>(token);
       userId = typeof payload.sub === 'number' ? payload.sub : undefined;
+      const aud = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
+      if (aud.includes(BRIGADE_AUDIENCE)) audience = 'brigade';
     } catch {
       throw new UnauthorizedException();
     }
@@ -95,6 +109,7 @@ export class AccessGuard implements CanActivate {
       contractorId: record.contractor_id,
       isContractorOnly: roles.includes(Role.Contractor) && !isStaff,
       isAdmin: hasAnyRole({ roles }, ADMIN_ROLES),
+      audience,
     };
   }
 

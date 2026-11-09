@@ -18,8 +18,6 @@ import type {
   ResolvedLocation,
   CreateWorkTypePayload,
   ApiForemanAssignment,
-  ApiResourcePlan,
-  CreateResourcePlanPayload,
 } from '@/features/projects/types'
 
 export function fetchProjects(): Promise<ApiProject[]> {
@@ -174,21 +172,6 @@ export function batchSyncDepartments(
 }
 
 // --- Resource Plans ---
-
-export function fetchResourcePlans(workTypeId: string): Promise<ApiResourcePlan[]> {
-  return apiGet<ApiResourcePlan[]>(`/projects/work-types/${workTypeId}/resource-plans`)
-}
-
-export function createResourcePlan(
-  workTypeId: string,
-  payload: CreateResourcePlanPayload,
-): Promise<ApiResourcePlan> {
-  return apiPost<ApiResourcePlan>(`/projects/work-types/${workTypeId}/resource-plans`, payload)
-}
-
-export function deleteResourcePlan(id: string): Promise<void> {
-  return apiDelete<void>(`/projects/resource-plans/${id}`)
-}
 
 // ---- Cost Categories & Planned Expenses ----
 

@@ -17,7 +17,6 @@ import { UpdateProjectDto } from './dto/update-project.dto';
 import { CreateMilestoneDto, SaveMilestonesDto } from './dto/create-milestone.dto';
 import { UpdateMilestoneDto } from './dto/update-milestone.dto';
 import { CreateWorkTypeDto } from './dto/create-work-type.dto';
-import { CreateResourcePlanDto } from './dto/create-resource-plan.dto';
 import { CreateMilestoneInvoiceDto } from './dto/create-milestone-invoice.dto';
 import { PlannedExpensesService } from '../planned-expenses/planned-expenses.service';
 import { MailService } from '../mail/mail.service';
@@ -1168,8 +1167,9 @@ export class ProjectsService {
 
     // Works on additional works (RD) get 1% of the hours plan by default
     if (row.milestones?.type === 'roboty_dodatkowe') {
-      await this.prisma.work_type_hours_distribution.create({
-        data: { project_id: projectId, work_type_id: row.id, percentage: 1 },
+      await this.prisma.project_work_types.update({
+        where: { id: row.id },
+        data: { hours_percentage: 1 },
       });
     }
 
@@ -1478,51 +1478,6 @@ export class ProjectsService {
     return { success: true };
   }
 
-  // --- Resource Plans ---
-
-  async listResourcePlans(workTypeId: string) {
-    const rows = await this.prisma.resource_plans.findMany({
-      where: { work_type_id: workTypeId },
-      orderBy: { date_from: 'asc' },
-    });
-
-    return rows.map((r) => ({
-      id: r.id,
-      workTypeId: r.work_type_id,
-      plannedWorkers: r.planned_workers ?? 0,
-      dateFrom: r.date_from ? r.date_from.toISOString().split('T')[0] : null,
-      dateTo: r.date_to ? r.date_to.toISOString().split('T')[0] : null,
-    }));
-  }
-
-  async createResourcePlan(workTypeId: string, dto: CreateResourcePlanDto) {
-    const row = await this.prisma.resource_plans.create({
-      data: {
-        work_type_id: workTypeId,
-        planned_workers: dto.plannedWorkers,
-        date_from: dto.dateFrom ? new Date(dto.dateFrom) : null,
-        date_to: dto.dateTo ? new Date(dto.dateTo) : null,
-      },
-    });
-
-    return {
-      id: row.id,
-      workTypeId: row.work_type_id,
-      plannedWorkers: row.planned_workers ?? 0,
-      dateFrom: row.date_from
-        ? row.date_from.toISOString().split('T')[0]
-        : null,
-      dateTo: row.date_to ? row.date_to.toISOString().split('T')[0] : null,
-    };
-  }
-
-  async deleteResourcePlan(id: string) {
-    await this.prisma.resource_plans.delete({
-      where: { id },
-    });
-    return { success: true };
-  }
-
   // --- Hours Plan ---
   /**
    * Salary budget for the hours plan. The base is the contract value plus additional works (RD),
@@ -1561,8 +1516,10 @@ export class ProjectsService {
       where: { project_id: projectId },
     });
 
-    const distributions = await this.prisma.work_type_hours_distribution.findMany({
-      where: { project_id: projectId },
+    // The share of the hours plan is stored on each work
+    const works = await this.prisma.project_work_types.findMany({
+      where: { project_id: projectId, deleted_at: null, hours_percentage: { not: null } },
+      select: { id: true, hours_percentage: true },
     });
 
     const { totalSalaryBudget, contractNetValue, additionalWorksValue } = await this.salaryBudget(projectId);
@@ -1573,10 +1530,10 @@ export class ProjectsService {
       totalSalaryBudget,
       contractNetValue,
       additionalWorksValue,
-      distributions: distributions.map((d) => ({
-        id: d.id,
-        workTypeId: d.work_type_id,
-        percentage: d.percentage ? Number(d.percentage) : 0,
+      distributions: works.map((w) => ({
+        id: w.id,
+        workTypeId: w.id,
+        percentage: Number(w.hours_percentage),
       })),
     };
   }
@@ -1609,17 +1566,15 @@ export class ProjectsService {
         },
       });
 
-      await tx.work_type_hours_distribution.deleteMany({
+      // The sent list replaces the saved shares: works not in it get none
+      await tx.project_work_types.updateMany({
         where: { project_id: projectId },
+        data: { hours_percentage: null },
       });
-
-      if (dto.distributions && dto.distributions.length > 0) {
-        await tx.work_type_hours_distribution.createMany({
-          data: dto.distributions.map((d) => ({
-            project_id: projectId,
-            work_type_id: d.workTypeId,
-            percentage: d.percentage,
-          })),
+      for (const d of dto.distributions ?? []) {
+        await tx.project_work_types.updateMany({
+          where: { id: d.workTypeId, project_id: projectId },
+          data: { hours_percentage: d.percentage },
         });
       }
     });

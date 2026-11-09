@@ -147,20 +147,6 @@ export type ApiForemanAssignment = {
   foremanName: string
 }
 
-export type ApiResourcePlan = {
-  id: string
-  workTypeId: string
-  plannedWorkers: number
-  dateFrom: string | null
-  dateTo: string | null
-}
-
-export type CreateResourcePlanPayload = {
-  plannedWorkers: number
-  dateFrom?: string
-  dateTo?: string
-}
-
 // ---- DB (API) types ----
 
 export type ApiContractor = {

@@ -8,7 +8,6 @@ import { ProjectsPage } from '@/features/workspace/pages/ProjectsPage'
 import { SettingsPage } from '@/features/workspace/pages/SettingsPage'
 import { UsersPage } from '@/features/workspace/pages/UsersPage'
 import { WorksPage } from './WorksPage'
-import { ResourcesPage } from './ResourcesPage'
 import type { ThemeMode, ThemePreset, UserProfile } from '@/types/auth'
 
 type WorkspaceContentProps = {
@@ -70,11 +69,10 @@ export function WorkspaceContent({ isAdmin, profile, theme, themePreset, onTheme
       {canEditWorks && (
         <>
           <Route path="/works" element={<WorksPage canManage={canEditWorks} />} />
-          <Route path="/resources" element={<ResourcesPage canManage={canEditWorks} />} />
         </>
       )}
 
-      <Route path="/settings" element={<SettingsPage theme={theme} themePreset={themePreset} onThemePresetChange={onThemePresetChange} />} />
+      <Route path="/settings" element={<SettingsPage theme={theme} themePreset={themePreset} onThemePresetChange={onThemePresetChange} isAdmin={isAdmin} />} />
       
       {/* Fallback route */}
       <Route path="*" element={<Navigate to="/projects" replace />} />

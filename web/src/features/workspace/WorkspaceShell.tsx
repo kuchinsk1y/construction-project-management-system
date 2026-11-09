@@ -89,7 +89,7 @@ export function WorkspaceShell({ onLogout, theme, themePreset, onThemePresetChan
         if (item.key === 'users') return canViewUsers
         if (item.key === 'contractors') return isAdminOrDirector || isFinancialDirector || isProjectManager
         if (item.key === 'departments') return canViewDepartments
-        if (isContractor && (item.key === 'works' || item.key === 'resources')) return false
+        if (isContractor && item.key === 'works') return false
         return true
       }),
     [canViewUsers, isAdminOrDirector, isFinancialDirector, isProjectManager, canViewDepartments, isContractor],

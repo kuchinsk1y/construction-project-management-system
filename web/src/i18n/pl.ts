@@ -54,7 +54,6 @@ export const pl = {
     sections: {
       projects: 'Projekty',
       contractors: 'Kontrahenci',
-      resources: 'Zasoby',
       reports: 'Raporty',
       finance: 'Finanse',
       users: 'Uzytkownicy',

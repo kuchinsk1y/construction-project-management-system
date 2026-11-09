@@ -476,19 +476,6 @@ async function main() {
   for (const item of budgetItems) {
     const catId = createdCostCategories[item.cat]?.id;
     if (catId) {
-      let existingBudget = await prisma.project_budget_items.findFirst({
-        where: { project_id: project.id, cost_category_id: catId }
-      });
-      if (!existingBudget) {
-        await prisma.project_budget_items.create({
-          data: {
-            project_id: project.id,
-            cost_category_id: catId,
-            planned_amount: item.amount,
-          }
-        });
-      }
-
       let existingPlannedExpense = await prisma.planned_expenses.findFirst({
         where: { project_id: project.id, cost_category_id: catId }
       });

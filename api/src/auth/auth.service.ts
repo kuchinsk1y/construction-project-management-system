@@ -43,8 +43,9 @@ export class AuthService {
     const expiresAt = new Date(Date.now() + CODE_TTL_MS);
 
     await this.prisma.$transaction([
+      // Only e-mail codes: a code sent to the brigade app (Telegram) stays valid
       this.prisma.authCode.updateMany({
-        where: { userId: user.id, isUsed: false },
+        where: { userId: user.id, isUsed: false, channel: 'email' },
         data: { isUsed: true },
       }),
       this.prisma.authCode.create({
@@ -52,6 +53,7 @@ export class AuthService {
           userId: user.id,
           code,
           expiresAt,
+          channel: 'email',
           userAgent: userAgent || 'unknown',
         },
       }),
@@ -81,6 +83,7 @@ export class AuthService {
         userId: user.id,
         code: dto.code.toUpperCase(),
         isUsed: false,
+        channel: 'email',
         expiresAt: { gt: new Date() },
       },
     });
@@ -115,8 +118,10 @@ export class AuthService {
       include: { user: { include: { contractors: true } } },
     });
 
+    // Brigade-app sessions (end at 23:59) are refreshed only by the brigade endpoint
     if (
       !record ||
+      record.scope !== 'erp' ||
       record.isRevoked ||
       record.expiresAt < new Date() ||
       !record.user.isActive

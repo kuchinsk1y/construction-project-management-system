@@ -18,6 +18,8 @@ import { IntegrationModule } from './integration/integration.module';
 import { FeedbackModule } from './feedback/feedback.module';
 import { AttendanceModule } from './attendance/attendance.module';
 import { InvoicesModule } from './invoices/invoices.module';
+import { SurchargesModule } from './surcharges/surcharges.module';
+import { BrigadeModule } from './brigade/brigade.module';
 
 @Module({
   imports: [
@@ -44,6 +46,8 @@ import { InvoicesModule } from './invoices/invoices.module';
     FeedbackModule,
     AttendanceModule,
     InvoicesModule,
+    SurchargesModule,
+    BrigadeModule,
   ],
   controllers: [AppController],
   // Every endpoint requires login and the right role unless marked @Public()

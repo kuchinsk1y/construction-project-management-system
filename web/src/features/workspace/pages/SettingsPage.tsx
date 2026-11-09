@@ -2,11 +2,14 @@ import { Check, Palette } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import type { ThemeMode, ThemePreset } from '@/types/auth'
+import { SurchargesSettings } from '@/features/workspace/components/SurchargesSettings'
 
 type SettingsPageProps = {
   theme: ThemeMode
   themePreset: ThemePreset
   onThemePresetChange: (preset: ThemePreset) => void
+  /** Admin-only blocks (surcharges) */
+  isAdmin?: boolean
 }
 
 type ThemeCard = {
@@ -20,7 +23,7 @@ const cards: ThemeCard[] = [
   { id: 'lime' },
 ]
 
-export function SettingsPage({ theme, themePreset, onThemePresetChange }: SettingsPageProps) {
+export function SettingsPage({ theme, themePreset, onThemePresetChange, isAdmin = false }: SettingsPageProps) {
   const { t } = useTranslation()
 
   return (
@@ -94,6 +97,8 @@ export function SettingsPage({ theme, themePreset, onThemePresetChange }: Settin
           </div>
         </div>
       </section>
+
+      {isAdmin ? <SurchargesSettings /> : null}
     </>
   )
 }

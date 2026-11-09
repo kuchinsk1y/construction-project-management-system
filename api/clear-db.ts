@@ -12,14 +12,15 @@ const prisma = new PrismaClient({ adapter });
 async function main() {
   // Delete dependent data first
   await prisma.daily_reports.deleteMany({});
-  await prisma.resource_plans.deleteMany({});
   await prisma.project_hours_plan.deleteMany({});
   await prisma.project_status_history.deleteMany({});
   await prisma.planned_expenses.deleteMany({});
-  await prisma.project_budget_items.deleteMany({});
   await prisma.project_department_foremen.deleteMany({});
   await prisma.project_departments.deleteMany({});
+  await prisma.invoice_works.deleteMany({});
   await prisma.milestones_invoices.deleteMany({});
+  await prisma.invoices.deleteMany({});
+  await prisma.project_gathering_points.deleteMany({});
   await prisma.project_work_types.deleteMany({});
   await prisma.milestones.deleteMany({});
   await prisma.projects.deleteMany({});

@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "brigade",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "brigade", "run", "dev"],
+      "port": 5174
+    },
+    {
+      "name": "api",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "api", "run", "start:dev"],
+      "port": 3000
+    }
+  ]
+}
