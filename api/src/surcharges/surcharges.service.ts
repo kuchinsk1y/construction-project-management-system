@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSurchargeDto, UpdateSurchargeDto } from './surcharge.dto';
 
@@ -112,6 +112,9 @@ export class SurchargesService {
   }
 
   async remove(id: string) {
+    // Work entries keep their surcharges: a used one can only be switched off
+    const used = await this.prisma.work_hour_surcharges.count({ where: { surcharge_id: id } });
+    if (used) throw new ConflictException('Dopłata jest użyta we wpisach pracy — wyłącz ją zamiast usuwać');
     await this.prisma.surcharges.delete({ where: { id } });
     return { success: true };
   }

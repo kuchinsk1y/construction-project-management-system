@@ -64,7 +64,7 @@ export function HoursReportPage() {
           type="button"
           onClick={() => void load(month, company, true)}
           disabled={loading}
-          className="flex h-9 items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 text-sm font-medium text-[var(--muted-foreground)] transition hover:text-[var(--foreground)] disabled:opacity-60"
+          className="flex h-11 items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 text-sm font-medium text-[var(--muted-foreground)] sm:h-9 transition hover:text-[var(--foreground)] disabled:opacity-60"
         >
           <RefreshCw className={`size-4 ${loading ? 'animate-spin' : ''}`} />
           {data ? `Stan na ${timeLabel(data.generatedAt)}` : 'Odśwież'}
@@ -91,14 +91,14 @@ export function HoursReportPage() {
         </div>
 
         {data && data.filters.companies.length > 0 ? (
-          <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-[var(--border)] pt-3">
-            <span className="mr-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--muted-foreground)]">Firma</span>
+          <div className="no-scrollbar -mx-3 mt-3 flex items-center gap-1.5 overflow-x-auto border-t border-[var(--border)] px-3 pt-3 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
+            <span className="mr-1 shrink-0 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--muted-foreground)]">Firma</span>
             {[null, ...data.filters.companies].map((c) => (
               <button
                 key={c ?? 'all'}
                 type="button"
                 onClick={() => setCompany(c)}
-                className={`h-7 rounded-full px-3 text-xs font-semibold transition ${
+                className={`h-9 shrink-0 whitespace-nowrap rounded-full px-3.5 text-xs font-semibold transition sm:h-7 sm:px-3 ${
                   company === c
                     ? 'bg-[var(--primary)] text-[var(--primary-foreground)] shadow-sm'
                     : 'border border-[var(--border)] bg-[var(--background)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
@@ -118,6 +118,12 @@ export function HoursReportPage() {
             Spróbuj ponownie
           </button>
         </ErrorNote>
+      ) : null}
+
+      {shown?.source === 'none' ? (
+        <p className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-3.5 py-2.5 text-sm text-[var(--muted-foreground)]">
+          Godziny pojawią się, gdy zapis dnia z formularza zacznie działać. Na razie widać nieobecności z TMA: urlopy, choroby i zwolnienia.
+        </p>
       ) : null}
 
       <Legend threshold={data?.overtimeThreshold ?? 12} />
@@ -143,7 +149,7 @@ function MonthButton({ dir, disabled, onClick }: { dir: 'prev' | 'next'; disable
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="flex size-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--muted-foreground)] transition hover:text-[var(--foreground)] disabled:pointer-events-none disabled:opacity-35"
+      className="flex size-11 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--muted-foreground)] sm:size-8 transition hover:text-[var(--foreground)] disabled:pointer-events-none disabled:opacity-35"
       aria-label={dir === 'prev' ? 'Poprzedni miesiąc' : 'Następny miesiąc'}
     >
       <Icon className="size-4" />

@@ -33,26 +33,24 @@ export function writeSession(session: Session | null) {
   }
 }
 
-/** Data carried in the access token (decoded locally, no request needed) */
-export type TokenUser = { id: number; firstName: string; lastName: string; phone: string; roles: string[] }
+/** Data carried in the access token (decoded locally, no request needed). id = foreman id in TMA */
+export type TokenUser = { id: string; firstName: string; lastName: string; phone: string }
 
 export function userFromToken(token: string): TokenUser | null {
   try {
     const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))) as {
-      sub: number
+      sub: string | number
       firstName?: string
       lastName?: string
       phone?: string
-      roles?: string[]
     }
     // atob gives Latin-1 bytes: turn them back into UTF-8 text (Polish letters)
     const fix = (value?: string) => (value ? decodeURIComponent(escape(value)) : '')
     return {
-      id: payload.sub,
+      id: String(payload.sub),
       firstName: fix(payload.firstName),
       lastName: fix(payload.lastName),
       phone: payload.phone ?? '',
-      roles: payload.roles ?? [],
     }
   } catch {
     return null

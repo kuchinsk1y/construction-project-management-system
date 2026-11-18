@@ -1,139 +1,62 @@
-import { Injectable } from '@nestjs/common';
-import { ST_BR_SHEETS, StBrSheetsClient, gvizText } from './sheets/st-br-sheets.client';
+import { ForbiddenException, Injectable } from '@nestjs/common';
+import type { BrigadeForeman } from '../auth/access';
+import { TmaBrigadeClient } from './tma/tma-brigade.client';
+import type { TmaAbsenceType } from './tma/tma-brigade.types';
 
-const CACHE_TTL_MS = 60_000;
-
-/** A person of the foreman's crew, as in the ST_BR employee sheets */
+/** A person of the foreman's crew (from TMA) */
 export type CrewWorker = {
-  /** Company + id: ids of the ISPIK and agency sheets can repeat */
+  /** Worker id in TMA */
   key: string;
   id: string;
+  /** "Nowak Adam" */
   name: string;
   company: string;
   position: string;
-  /** Hourly rate («indeks»); null when the sheet has none (agencies) */
+  /** Hourly rate («indeks»); null when TMA has none */
   rate: number | null;
+  /** ERP project where he works now (TMA), only when it is one of the foreman's projects */
+  projectId: string | null;
 };
 
+export type ForemanData = { crew: CrewWorker[]; projectIds: string[] };
+
 /**
- * Crew of a foreman from the three ST_BR sheets (ISPIK, ISPIK Łotwa, agencies), matched by the foreman's
- * last name with the same filters as ST_BR. One person in several sheets is counted once. Cached for a minute.
+ * Crew and projects of the signed-in foreman, as TMA gives them (cached for a minute in the TMA client),
+ * and absences of the crew for a day.
  */
 @Injectable()
 export class CrewService {
-  private readonly cache = new Map<string, { at: number; data: CrewWorker[] }>();
-  private readonly inFlight = new Map<string, Promise<CrewWorker[]>>();
+  constructor(private readonly tma: TmaBrigadeClient) {}
 
-  constructor(private readonly sheets: StBrSheetsClient) {}
-
-  get(lastName: string, fresh = false): Promise<CrewWorker[]> {
-    const key = lastName.trim().toLowerCase();
-    const cached = this.cache.get(key);
-    if (!fresh && cached && Date.now() - cached.at < CACHE_TTL_MS) return Promise.resolve(cached.data);
-    const pending = this.inFlight.get(key);
-    if (pending) return pending;
-
-    const request = Promise.all([this.ispik(lastName), this.ispikLv(lastName), this.agencies(lastName)])
-      .then((sources) => {
-        const seen = new Set<string>();
-        const data = sources.flat().filter((w) => w.id && !seen.has(w.id) && seen.add(w.id));
-        for (const [k, entry] of this.cache) if (Date.now() - entry.at >= CACHE_TTL_MS) this.cache.delete(k);
-        this.cache.set(key, { at: Date.now(), data });
-        return data;
-      })
-      .finally(() => this.inFlight.delete(key));
-    this.inFlight.set(key, request);
-    return request;
+  async get(foreman: BrigadeForeman, fresh = false): Promise<ForemanData> {
+    const card = await this.tma.foremanByPhone(foreman.phone, fresh);
+    // TMA no longer lists this number as the same foreman: the session must not keep working
+    if (!card || card.foreman.id !== foreman.id) throw new ForbiddenException('Ten numer nie należy już do brygadzisty');
+    const ownProjects = new Set(card.projectIds);
+    return {
+      crew: card.crew
+        .map((w) => ({
+          key: w.id,
+          id: w.id,
+          name: [w.lastName, w.firstName].filter(Boolean).join(' ') || '—',
+          company: w.company,
+          position: w.position,
+          rate: w.rate,
+          projectId: w.projectId && ownProjects.has(w.projectId) ? w.projectId : null,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'pl')),
+      projectIds: card.projectIds,
+    };
   }
 
-  private async ispik(lastName: string): Promise<CrewWorker[]> {
-    const rows = await this.sheets.query(ST_BR_SHEETS.employeesIspik, (c) => {
-      const cols = {
-        id: c['id'],
-        name: c['parsed name'],
-        position: c['stanowisko (fakt)'],
-        rate: c['indeks'],
-        foreman: c['kierownik bezpośredni'],
-        status: c['status kandydata co do podjęcia pracy'],
-        ended: c['informacja o okończeniu pracy z tym pozwoleniem'],
-      };
-      if (Object.values(cols).some((v) => !v)) return null;
-      return (
-        `select ${cols.id}, ${cols.name}, ${cols.position}, ${cols.rate} ` +
-        `where ${cols.foreman} = ${gvizText(lastName)} and ${cols.status} = 'podjął pracę' and ${cols.ended} is null ` +
-        `label ${cols.id} 'id', ${cols.name} 'name', ${cols.position} 'position', ${cols.rate} 'rate'`
-      );
-    });
-    return rows.map((r) => worker(r, 'ISPIK'));
+  /** Worker id → absence on the date (when TMA gives several, the most serious one wins) */
+  async absencesOn(foreman: BrigadeForeman, date: string): Promise<Map<string, TmaAbsenceType>> {
+    const order: TmaAbsenceType[] = ['dismissed', 'drunk_on_site', 'drunk', 'absence', 'sick', 'vacation', 'day_off'];
+    const result = new Map<string, TmaAbsenceType>();
+    for (const a of await this.tma.absences(foreman.id, date, date)) {
+      const current = result.get(a.workerId);
+      if (!current || order.indexOf(a.type) < order.indexOf(current)) result.set(a.workerId, a.type);
+    }
+    return result;
   }
-
-  private async ispikLv(lastName: string): Promise<CrewWorker[]> {
-    const rows = await this.sheets.query(ST_BR_SHEETS.employeesIspikLv, (c) => {
-      const [id, name, history, status] = [
-        c['id'],
-        c['имя и фамилия'],
-        c['история трудоустройства'],
-        c['статус кандидата относительно трудоустройства'],
-      ];
-      if (!id || !name || !history || !status) return null;
-      // Merged header: foreman, position and rate are the 3rd, 5th and 6th columns of the "history" block
-      const foreman = StBrSheetsClient.offset(history, 2);
-      const position = StBrSheetsClient.offset(history, 4);
-      const rate = StBrSheetsClient.offset(history, 5);
-      return (
-        `select ${id}, ${name}, ${position}, ${rate} ` +
-        `where ${foreman} = ${gvizText(lastName)} and ${status} = 'приступил к работе' ` +
-        `label ${id} 'id', ${name} 'name', ${position} 'position', ${rate} 'rate'`
-      );
-    });
-    return rows.map((r) => worker(r, 'ISPIK Latvia'));
-  }
-
-  private async agencies(lastName: string): Promise<CrewWorker[]> {
-    const rows = await this.sheets.query(ST_BR_SHEETS.employeesAgencies, (c) => {
-      const cols = {
-        id: c['id'],
-        last: c['lastName'],
-        first: c['firstName'],
-        position: c['position'],
-        company: c['company'],
-        foreman: c['foreman'],
-      };
-      if (Object.values(cols).some((v) => !v)) return null;
-      const middle = c['middleNames'];
-      const picked: Array<[string, string]> = [
-        [cols.id, 'id'],
-        [cols.last, 'last'],
-        [cols.first, 'first'],
-        [cols.position, 'position'],
-        [cols.company, 'company'],
-      ];
-      if (middle) picked.push([middle, 'middle']);
-      return (
-        `select ${picked.map(([col]) => col).join(', ')} where ${cols.foreman} = ${gvizText(lastName)} ` +
-        `label ${picked.map(([col, label]) => `${col} '${label}'`).join(', ')}`
-      );
-    });
-    return rows.map((r) => {
-      const name = [r.last, r.first, r.middle].map(text).filter(Boolean).join(' ');
-      return worker({ id: r.id, name, position: r.position, rate: null }, text(r.company) || 'Agencja');
-    });
-  }
-}
-
-function worker(r: Record<string, unknown>, company: string): CrewWorker {
-  const id = text(r.id);
-  const rate = Number(String(r.rate ?? '').replace(',', '.'));
-  return {
-    key: `${company}:${id}`,
-    id,
-    name: text(r.name) || '—',
-    company,
-    position: text(r.position),
-    rate: r.rate !== null && r.rate !== undefined && r.rate !== '' && Number.isFinite(rate) ? rate : null,
-  };
-}
-
-function text(value: unknown) {
-  return value === null || value === undefined ? '' : String(value).trim();
 }

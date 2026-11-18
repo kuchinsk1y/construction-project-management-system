@@ -37,6 +37,17 @@ export type AuthUser = {
   isAdmin: boolean;
   /** Which app issued the token: "erp" (e-mail sign-in) or "brigade" (brigade app, phone + Telegram) */
   audience: 'erp' | 'brigade';
+  /** Brigade app only: the foreman (from TMA, not an ERP user) and his session */
+  foreman?: BrigadeForeman;
+};
+
+/** Foreman signed in to the brigade app. He is not an ERP user: id is his id in TMA. */
+export type BrigadeForeman = {
+  sessionId: string;
+  id: string;
+  phone: string;
+  firstName: string;
+  lastName: string;
 };
 
 /** Audience claim of tokens issued to the brigade app */
@@ -77,6 +88,13 @@ export const ContractorAccess = (scope: ContractorScope) => SetMetadata(CONTRACT
 
 export const CurrentUser = createParamDecorator((_data: unknown, ctx: ExecutionContext): AuthUser => {
   return ctx.switchToHttp().getRequest<{ user: AuthUser }>().user;
+});
+
+/** Foreman of a brigade-app request (endpoints marked @BrigadeAccess()) */
+export const CurrentForeman = createParamDecorator((_data: unknown, ctx: ExecutionContext): BrigadeForeman => {
+  const foreman = ctx.switchToHttp().getRequest<{ user?: AuthUser }>().user?.foreman;
+  if (!foreman) throw new Error('CurrentForeman used outside a @BrigadeAccess() endpoint');
+  return foreman;
 });
 
 export function hasAnyRole(user: Pick<AuthUser, 'roles'>, roles: string[]): boolean {

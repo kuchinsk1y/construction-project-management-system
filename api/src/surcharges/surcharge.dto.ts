@@ -3,11 +3,15 @@ import { IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString, Matches, Max, Ma
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const DATE_MESSAGE = 'Data musi mieć format RRRR-MM-DD';
+/** No comma in a name: surcharges of an entry are listed comma separated (reports, exports) */
+const NO_COMMA = /^[^,]*$/;
+const NO_COMMA_MESSAGE = 'Nazwa dopłaty nie może zawierać przecinka';
 
 export class CreateSurchargeDto {
   @IsString()
   @IsNotEmpty({ message: 'Podaj nazwę dopłaty' })
   @MaxLength(150)
+  @Matches(NO_COMMA, { message: NO_COMMA_MESSAGE })
   name: string;
 
   @Type(() => Number)
@@ -35,6 +39,7 @@ export class UpdateSurchargeDto {
   @IsString()
   @IsNotEmpty({ message: 'Podaj nazwę dopłaty' })
   @MaxLength(150)
+  @Matches(NO_COMMA, { message: NO_COMMA_MESSAGE })
   name?: string;
 
   @IsOptional()

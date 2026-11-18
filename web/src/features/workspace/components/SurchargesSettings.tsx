@@ -183,6 +183,16 @@ export function SurchargesSettings() {
 function SurchargeFormDrawer({ surcharge, onClose }: { surcharge: Surcharge | null; onClose: () => void }) {
   const queryClient = useQueryClient()
   const [name, setName] = useState(surcharge?.name ?? '')
+  // No comma in a name: surcharges of an entry are listed comma separated (reports, exports)
+  const [commaHint, setCommaHint] = useState(false)
+  const changeName = (value: string) => {
+    const clean = value.replace(/,/g, '')
+    setName(clean)
+    if (clean !== value) {
+      setCommaHint(true)
+      window.setTimeout(() => setCommaHint(false), 2500)
+    }
+  }
   const [rate, setRate] = useState(surcharge ? String(surcharge.ratePerHour) : '')
   const [validFrom, setValidFrom] = useState(surcharge?.validFrom ?? today())
   const [validTo, setValidTo] = useState(surcharge?.validTo ?? '')
@@ -214,6 +224,7 @@ function SurchargeFormDrawer({ surcharge, onClose }: { surcharge: Surcharge | nu
     setError('')
     const value = Number(rate.replace(',', '.'))
     if (!name.trim()) return setError('Podaj nazwę dopłaty.')
+    if (name.includes(',')) return setError('Nazwa dopłaty nie może zawierać przecinka.')
     if (!rate.trim() || Number.isNaN(value) || value < 0) return setError('Podaj stawkę za godzinę (0 lub więcej).')
     if (!validFrom) return setError('Podaj datę, od której obowiązuje dopłata.')
     if (validTo && validTo < validFrom) return setError('Data „do” nie może być wcześniejsza niż data „od”.')
@@ -250,8 +261,9 @@ function SurchargeFormDrawer({ surcharge, onClose }: { surcharge: Surcharge | nu
             </span>
             <div className="relative">
               <BadgePercent className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
-              <input value={name} maxLength={150} onChange={(e) => setName(e.target.value)} placeholder="np. Trudne warunki" className={inputCls} autoFocus />
+              <input value={name} maxLength={150} onChange={(e) => changeName(e.target.value)} placeholder="np. Trudne warunki" className={inputCls} autoFocus />
             </div>
+            {commaHint ? <span className="block text-xs text-amber-600 dark:text-amber-400">Przecinek jest niedozwolony w nazwie dopłaty.</span> : null}
           </label>
 
           <label className="block space-y-1">

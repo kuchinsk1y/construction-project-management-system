@@ -20,7 +20,8 @@ export class BrigadeVerifyCodeDto {
 }
 
 export class BrigadeRefreshDto {
+  /** 32 random bytes in base64url */
   @IsString()
-  @Length(36, 36)
+  @Matches(/^[A-Za-z0-9_-]{43}$/, { message: 'Nieprawidłowy token sesji' })
   refreshToken: string;
 }

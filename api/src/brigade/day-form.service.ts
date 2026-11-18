@@ -1,14 +1,27 @@
-import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import type { BrigadeForeman } from '../auth/access';
 import { PrismaService } from '../prisma/prisma.service';
 import { CrewService, type CrewWorker } from './crew.service';
 import { PV_SERVICE_WORK_TYPES } from './pv-service-work-types';
-import { ST_BR_SHEETS, StBrSheetsClient, gvizText } from './sheets/st-br-sheets.client';
+import { TmaBrigadeClient } from './tma/tma-brigade.client';
+import type { TmaAbsenceType, TmaCheckIn } from './tma/tma-brigade.types';
 import type { RowKind } from './work-log.service';
 
-const DONE_PROJECT_STATUSES = ['COMPLETED', 'DONE', 'ARCHIVED'];
-/** How far back the last Friday rating is looked for */
-const RATINGS_LOOKBACK_DAYS = 45;
 export const SERVICE_PROJECT_ID = 'serwis';
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** How far back the nearest open day is looked for when the form opens */
+const SUGGEST_LOOKBACK_DAYS = 62;
+
+/** Month of the date picker: which days TMA opens for filling in */
+export type FormCalendar = {
+  month: string;
+  today: string;
+  /** Open days of the month (YYYY-MM-DD); every other day is closed */
+  openDays: string[];
+  /** Day the form should open on: today when open, else the latest open day before it; null = none */
+  suggestedDate: string | null;
+};
 
 /** Kinds that are not work: the row has 0 hours and no surcharge */
 const SERVICE_KINDS: Array<{ name: string; kind: RowKind }> = [
@@ -32,10 +45,38 @@ type WorkTypeOption = { id: string; name: string; unit: string | null; departmen
 export type DayForm = {
   date: string;
   isFriday: boolean;
-  /** The journal already has entries of this foreman for the date: the day cannot be written again */
+  /** TMA allows filling in this day; when false the form is read-only */
+  dayOpen: boolean;
+  /** The day is already written (entries are not stored yet, so always false for now) */
   alreadyFilled: boolean;
   generatedAt: string;
-  crew: Array<CrewWorker & { status: 'vacation' | 'dismissed' | null; lastRating: number | null }>;
+  /** Crew from TMA; status = absence on the date (TMA); lastRating = previous Friday rating (none stored yet) */
+  /**
+   * Crew from TMA. projectId = project of his QR check-in that day, else the project he is assigned to;
+   * checkIns = his check-ins that day (empty = none; several = several projects); status = absence on the date; lastRating = previous Friday rating
+   */
+  crew: Array<
+    CrewWorker & {
+      status: TmaAbsenceType | null;
+      lastRating: number | null;
+      /**
+       * All his check-ins that day, earliest first: a worker can check in on several projects (one per project visit).
+       * at = check-in, closedAt = end of that visit (null while open); the form suggests hours from them.
+       */
+      checkIns: Array<{
+        /** TMA work day event id: goes with the hours to work_hours.work_day_event_id */
+        id: string;
+        projectId: string;
+        at: string;
+        closedAt: string | null;
+        method: TmaCheckIn['checkInMethod'];
+        status: TmaCheckIn['status'];
+        /** Work type chosen in TMA (only when it belongs to the check-in project) and the worker's note */
+        workTypeId: string | null;
+        note: string | null;
+      }>;
+    }
+  >;
   /** Foreman's ERP projects with their work types, then "Serwis" */
   projects: Array<{ id: string; name: string; city: string | null; isService: boolean; workTypes: WorkTypeOption[] }>;
   serviceKinds: Array<{ name: string; kind: RowKind }>;
@@ -47,7 +88,7 @@ export type DayForm = {
 
 /**
  * Everything the "Dodaj wpis" form needs for one date, in one answer.
- * Projects, work types and surcharges come from ERP; crew, vacations, dismissals and history from the ST_BR sheets.
+ * Crew, absences and the list of projects come from TMA; project details, work types and surcharges from ERP.
  * Nothing is written yet.
  */
 @Injectable()
@@ -56,53 +97,82 @@ export class DayFormService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly sheets: StBrSheetsClient,
     private readonly crew: CrewService,
+    private readonly tma: TmaBrigadeClient,
+    private readonly config: ConfigService,
   ) {}
 
-  async get(userId: number, date: string): Promise<DayForm> {
+  /** Open days of `month` (RRRR-MM, default current) and the day the form should start on */
+  async calendar(foreman: BrigadeForeman, month: string | undefined): Promise<FormCalendar> {
+    const today = this.today();
+    const m = month?.trim() || today.slice(0, 7);
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(m)) throw new BadRequestException('month: format RRRR-MM');
+
+    const from = `${m}-01`;
+    const to = lastDayOfMonth(m);
+    const [openDays, recent] = await Promise.all([
+      this.tma.openDays(foreman.id, from, to),
+      this.tma.openDays(foreman.id, shiftDate(today, -SUGGEST_LOOKBACK_DAYS), today),
+    ]);
+    return { month: m, today, openDays, suggestedDate: recent.includes(today) ? today : (recent.at(-1) ?? null) };
+  }
+
+  async get(foreman: BrigadeForeman, date: string): Promise<DayForm> {
     if (!isRealDate(date)) throw new BadRequestException('date: format RRRR-MM-DD');
 
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { firstName: true, lastName: true, isActive: true },
-    });
-    if (!user?.isActive) throw new UnauthorizedException();
-    const lastName = user.lastName.trim();
-    const fullName = `${user.firstName.trim()} ${lastName}`;
-
-    const [crew, vacations, dismissals, journal, projects, surcharges] = await Promise.allSettled([
-      this.crew.get(lastName),
-      this.vacations(date),
-      this.dismissals(date),
-      this.journal(fullName, date),
-      this.projects(userId),
+    // Crew and projects are required (403 when TMA no longer knows this foreman)
+    const data = await this.crew.get(foreman);
+    const [open, absences, checkIns, projects, surcharges] = await Promise.allSettled([
+      this.tma.openDays(foreman.id, date, date),
+      this.crew.absencesOn(foreman, date),
+      this.tma.checkIns(foreman.id, date),
+      this.projects(data.projectIds),
       this.surcharges(date),
     ]);
 
     const warnings: string[] = [];
     const value = <T>(r: PromiseSettledResult<T>, fallback: T, warning: string): T => {
       if (r.status === 'fulfilled') return r.value;
-      this.logger.warn(`Day form of user ${userId}: ${warning} (${(r.reason as Error)?.message})`);
+      this.logger.warn(`Day form of foreman ${foreman.id}: ${warning} (${(r.reason as Error)?.message})`);
       warnings.push(warning);
       return fallback;
     };
-
-    const crewList = value(crew, [], 'Nie udało się pobrać listy pracowników.');
-    const onVacation = value(vacations, new Set<string>(), 'Nie udało się sprawdzić urlopów — sprawdź je ręcznie.');
-    const dismissed = value(dismissals, new Set<string>(), 'Nie udało się sprawdzić zwolnień — sprawdź je ręcznie.');
-    const history = value(journal, { filled: false, ratings: new Map<string, number>() }, 'Nie udało się sprawdzić historii wpisów.');
+    // Several check-ins of one worker = he worked on several projects that day
+    const checkedIn = new Map<string, TmaCheckIn[]>();
+    for (const c of value(checkIns, [] as TmaCheckIn[], 'Nie udało się pobrać odbić QR z TMA — obiekty wybierz ręcznie.')) {
+      checkedIn.set(c.workerId, [...(checkedIn.get(c.workerId) ?? []), c]);
+    }
+    for (const list of checkedIn.values()) list.sort((a, b) => a.checkInAt.localeCompare(b.checkInAt));
+    const absent = value(absences, new Map<string, TmaAbsenceType>(), 'Nie udało się sprawdzić urlopów i zwolnień w TMA — sprawdź je ręcznie.');
 
     return {
       date,
       isFriday: new Date(`${date}T00:00:00Z`).getUTCDay() === 5,
-      alreadyFilled: history.filled,
+      // Unknown (TMA did not answer) counts as closed: nothing can be written to a day TMA has not opened
+      dayOpen: value(open, [] as string[], 'Nie udało się sprawdzić w TMA, czy ten dzień jest otwarty.').includes(date),
+      alreadyFilled: false,
       generatedAt: new Date().toISOString(),
-      crew: crewList.map((w) => ({
-        ...w,
-        status: onVacation.has(w.id) ? 'vacation' : dismissed.has(w.id) ? 'dismissed' : null,
-        lastRating: history.ratings.get(w.key) ?? null,
-      })),
+      crew: data.crew.map((w) => {
+        const list = checkedIn.get(w.id) ?? [];
+        // The project of his first check-in that day wins over the one he is assigned to (if it is one of the foreman's)
+        const checkInProject = list.find((c) => data.projectIds.includes(c.projectId))?.projectId ?? null;
+        return {
+          ...w,
+          projectId: checkInProject ?? w.projectId,
+          status: absent.get(w.id) ?? null,
+          lastRating: null,
+          checkIns: list.map((c) => ({
+            id: c.id,
+            projectId: c.projectId,
+            at: c.checkInAt,
+            closedAt: c.closedAt,
+            method: c.checkInMethod,
+            status: c.status,
+            workTypeId: c.workTypeId,
+            note: c.workDescription,
+          })),
+        };
+      }),
       projects: value(projects, [], 'Nie udało się pobrać obiektów z ERP.'),
       serviceKinds: SERVICE_KINDS,
       foremanKinds: FOREMAN_KINDS,
@@ -111,20 +181,21 @@ export class DayFormService {
     };
   }
 
+  private today() {
+    const timeZone = this.config.get<string>('AUTH_TIME_ZONE')?.trim() || 'Europe/Warsaw';
+    return new Intl.DateTimeFormat('en-CA', { timeZone }).format(new Date());
+  }
+
   // --- ERP ---
 
-  /** Foreman's projects with all their work types (as added in ERP), and "Serwis" at the end */
-  private async projects(userId: number): Promise<DayForm['projects']> {
-    const assigned = await this.prisma.project_department_foremen.findMany({
-      where: { foreman_id: userId, projects: { deleted_at: null, status: { notIn: DONE_PROJECT_STATUSES } } },
-      select: { project_id: true },
-    });
-    const ids = [...new Set(assigned.map((a) => a.project_id))];
+  /** Foreman's projects (ids from TMA) with all their work types as added in ERP, and "Serwis" at the end */
+  private async projects(projectIds: string[]): Promise<DayForm['projects']> {
+    const ids = [...new Set(projectIds.filter((id) => UUID.test(id)))];
 
     const workTypeSelect = { id: true, name: true, unit: true, departments: { select: { name: true } } } as const;
     const [projects, storageWorkTypes] = await Promise.all([
       this.prisma.projects.findMany({
-        where: { id: { in: ids } },
+        where: { id: { in: ids }, deleted_at: null },
         select: {
           id: true,
           name: true,
@@ -175,74 +246,25 @@ export class DayFormService {
     });
     return rows.map((r) => ({ id: r.id, name: r.name, ratePerHour: Number(r.rate_per_hour) }));
   }
-
-  // --- Google Sheets (same rules as ST_BR) ---
-
-  /** Ids of workers with an accepted vacation covering the date */
-  private async vacations(date: string): Promise<Set<string>> {
-    const rows = await this.sheets.query(ST_BR_SHEETS.vacations, (c) => {
-      const [id, from, to, status] = [c['ID pracownika'], c['Data początku urlopu'], c['Data końca urlopu'], c['Status']];
-      if (!id || !from || !to || !status) return null;
-      return `select ${id} where ${status} = 'Zaakceptowane' and ${from} <= date '${date}' and ${to} >= date '${date}' label ${id} 'id'`;
-    });
-    return new Set(rows.map((r) => text(r.id)).filter(Boolean));
-  }
-
-  /** Ids of workers whose accepted dismissal is on the date */
-  private async dismissals(date: string): Promise<Set<string>> {
-    const rows = await this.sheets.query(ST_BR_SHEETS.resignations, (c) => {
-      const [id, day, status] = [c['ID pracownika'], c['Data zwolnienia'], c['Status']];
-      if (!id || !day || !status) return null;
-      return `select ${id} where ${status} = 'Zaakceptowane' and ${day} = date '${date}' label ${id} 'id'`;
-    });
-    return new Set(rows.map((r) => text(r.id)).filter(Boolean));
-  }
-
-  /** Whether the date is already written, and the last rating of each worker before it */
-  private async journal(fullName: string, date: string) {
-    const from = shiftDate(date, -RATINGS_LOOKBACK_DAYS);
-    const rows = await this.sheets.query(ST_BR_SHEETS.workJournal, (c) => {
-      const [day, foreman, workerId, company, rating] = [c['data_robot'], c['kierownik'], c['id_pracownika'], c['firma'], c['ocena']];
-      if (!day || !foreman || !workerId || !company || !rating) return null;
-      return (
-        `select ${day}, ${workerId}, ${company}, ${rating} ` +
-        `where lower(${foreman}) = ${gvizText(fullName.toLowerCase())} and ${day} >= date '${from}' and ${day} <= date '${date}' ` +
-        `order by ${day} desc label ${day} 'date', ${workerId} 'id', ${company} 'company', ${rating} 'rating'`
-      );
-    });
-
-    let filled = false;
-    const ratings = new Map<string, number>();
-    for (const r of rows) {
-      const day = text(r.date).slice(0, 10);
-      if (day === date) {
-        filled = true;
-        continue;
-      }
-      const rating = Number(r.rating);
-      const key = `${text(r.company)}:${text(r.id)}`;
-      if (Number.isInteger(rating) && rating >= 1 && rating <= 5 && !ratings.has(key)) ratings.set(key, rating);
-    }
-    return { filled, ratings };
-  }
 }
 
 function sortByName<T extends { name: string }>(list: T[]) {
   return list.sort((a, b) => a.name.localeCompare(b.name, 'pl', { numeric: true }));
 }
 
-function text(value: unknown) {
-  return value === null || value === undefined ? '' : String(value).trim();
+function shiftDate(date: string, days: number) {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function lastDayOfMonth(month: string) {
+  const [y, m] = month.split('-').map(Number);
+  return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
 }
 
 function isRealDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const d = new Date(`${value}T00:00:00Z`);
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === value;
-}
-
-function shiftDate(date: string, days: number) {
-  const d = new Date(`${date}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
 }

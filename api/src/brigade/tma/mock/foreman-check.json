@@ -1,0 +1,27 @@
+{
+  "isForeman": true,
+  "foreman": {
+    "id": 7,
+    "firstName": "Andrzej",
+    "lastName": "Testowy",
+    "phone": "{{mockPhone}}",
+    "telegramId": "{{mockTelegramId}}"
+  },
+  "crew": [
+    { "id": 101, "firstName": "Adam", "lastName": "Nowak", "company": "ISPIK", "position": "Monter", "rate": 28, "projectId": "{{project:1}}" },
+    { "id": 102, "firstName": "Piotr", "lastName": "Wiśniewski", "company": "ISPIK", "position": "Monter", "rate": 28, "projectId": "{{project:1}}" },
+    { "id": 103, "firstName": "Marek", "lastName": "Zieliński", "company": "ISPIK", "position": "Operator", "rate": 32, "projectId": "{{project:1}}" },
+    { "id": 104, "firstName": "Tomasz", "lastName": "Dąbrowski", "company": "ISPIK", "position": "Pomocnik", "rate": 25, "projectId": "{{project:1}}" },
+    { "id": 105, "firstName": "Karol", "lastName": "Lewandowski", "company": "ISPIK", "position": "Elektryk", "rate": 34, "projectId": "{{project:2}}" },
+    { "id": 106, "firstName": "Paweł", "lastName": "Wójcik", "company": "ISPIK", "position": "Monter", "rate": 29, "projectId": "{{project:1}}" },
+    { "id": 107, "firstName": "Robert", "lastName": "Kamiński", "company": "ISPIK", "position": "Pomocnik", "rate": 25, "projectId": "{{project:1}}" },
+    { "id": 108, "firstName": "Łukasz", "lastName": "Kozłowski", "company": "ISPIK", "position": "Monter", "rate": 28, "projectId": "{{project:2}}" },
+    { "id": 201, "firstName": "Janis", "lastName": "Liepa", "company": "ISPIK Latvia", "position": "Monter", "rate": 27, "projectId": "{{project:1}}" },
+    { "id": 202, "firstName": "Andris", "lastName": "Ozols", "company": "ISPIK Latvia", "position": "Pomocnik", "rate": 24, "projectId": "{{project:1}}" },
+    { "id": 301, "firstName": "Ivan", "lastName": "Kovalenko", "company": "M2Solar", "position": "Monter", "rate": null, "projectId": "{{project:2}}" },
+    { "id": 302, "firstName": "Oleh", "lastName": "Bondarenko", "company": "M2Solar", "position": "Monter", "rate": null, "projectId": "{{project:2}}" },
+    { "id": 303, "firstName": "Serhii", "lastName": "Melnyk", "company": "M2Solar", "position": "Pomocnik", "rate": null, "projectId": "{{project:2}}" },
+    { "id": 401, "firstName": "Oskar", "lastName": "Szymański", "company": "Solar SK", "position": "Operator", "rate": null, "projectId": null }
+  ],
+  "projectIds": ["{{project:1}}", "{{project:2}}", "{{project:3}}"]
+}

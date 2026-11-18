@@ -163,3 +163,92 @@ textarea {
     background-position: -100% 0;
   }
 }
+
+/* Dialog: backdrop fades in, panel rises and scales slightly */
+.dialog-backdrop {
+  animation: dialog-fade 180ms ease-out both;
+}
+
+.dialog-panel {
+  animation: dialog-rise 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes dialog-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes dialog-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dialog-backdrop,
+  .dialog-panel {
+    animation: none;
+  }
+}
+
+/* Select: bottom sheet on phones, popover on desktop */
+.sheet-panel {
+  animation: sheet-up 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.popover-panel {
+  animation: popover-in 140ms ease-out both;
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet-panel,
+  .popover-panel {
+    animation: none;
+  }
+}
+
+/* Touch: no grey flash on tap, no double-tap zoom delay on controls, no font inflation on rotate */
+html {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+button,
+a,
+input,
+label,
+[role='option'] {
+  touch-action: manipulation;
+}
+
+/* Native search fields: no extra clear button (the app has its own) */
+input[type='search']::-webkit-search-cancel-button,
+input[type='search']::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* Horizontal chip rows on phones */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

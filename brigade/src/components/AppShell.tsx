@@ -61,7 +61,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <button
                 type="button"
                 onClick={() => setOpen(true)}
-                className="flex size-7 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--background)] transition hover:bg-[var(--muted)] md:hidden"
+                className="flex size-10 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--background)] transition hover:bg-[var(--muted)] md:hidden"
                 aria-label="Otwórz menu"
               >
                 <Menu className="size-4" />
@@ -94,7 +94,7 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
           <button
             type="button"
             onClick={onClose}
-            className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--background)] hover:bg-[var(--muted)]"
+            className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--background)] hover:bg-[var(--muted)]"
             aria-label="Zamknij menu"
           >
             <X className="size-4" />

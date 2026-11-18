@@ -113,7 +113,8 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   }
 }
 
-export type Me = { id: number; firstName: string; lastName: string; phone: string; roles: string[] }
+/** Signed-in foreman (from TMA, not an ERP user) */
+export type Me = { id: string; firstName: string; lastName: string; phone: string }
 
 export type CountItem = { name: string; count: number }
 
@@ -127,6 +128,8 @@ export type Pulpit = {
     agencies: { count: number; companies: CountItem[]; positions: CountItem[] }
   } | null
   activity: {
+    /** "none": entries are not stored yet, every day is empty */
+    source: 'none' | 'erp'
     latestEntryDate: string | null
     daysWithoutEntry: number | null
     days: Array<{ date: string; filled: boolean; workers: number; hours: number }>
@@ -140,7 +143,7 @@ export type RowKind = 'work' | 'extra' | 'day_off' | 'vacation' | 'sick' | 'dism
 export type WorkLog = {
   from: string
   to: string
-  source: 'sheets' | 'erp'
+  source: 'none' | 'erp'
   generatedAt: string
   days: Array<{
     date: string
@@ -167,7 +170,7 @@ export type HoursReport = {
   nextMonth: string | null
   dates: string[]
   overtimeThreshold: number
-  source: 'sheets' | 'erp'
+  source: 'none' | 'erp'
   generatedAt: string
   filters: { companies: string[]; company: string | null }
   totals: { workers: number; hours: number }
@@ -188,6 +191,8 @@ export type KindOption = { name: string; kind: RowKind }
 export type DayForm = {
   date: string
   isFriday: boolean
+  /** TMA allows filling in this day; otherwise the form is read-only */
+  dayOpen: boolean
   alreadyFilled: boolean
   generatedAt: string
   crew: Array<{
@@ -197,7 +202,26 @@ export type DayForm = {
     company: string
     position: string
     rate: number | null
-    status: 'vacation' | 'dismissed' | null
+    /** Project of his QR check-in that day, else his assigned project (TMA): the form opens with it chosen */
+    projectId: string | null
+    /** His check-ins that day (TMA), earliest first; empty = not checked in; several = he worked on several projects */
+    checkIns: Array<{
+      /** TMA work day event id (uuid); saved with the hours */
+      id: string
+      projectId: string
+      /** check-in time (ISO) */
+      at: string
+      /** end of the work day (ISO); null while the day is open */
+      closedAt: string | null
+      method: 'qr' | 'manual' | 'self'
+      status: 'open' | 'close_requested' | 'closed' | 'auto_closed'
+      /** Work type the worker chose in TMA (ERP id); null = not chosen */
+      workTypeId: string | null
+      /** What the worker wrote about his day in TMA */
+      note: string | null
+    }>
+    /** Absence on the date, from TMA */
+    status: 'vacation' | 'sick' | 'day_off' | 'absence' | 'drunk' | 'drunk_on_site' | 'dismissed' | null
     lastRating: number | null
   }>
   projects: Array<{ id: string; name: string; city: string | null; isService: boolean; workTypes: WorkTypeOption[] }>
@@ -207,10 +231,14 @@ export type DayForm = {
   warnings: string[]
 }
 
+/** Days of a month TMA opens for filling in */
+export type FormCalendar = { month: string; today: string; openDays: string[]; suggestedDate: string | null }
+
 export const brigadeApi = {
   me: () => apiRequest<Me>('/brigade/me'),
   pulpit: (fresh = false) => apiRequest<Pulpit>(`/brigade/pulpit${fresh ? '?fresh=1' : ''}`),
   workLog: (fresh = false) => apiRequest<WorkLog>(`/brigade/work-log${fresh ? '?fresh=1' : ''}`),
+  dayFormCalendar: (month?: string) => apiRequest<FormCalendar>(`/brigade/day-form/calendar${month ? `?month=${month}` : ''}`),
   dayForm: (date: string) => apiRequest<DayForm>(`/brigade/day-form?date=${encodeURIComponent(date)}`),
   hoursReport: (month: string, company: string | null, fresh = false) => {
     const q = new URLSearchParams({ month })

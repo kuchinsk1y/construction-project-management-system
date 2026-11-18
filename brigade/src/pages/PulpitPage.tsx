@@ -76,12 +76,12 @@ export function PulpitPage() {
             <p className="mt-1 max-w-xl text-sm text-white/75">Twoja brygada i ostatnie wpisy w jednym miejscu.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {initial ? <span className="skeleton h-8 w-44 opacity-30" /> : <EntryStatus days={data?.activity?.daysWithoutEntry ?? null} />}
+            {initial ? <span className="skeleton h-8 w-44 opacity-30" /> : data?.activity?.source === 'none' ? null : <EntryStatus days={data?.activity?.daysWithoutEntry ?? null} />}
             <button
               type="button"
               onClick={reload}
               disabled={loading}
-              className="inline-flex h-8 items-center gap-1.5 rounded-full bg-white/12 px-3 text-xs font-medium ring-1 ring-white/20 backdrop-blur transition hover:bg-white/20 disabled:opacity-70"
+              className="inline-flex h-10 items-center gap-1.5 rounded-full bg-white/12 px-3.5 text-xs sm:h-8 sm:px-3 font-medium ring-1 ring-white/20 backdrop-blur transition hover:bg-white/20 disabled:opacity-70"
               title="Odśwież dane"
             >
               <RefreshCw className={`size-3.5 ${loading ? 'animate-spin' : ''}`} />
@@ -142,17 +142,27 @@ export function PulpitPage() {
               ? data.activity.daysWithoutEntry === 0
                 ? 'dzisiaj'
                 : `${data.activity.daysWithoutEntry} ${daysWord(data.activity.daysWithoutEntry)} temu`
-              : 'brak wpisów w 14 dniach'
+              : data?.activity?.source === 'none'
+                ? 'zapis dni — wkrótce'
+                : 'brak wpisów w 14 dniach'
           }
         />
       </section>
 
       <div className="grid gap-3 lg:grid-cols-[1.55fr_1fr]">
         <Card title="Godziny brygady" subtitle="Ostatnie 14 dni, z dziennika prac" className="[animation-delay:60ms]">
-          {initial ? <ChartSkeleton /> : data?.activity ? <ActivityChart days={data.activity.days} today={today} /> : <Unavailable />}
+          {initial ? (
+            <ChartSkeleton />
+          ) : data?.activity?.source === 'none' ? (
+            <NoEntriesYet />
+          ) : data?.activity ? (
+            <ActivityChart days={data.activity.days} today={today} />
+          ) : (
+            <Unavailable />
+          )}
         </Card>
 
-        <Card title="Moje obiekty" subtitle="Z ERP: działy, do których jesteś przypisany" className="[animation-delay:120ms]">
+        <Card title="Moje obiekty" subtitle="Obiekty, na których pracujesz (z TMA)" className="[animation-delay:120ms]">
           {initial ? <ListSkeleton /> : <Projects projects={data?.projects ?? []} />}
         </Card>
       </div>
@@ -243,6 +253,19 @@ function Card({ title, subtitle, className = '', children }: { title: string; su
       <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">{subtitle}</p>
       <div className="mt-3.5">{children}</div>
     </section>
+  )
+}
+
+/** Entries are not stored yet, so there is nothing to draw */
+function NoEntriesYet() {
+  return (
+    <div className="flex flex-col items-center gap-2 py-10 text-center">
+      <span className="flex size-11 items-center justify-center rounded-2xl bg-[var(--muted)] text-[var(--muted-foreground)]">
+        <Clock className="size-5" />
+      </span>
+      <p className="text-sm font-medium">Brak zapisanych dni</p>
+      <p className="max-w-xs text-xs text-[var(--muted-foreground)]">Godziny pojawią się tutaj, gdy zapis dnia z formularza zacznie działać.</p>
+    </div>
   )
 }
 
@@ -399,7 +422,7 @@ function Projects({ projects }: { projects: Pulpit['projects'] }) {
           <Building2 className="size-5" />
         </span>
         <p className="text-sm font-medium">Brak przypisanych obiektów</p>
-        <p className="max-w-xs text-xs text-[var(--muted-foreground)]">Kierownik projektu przypisuje brygadzistów do działów obiektu w ERP.</p>
+        <p className="max-w-xs text-xs text-[var(--muted-foreground)]">TMA nie zwróciła obiektów, na których pracujesz.</p>
       </div>
     )
   }

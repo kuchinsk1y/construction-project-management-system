@@ -18,12 +18,119 @@ npm run dev        # http://localhost:5174
 `VITE_API_URL` (see `.env.example`) — API address, default `http://localhost:3000`.
 The API must allow this origin: `FRONTEND_URL=http://localhost:5173,http://localhost:5174` in `api/.env`.
 
+## Where the data comes from
+
+Foremen are **not ERP users**. Everything about a foreman comes from **TMA**:
+
+| Data | Source |
+|---|---|
+| Is this phone a foreman, his name and Telegram ID | TMA |
+| His crew: name, company, position, rate | TMA (with the same answer) |
+| His projects | TMA gives ERP project ids; names, cities, departments, work types from ERP |
+| Vacations, sick leave, dismissals | TMA |
+| Surcharges («Warunki») | ERP (Ustawienia → Dopłaty) |
+| Entries (history, hours) | not stored yet — history and hours are empty until saving the day is built |
+
+Google Sheets of ST_BR are not read any more.
+
+## TMA contract
+
+Header `x-api-key: TMA_API_KEY` on both requests.
+
+**1. Foreman by phone** — `GET {TMA_API_URL}{TMA_FOREMAN_CHECK_PATH}?phone=+48123456789`
+(default path `/v1/integration/foremen/check`). `404` = not a foreman.
+
+```json
+{
+  "isForeman": true,
+  "foreman": { "id": 7, "firstName": "Andrzej", "lastName": "Kowal", "phone": "+48123456789", "telegramId": "784892922" },
+  "crew": [
+    { "id": 101, "firstName": "Adam", "lastName": "Nowak", "company": "ISPIK", "position": "Monter", "rate": 28, "projectId": "1c2d…" },
+    { "id": 301, "firstName": "Ivan", "lastName": "Kovalenko", "company": "M2Solar", "position": "Monter", "rate": null, "projectId": "1c2d…" }
+  ],
+  "projectIds": ["1c2d…-uuid-of-ERP-project"]
+}
+```
+
+`projectIds` and `crew[].projectId` are ERP project ids (`projects.id`), the same ones TMA gets from `GET /v1/integration/projects`.
+`crew[].projectId` is where the person works now: the form opens with it chosen in his first row,
+and the foreman's card with the project most of the crew is on. Unknown ids are ignored.
+
+**2. Absences of the crew** — `GET {TMA_API_URL}{TMA_FOREMAN_ABSENCES_PATH}?dateFrom=2026-11-01&dateTo=2026-11-30`
+(default path `/v1/integration/foremen/:id/absences`, `:id` = `foreman.id`).
+
+`type`: `vacation` (urlop) | `sick` (chory) | `day_off` (wolne) | `absence` (absencja) | `drunk` (pijaństwo) |
+`drunk_on_site` (pijaństwo na budowie) | `dismissed` (zwolniony). People absent that day get **no card** in the form;
+together with people without a check-in they are listed in «Nie pracują dziś» grouped by reason.
+The work type list in the form has only the project's work types (absences come from TMA).
+
+```json
+{ "absences": [
+  { "workerId": 103, "type": "vacation",  "dateFrom": "2026-11-08", "dateTo": "2026-11-15" },
+  { "workerId": 202, "type": "sick",      "dateFrom": "2026-11-10", "dateTo": "2026-11-12" },
+  { "workerId": 401, "type": "dismissed", "dateFrom": "2026-11-13", "dateTo": "2026-11-13" }
+] }
+```
+
+**3. Days open for filling in** — `GET {TMA_API_URL}{TMA_FOREMAN_OPEN_DAYS_PATH}?dateFrom=2026-11-01&dateTo=2026-11-30`
+(default path `/v1/integration/foremen/:id/open-days`). Every day not listed is closed.
+
+```json
+{ "openDays": ["2026-11-09", "2026-11-10", "2026-11-11"] }
+```
+
+The form's calendar shows only these days as clickable and opens on today (when open) or the latest open day before it.
+A closed day is read-only and cannot be saved.
+
+ERP asks TMA again at most once a minute per foreman. If TMA stops listing the number as the same foreman,
+his session gets `403` on the next request.
+
+**4. QR check-ins of the crew on one day** — `GET {TMA_API_URL}{TMA_FOREMAN_CHECK_INS_PATH}?date=2026-11-16`
+(default path `/v1/integration/foremen/:id/check-ins`). Same statuses and fields as the live attendance TMA already gives ERP.
+People without a check-in that day are not in the list.
+
+```json
+{
+  "date": "2026-11-16",
+  "generatedAt": "2026-11-16T07:30:00Z",
+  "checkIns": [
+    { "id": "98d4de2f-…", "workerId": 101, "projectId": "1c2d…", "status": "open", "checkInAt": "2026-11-16T05:52:10Z", "checkInMethod": "qr", "closedAt": null,
+      "workTypeId": "6f0c…", "workDescription": "Betonowanie stóp, sektor B" },
+    { "id": "5e1a…", "workerId": 104, "projectId": "7a8b…", "status": "closed", "checkInAt": "2026-11-16T06:03:02Z", "checkInMethod": "manual", "closedAt": "2026-11-16T15:01:00Z" }
+  ]
+}
+```
+
+`status`: `open` | `close_requested` | `closed` | `auto_closed`; `checkInMethod`: `qr` | `manual` | `self`.
+`id` — uuid of the TMA work day event (required); it is saved with the hours as `work_hours.work_day_event_id`.
+Ids of people are TMA numbers: foreman (manager) — int, worker — bigint (strings with digits are accepted too).
+Optional: `workTypeId` — ERP work type (`project_work_types.id`) the worker chose in TMA, and `workDescription` — what he wrote
+about the day. The form starts the row with them («Rodzaj», «Uwagi»); the foreman can change both.
+A worker who moved between projects has **several check-ins that day, one per project visit** (same `workerId`).
+In the form his card gets one block per check-in: the project (locked, from TMA) with the visit time in one badge
+(«06:52–10:30», «11:05–…» while open) and its own lines «Rodzaj / Godziny / Warunki / Uwagi». «+» adds another work type
+to the same project. Hours of the first line of a block are filled in from that visit (to 0.5 h; the whole card max 16)
+and can be changed; not filled while the visit is open or when TMA closed it by itself (`auto_closed`, amber badge).
+
+### Mock (development)
+
+`BRIGADE_TMA_MODE=mock`: answers come from `api/src/brigade/tma/mock/*.json`, **exactly in the TMA format above**
+(`foreman-check.json`, `absences.json`, `open-days.json`, `check-ins.json` — the last one holds several days),
+and go through the same parsing as real answers. Only `BRIGADE_MOCK_PHONE` is a foreman; codes go to `BRIGADE_MOCK_TELEGRAM_ID`.
+
+Placeholders filled in when a file is read, so the mock does not get old and fits any database:
+`{{today}}`, `{{today-3}}`, `{{today+4}}` (date, Warsaw time), `{{now}}`, `{{project:1}}`… (N-th active ERP project, most work types first; missing → `null`),
+`{{mockPhone}}`, `{{mockTelegramId}}`. Edit the files to try other cases; no restart needed. The API refuses to start with the mock in production.
+
 ## Sign-in
 
 1. Phone number (country + number, E.164).
-2. API finds an active ERP user with this phone, asks TMA whether it is a foreman and for his Telegram ID.
+2. TMA confirms it is a foreman and gives his Telegram ID (no ERP user needed).
 3. API sends a 6-character code to that Telegram via the bot.
-4. Code → tokens valid until 23:59:59 (Europe/Warsaw). A new day means a new sign-in.
+4. Code → session until 23:59:59 (Europe/Warsaw). A new day means a new sign-in.
+
+Codes and sessions are in `brigade_auth_codes` and `brigade_sessions` (separate from the ERP e-mail sign-in).
+The access token carries the session id: signing out ends access at once. The refresh token rotates; an old one works once.
 
 API: `POST /brigade/auth/send-code`, `/verify-code`, `/refresh`, `/logout`; `GET /brigade/me`.
 Brigade tokens open only `/brigade/*`; ERP tokens do not open `/brigade/*`.
@@ -32,50 +139,46 @@ Settings in `api/.env`:
 
 | Variable | Meaning |
 |---|---|
-| `TELEGRAM_AUTH_BOT_TOKEN` | bot that sends codes. Empty outside production: the code is printed in the API log (`[DEV] … Login code …`) |
-| `BRIGADE_TMA_MODE` | `http` — ask TMA; `stub` — every number is a foreman (development only, API refuses to start with it in production) |
-| `TMA_API_URL`, `TMA_API_KEY`, `TMA_FOREMAN_CHECK_PATH` | TMA check: `GET {TMA_API_URL}{path}?phone=+48…` → `{ "isForeman": true, "telegramId": "123" }`, 404 = not a foreman |
-| `BRIGADE_STUB_TELEGRAM_ID` | where codes go while `BRIGADE_TMA_MODE=stub` |
+| `TELEGRAM_AUTH_BOT_TOKEN` | bot that sends codes (empty = `TELEGRAM_BOT_TOKEN`). No token outside production: the code is printed in the API log |
+| `BRIGADE_TMA_MODE` | `http` — ask TMA; `mock` — made-up foreman and crew (development only) |
+| `TMA_API_URL`, `TMA_API_KEY`, `TMA_FOREMAN_CHECK_PATH`, `TMA_FOREMAN_ABSENCES_PATH`, `TMA_FOREMAN_OPEN_DAYS_PATH`, `TMA_FOREMAN_CHECK_INS_PATH` | TMA requests above |
+| `BRIGADE_MOCK_PHONE`, `BRIGADE_MOCK_TELEGRAM_ID` | mock only: the foreman's number and where his codes go |
 | `AUTH_TIME_ZONE` | session end time zone, default `Europe/Warsaw` |
 
 Limits: a new code at most every 45 s and 5 per 15 min; 5 wrong codes burn the code.
 
-## Pulpit
+## Table `work_hours` (nothing writes to it yet)
 
-`GET /brigade/pulpit` (brigade token; `?fresh=1` skips the 1-minute cache).
+One line of the day form = one row: worker × project × work type on a date.
 
-| Block | Source |
-|---|---|
-| Projects of the foreman | ERP: `project_department_foremen` (not finished projects) |
-| Crew: ISPIK, ISPIK Łotwa, agencies, positions | ST_BR Google Sheets, matched by the foreman's **last name** (column «kierownik bezpośredni» / `foreman`) |
-| Hours of the last 14 days, last entry | ST_BR work journal sheet, matched by **"First Last"** (column `kierownik`) |
+| column | type | from |
+|---|---|---|
+| id | uuid | generated |
+| created_at | timestamptz | now |
+| work_date | date | form date |
+| project_id | uuid → projects | project of the check-in |
+| work_type_id | uuid → project_work_types | «Rodzaj» |
+| manager_id / manager_name | int? / varchar? | foreman (TMA) |
+| worker_id | bigint | TMA worker id |
+| worker_name, worker_company_name, position | varchar | TMA crew on that day |
+| work_day_event_id | uuid | TMA check-in (`checkIns[].id`); several lines can share one |
+| hours | int | «Godziny» |
+| note | varchar | «Uwagi» |
 
-Sheets are read with the same service account as `GOOGLE_CREDENTIALS_FILE` (it must have access).
-Variables: `STBR_*` in `api/.env` (see `.env.example`); prefixed because `PROJECTS_SPREADSHEET_ID` is already used by the ERP sync.
-If a sheet fails, the rest is still shown with a warning.
+«Warunki» go to `work_hour_surcharges` (work_hour_id, surcharge_id, rate_per_hour — the rate of that day), many-to-many like `user_roles`.
 
-## Dziennik prac → Historia
+## Screens and endpoints (brigade token)
 
-`GET /brigade/work-log` (`?days=1..14`, default 14; `?fresh=1` skips the 30 s cache).
-The foreman is always the signed-in user — there is no name parameter.
+| Screen | Endpoint | Now |
+|---|---|---|
+| Pulpit | `GET /brigade/pulpit` (`?fresh=1` asks TMA again) | crew and projects from TMA; 14-day hours empty (`activity.source: "none"`) |
+| Dziennik prac → Historia | `GET /brigade/work-log?days=1..14` | empty (`source: "none"`) |
+| Dziennik prac → Dodaj wpis | `GET /brigade/day-form/calendar?month=RRRR-MM` (open days, day to start on); `GET /brigade/day-form?date=RRRR-MM-DD` (`dayOpen`) | crew + absences of the date (TMA), projects with work types + «Serwis», surcharges; checks only, nothing is saved |
+| Raport godzin | `GET /brigade/hours-report?month=RRRR-MM&company=` | no hours yet; absences from TMA shown as `U` / `C` / `Z` |
 
-Answer: days (newest first) → workers → rows. Names and companies come from the entry itself, so dismissed people still show.
-Each row has `workType.kind` — the app colours it by meaning:
-`work` (green), `extra` «Roboty dodatkowe / Inne…» (amber), `day_off` Wolne (grey), `vacation` Urlop (blue),
-`sick` Chory (violet), `dismissed` Zwolniony (dark grey), `absence` Absencja (orange), `penalty` Pijaństwo… (red).
-`surcharge.ratePerHour` — dopłata in PLN/h (no rates or totals are shown to the foreman).
-
-Source now: the ST_BR work journal sheet (`source: "sheets"`); project names are linked to ERP projects when they match.
-When entries move to ERP, only the server changes (`source: "erp"`, `status` per day), the answer stays the same.
-
-## Raport godzin
-
-`GET /brigade/hours-report?month=RRRR-MM&company=` (month default current; any month from 2024-01, not the future; `?fresh=1` skips the 1-minute cache).
-Only the signed-in foreman's people. The server counts everything, the app only draws:
-`dates[]` of the month; per worker `hours[i]` (summed per day) and `marks[i]` for `dates[i]`, `total`; `totals`; `filters.companies` of the month;
-`overtimeThreshold` (12 h, cells above it are orange).
-Marks for days without working hours: `U` urlop, `C` chory, `W` wolne, `Z` zwolniony, `A` absencja, `K` kara.
-Workers are grouped by company + id (ids of ISPIK and agency sheets can repeat); the name is the newest one in the month.
+Row kinds (colours in the app): `work` green, `extra` «Roboty dodatkowe / Inne…» amber, `day_off` Wolne grey,
+`vacation` Urlop blue, `sick` Chory violet, `dismissed` Zwolniony dark grey, `absence` Absencja orange, `penalty` Pijaństwo… red.
+Report marks: `U` urlop, `C` chory, `W` wolne, `Z` zwolniony, `A` absencja, `K` kara; more than 12 h a day is orange.
 
 ## Build
 

@@ -82,16 +82,16 @@ export class AccessGuard implements CanActivate {
     const token = (Array.isArray(header) ? header[0] : header)?.match(/^Bearer\s+(.+)$/i)?.[1];
     if (!token) throw new UnauthorizedException();
 
-    let userId: number | undefined;
-    let audience: AuthUser['audience'] = 'erp';
+    let payload: { sub?: number | string; sid?: string; aud?: string | string[] };
     try {
-      const payload = await this.jwt.verifyAsync<{ sub?: number; aud?: string | string[] }>(token);
-      userId = typeof payload.sub === 'number' ? payload.sub : undefined;
-      const aud = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
-      if (aud.includes(BRIGADE_AUDIENCE)) audience = 'brigade';
+      payload = await this.jwt.verifyAsync(token);
     } catch {
       throw new UnauthorizedException();
     }
+    const aud = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
+    if (aud.includes(BRIGADE_AUDIENCE)) return this.authenticateForeman(payload.sid);
+
+    const userId = typeof payload.sub === 'number' ? payload.sub : undefined;
     if (!userId) throw new UnauthorizedException();
 
     // Roles and status come from the database, so a change or deactivation applies right away
@@ -109,7 +109,37 @@ export class AccessGuard implements CanActivate {
       contractorId: record.contractor_id,
       isContractorOnly: roles.includes(Role.Contractor) && !isStaff,
       isAdmin: hasAnyRole({ roles }, ADMIN_ROLES),
-      audience,
+      audience: 'erp',
+    };
+  }
+
+  /**
+   * Brigade token: the foreman comes from TMA and is not an ERP user. The session must still be open
+   * (not signed out, not past 23:59), so signing out ends access at once.
+   */
+  private async authenticateForeman(sessionId: string | undefined): Promise<AuthUser> {
+    if (!sessionId || !UUID.test(sessionId)) throw new UnauthorizedException();
+    const session = await this.prisma.brigade_sessions.findUnique({
+      where: { id: sessionId },
+      select: { id: true, foreman_external_id: true, phone: true, first_name: true, last_name: true, expires_at: true, revoked_at: true },
+    });
+    if (!session || session.revoked_at || session.expires_at < new Date()) {
+      throw new UnauthorizedException('Sesja wygasła. Zaloguj się ponownie.');
+    }
+    return {
+      id: 0,
+      roles: [],
+      contractorId: null,
+      isContractorOnly: false,
+      isAdmin: false,
+      audience: 'brigade',
+      foreman: {
+        sessionId: session.id,
+        id: session.foreman_external_id,
+        phone: session.phone,
+        firstName: session.first_name,
+        lastName: session.last_name,
+      },
     };
   }
 

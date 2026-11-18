@@ -1,5 +1,5 @@
 import { BadRequestException, Body, Controller, Get, Headers, HttpCode, HttpStatus, Post, Query } from '@nestjs/common';
-import { BrigadeAccess, CurrentUser, Public, type AuthUser } from '../auth/access';
+import { BrigadeAccess, CurrentForeman, Public, type BrigadeForeman } from '../auth/access';
 import { BrigadeRefreshDto, BrigadeSendCodeDto, BrigadeVerifyCodeDto } from './brigade-auth.dto';
 import { BrigadeAuthService } from './brigade-auth.service';
 import { PulpitService } from './pulpit.service';
@@ -38,7 +38,7 @@ export class BrigadeAuthController {
   }
 }
 
-/** Endpoints of the brigade app: brigade token only */
+/** Endpoints of the brigade app: brigade token only. The foreman comes from TMA, not from ERP users. */
 @BrigadeAccess()
 @Controller('brigade')
 export class BrigadeController {
@@ -51,40 +51,46 @@ export class BrigadeController {
   ) {}
 
   @Get('me')
-  me(@CurrentUser() user: AuthUser) {
-    return this.auth.me(user.id);
+  me(@CurrentForeman() foreman: BrigadeForeman) {
+    return this.auth.me(foreman);
   }
 
-  /** Foreman's dashboard: crew and 14-day activity (Google Sheets of ST_BR) + projects (ERP). `?fresh=1` skips the 1-minute cache */
+  /** Foreman's dashboard: crew and projects (TMA). `?fresh=1` asks TMA again instead of the 1-minute cache */
   @Get('pulpit')
-  getPulpit(@CurrentUser() user: AuthUser, @Query('fresh') fresh?: string) {
-    return this.pulpit.get(user.id, fresh === '1' || fresh === 'true');
+  getPulpit(@CurrentForeman() foreman: BrigadeForeman, @Query('fresh') fresh?: string) {
+    return this.pulpit.get(foreman, fresh === '1' || fresh === 'true');
   }
 
-  /** History of the foreman's entries for the last `days` days (1–14, default 14), grouped by day and worker */
+  /** History of the foreman's entries for the last `days` days (1–14, default 14); empty until entries are stored */
   @Get('work-log')
-  getWorkLog(@CurrentUser() user: AuthUser, @Query('days') days?: string, @Query('fresh') fresh?: string) {
+  getWorkLog(@CurrentForeman() foreman: BrigadeForeman, @Query('days') days?: string) {
     const count = days === undefined || days === '' ? WORK_LOG_MAX_DAYS : Number(days);
     if (!Number.isInteger(count) || count < 1 || count > WORK_LOG_MAX_DAYS) {
       throw new BadRequestException(`days: liczba od 1 do ${WORK_LOG_MAX_DAYS}`);
     }
-    return this.workLog.get(user.id, count, fresh === '1' || fresh === 'true');
+    return this.workLog.get(foreman, count);
   }
 
-  /** Hours of the foreman's people: worker × day of `month` (RRRR-MM, default current), optional `company` */
+  /** Worker × day of `month` (RRRR-MM, default current), optional `company`; for now only absences from TMA */
   @Get('hours-report')
   getHoursReport(
-    @CurrentUser() user: AuthUser,
+    @CurrentForeman() foreman: BrigadeForeman,
     @Query('month') month?: string,
     @Query('company') company?: string,
     @Query('fresh') fresh?: string,
   ) {
-    return this.hoursReport.get(user.id, month, company, fresh === '1' || fresh === 'true');
+    return this.hoursReport.get(foreman, month, company, fresh === '1' || fresh === 'true');
   }
 
-  /** Data for the "Dodaj wpis" form of `date` (RRRR-MM-DD): crew, vacations, projects with work types, surcharges. Read only. */
+  /** Date picker of the form: days of `month` (RRRR-MM, default current) that TMA opens for filling in */
+  @Get('day-form/calendar')
+  getDayFormCalendar(@CurrentForeman() foreman: BrigadeForeman, @Query('month') month?: string) {
+    return this.dayForm.calendar(foreman, month);
+  }
+
+  /** Data for the "Dodaj wpis" form of `date` (RRRR-MM-DD): crew and absences (TMA), projects with work types, surcharges. Read only. */
   @Get('day-form')
-  getDayForm(@CurrentUser() user: AuthUser, @Query('date') date?: string) {
-    return this.dayForm.get(user.id, date?.trim() ?? '');
+  getDayForm(@CurrentForeman() foreman: BrigadeForeman, @Query('date') date?: string) {
+    return this.dayForm.get(foreman, date?.trim() ?? '');
   }
 }

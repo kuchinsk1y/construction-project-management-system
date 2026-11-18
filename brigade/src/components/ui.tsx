@@ -40,7 +40,7 @@ export function ThemeToggle() {
     <button
       type="button"
       onClick={() => setDark((v) => !v)}
-      className="flex size-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] transition hover:bg-[var(--muted)] active:translate-y-px"
+      className="flex size-10 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] transition hover:bg-[var(--muted)] active:translate-y-px sm:size-8"
       title={dark ? 'Jasny motyw' : 'Ciemny motyw'}
       aria-label={dark ? 'Jasny motyw' : 'Ciemny motyw'}
     >

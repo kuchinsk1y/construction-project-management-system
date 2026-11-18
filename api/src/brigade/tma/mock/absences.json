@@ -1,0 +1,10 @@
+{
+  "absences": [
+    { "workerId": 103, "type": "vacation", "dateFrom": "{{today-3}}", "dateTo": "{{today+4}}" },
+    { "workerId": 202, "type": "sick", "dateFrom": "{{today-1}}", "dateTo": "{{today+1}}" },
+    { "workerId": 107, "type": "absence", "dateFrom": "{{today}}", "dateTo": "{{today}}" },
+    { "workerId": 303, "type": "drunk_on_site", "dateFrom": "{{today}}", "dateTo": "{{today}}" },
+    { "workerId": 108, "type": "day_off", "dateFrom": "{{today-2}}", "dateTo": "{{today-2}}" },
+    { "workerId": 401, "type": "dismissed", "dateFrom": "{{today+2}}", "dateTo": "{{today+2}}" }
+  ]
+}

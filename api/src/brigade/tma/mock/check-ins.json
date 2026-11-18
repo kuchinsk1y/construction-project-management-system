@@ -1,0 +1,30 @@
+[
+  {
+    "date": "{{today}}",
+    "generatedAt": "{{now}}",
+    "checkIns": [
+      { "id": "98d4de2f-1978-5b91-8b31-383bdfdd4660", "workerId": 101, "projectId": "{{project:1}}", "status": "closed", "checkInAt": "{{today}}T05:52:10Z", "checkInMethod": "qr", "closedAt": "{{today}}T10:30:00Z", "workTypeId": "{{workType:1:1}}", "workDescription": "Betonowanie stóp pod konstrukcję, sektor B" },
+      { "id": "fa9c86e1-1183-5af3-97f9-6ba3b3e4062f", "workerId": 101, "projectId": "{{project:2}}", "status": "closed", "checkInAt": "{{today}}T11:05:40Z", "checkInMethod": "qr", "closedAt": "{{today}}T15:02:00Z", "workTypeId": "{{workType:2:2}}", "workDescription": "Po południu przejazd na drugi obiekt, stringi" },
+      { "id": "53a74a55-1bb1-5633-92d4-e1c75f436d77", "workerId": 102, "projectId": "{{project:1}}", "status": "closed", "checkInAt": "{{today}}T05:54:31Z", "checkInMethod": "qr", "closedAt": "{{today}}T14:20:00Z", "workTypeId": "{{workType:1:1}}", "workDescription": "Pomoc przy betonowaniu" },
+      { "id": "29fb6121-dc08-5b52-a074-9b73c41e5dce", "workerId": 104, "projectId": "{{project:2}}", "status": "open", "checkInAt": "{{today}}T06:03:02Z", "checkInMethod": "qr", "closedAt": null, "workTypeId": "{{workType:2:1}}", "workDescription": null },
+      { "id": "d9a5fc57-fc69-53b9-835b-d7df39b20639", "workerId": 105, "projectId": "{{project:2}}", "status": "closed", "checkInAt": "{{today}}T05:49:47Z", "checkInMethod": "qr", "closedAt": "{{today}}T16:10:00Z", "workTypeId": "{{workType:2:2}}", "workDescription": "Podłączenie stringów, rząd 4–7" },
+      { "id": "ef5ceecc-6981-5cf1-84fe-c73f8eb46ab2", "workerId": 106, "projectId": "{{project:1}}", "status": "closed", "checkInAt": "{{today}}T05:58:12Z", "checkInMethod": "qr", "closedAt": "{{today}}T13:58:00Z", "workTypeId": "{{workType:1:5}}", "workDescription": "Montaż ogrodzenia od strony drogi" },
+      { "id": "34c38442-0fd3-5a8b-a40e-b634690fd516", "workerId": 108, "projectId": "{{project:2}}", "status": "open", "checkInAt": "{{today}}T06:11:40Z", "checkInMethod": "manual", "closedAt": null, "workTypeId": "{{workType:2:1}}", "workDescription": null },
+      { "id": "13eaed2f-fb73-5189-8a9b-749a2071d4b9", "workerId": 201, "projectId": "{{project:1}}", "status": "open", "checkInAt": "{{today}}T05:57:05Z", "checkInMethod": "qr", "closedAt": null, "workTypeId": "{{workType:1:3}}", "workDescription": "Izolacja fundamentów" },
+      { "id": "f97f92ba-0fcf-573d-840f-76e570575ec8", "workerId": 301, "projectId": "{{project:3}}", "status": "open", "checkInAt": "{{today}}T06:20:18Z", "checkInMethod": "qr", "closedAt": null, "workTypeId": "{{workType:3:1}}", "workDescription": null },
+      { "id": "ccc12dc0-a22a-5293-be40-b620e08ef4bf", "workerId": 302, "projectId": "{{project:2}}", "status": "closed", "checkInAt": "{{today}}T06:01:55Z", "checkInMethod": "qr", "closedAt": "{{today}}T15:31:00Z", "workTypeId": "{{workType:2:3}}", "workDescription": "Rozładunek paneli z TIR-a" }
+    ]
+  },
+  {
+    "date": "{{today-1}}",
+    "generatedAt": "{{now}}",
+    "checkIns": [
+      { "id": "77ff0c26-4f65-5765-b60e-62f5d66b4831", "workerId": 101, "projectId": "{{project:2}}", "status": "closed", "checkInAt": "{{today-1}}T05:50:02Z", "checkInMethod": "qr", "closedAt": "{{today-1}}T15:02:44Z", "workTypeId": "{{workType:2:1}}", "workDescription": "Kable DC, sekcja A" },
+      { "id": "40da3a92-a76d-5963-9aa4-7f05f30f9412", "workerId": 102, "projectId": "{{project:2}}", "status": "closed", "checkInAt": "{{today-1}}T05:51:20Z", "checkInMethod": "qr", "closedAt": "{{today-1}}T15:00:09Z", "workTypeId": "{{workType:2:1}}", "workDescription": null },
+      { "id": "057b455f-078e-5ad6-97e8-2500f2d4c709", "workerId": 104, "projectId": "{{project:1}}", "status": "auto_closed", "checkInAt": "{{today-1}}T06:05:33Z", "checkInMethod": "qr", "closedAt": "{{today-1}}T21:00:00Z", "workTypeId": "{{workType:1:2}}", "workDescription": "Dokumentacja zdjęciowa" },
+      { "id": "dd90a702-7ebe-567a-ad10-44fa3b0bf6c0", "workerId": 104, "projectId": "{{project:3}}", "status": "closed", "checkInAt": "{{today-1}}T12:15:00Z", "checkInMethod": "manual", "closedAt": "{{today-1}}T15:30:00Z", "workTypeId": null, "workDescription": null },
+      { "id": "4dfe5bdf-785b-58ae-8f0a-58a0b28f5577", "workerId": 106, "projectId": "{{project:1}}", "status": "closed", "checkInAt": "{{today-1}}T05:56:48Z", "checkInMethod": "qr", "closedAt": "{{today-1}}T14:58:30Z", "workTypeId": "{{workType:1:4}}", "workDescription": null },
+      { "id": "a11950e9-c875-5c79-95df-a8db7e91dacc", "workerId": 107, "projectId": "{{project:1}}", "status": "closed", "checkInAt": "{{today-1}}T06:00:15Z", "checkInMethod": "qr", "closedAt": "{{today-1}}T15:10:00Z", "workTypeId": "{{workType:1:6}}", "workDescription": "Sprzątanie placu budowy" }
+    ]
+  }
+]

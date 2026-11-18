@@ -96,7 +96,8 @@ export function PhoneField({ country, onCountryChange, number, onNumberChange, i
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Szukaj kraju lub kodu, np. Polska, +48"
-              className="h-12 w-full bg-transparent pl-11 pr-4 text-sm outline-none placeholder:text-[var(--muted-foreground)]"
+              type="search"
+              className="h-12 w-full bg-transparent pl-11 pr-4 text-base outline-none placeholder:text-[var(--muted-foreground)] sm:text-sm"
             />
           </div>
           <ul role="listbox" className="scrollbar-thin max-h-72 overflow-y-auto py-1.5">

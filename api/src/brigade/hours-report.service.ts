@@ -1,10 +1,23 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../prisma/prisma.service';
-import { ST_BR_SHEETS, StBrSheetsClient, gvizText, type SheetRow } from './sheets/st-br-sheets.client';
+import type { BrigadeForeman } from '../auth/access';
+import { CrewService } from './crew.service';
+import { TmaBrigadeClient } from './tma/tma-brigade.client';
+import type { TmaAbsenceType } from './tma/tma-brigade.types';
 import { kindOf, type RowKind } from './work-log.service';
 
-const CACHE_TTL_MS = 60_000;
+/** One entry of the month: worker, day, hours, kind of work */
+type SheetRow = Record<string, unknown>;
+
+const ABSENCE_NAMES: Record<TmaAbsenceType, string> = {
+  vacation: 'Urlop',
+  sick: 'Chory',
+  day_off: 'Wolne',
+  absence: 'Absencja',
+  drunk: 'Pijaństwo',
+  drunk_on_site: 'Pijaństwo budowa',
+  dismissed: 'Zwolniony',
+};
 /** More hours than this in a day is shown as overtime */
 const OVERTIME_HOURS = 12;
 const FIRST_MONTH = '2024-01';
@@ -29,7 +42,8 @@ export type HoursReport = {
   nextMonth: string | null;
   dates: string[];
   overtimeThreshold: number;
-  source: 'sheets' | 'erp';
+  /** "none": hours are not stored yet, only absences from TMA are shown */
+  source: 'none' | 'erp';
   generatedAt: string;
   filters: { companies: string[]; company: string | null };
   totals: { workers: number; hours: number };
@@ -47,73 +61,47 @@ export type HoursReport = {
 
 /**
  * Monthly hours of the foreman's people: worker × day of the month.
- * The foreman is the signed-in user. Everything is counted here; the app only draws it.
+ * The foreman is the signed-in one. Everything is counted here; the app only draws it.
+ * Hours are not stored yet (the Google journal is no longer read): for now only absences from TMA are shown.
  */
 @Injectable()
 export class HoursReportService {
-  private readonly cache = new Map<string, { at: number; rows: SheetRow[] }>();
-  private readonly inFlight = new Map<string, Promise<SheetRow[]>>();
-
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly sheets: StBrSheetsClient,
+    private readonly crew: CrewService,
+    private readonly tma: TmaBrigadeClient,
     private readonly config: ConfigService,
   ) {}
 
-  async get(userId: number, month: string | undefined, company: string | undefined, fresh = false): Promise<HoursReport> {
+  async get(foreman: BrigadeForeman, month: string | undefined, company: string | undefined, fresh = false): Promise<HoursReport> {
     const current = this.today().slice(0, 7);
     const m = month?.trim() || current;
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(m)) throw new BadRequestException('month: format RRRR-MM');
     if (m > current) throw new BadRequestException('Nie można otworzyć przyszłego miesiąca');
     if (m < FIRST_MONTH) throw new BadRequestException(`Raport jest dostępny od ${FIRST_MONTH}`);
 
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { firstName: true, lastName: true, isActive: true },
-    });
-    if (!user?.isActive) throw new UnauthorizedException();
-
-    const fullName = `${user.firstName.trim()} ${user.lastName.trim()}`;
-    const rows = await this.rows(userId, fullName, m, fresh);
+    const rows = await this.rows(foreman, m, fresh);
     return build(m, rows, company?.trim() || null, {
       prevMonth: m > FIRST_MONTH ? shiftMonth(m, -1) : null,
       nextMonth: m < current ? shiftMonth(m, 1) : null,
     });
   }
 
-  /** Journal rows of the month (cached per foreman and month; the company filter is applied after) */
-  private rows(userId: number, fullName: string, month: string, fresh: boolean): Promise<SheetRow[]> {
-    const key = `${userId}|${month}`;
-    const cached = this.cache.get(key);
-    if (!fresh && cached && Date.now() - cached.at < CACHE_TTL_MS) return Promise.resolve(cached.rows);
-    const pending = this.inFlight.get(key);
-    if (pending) return pending;
-
+  /** Entries of the month: for now one 0-hour row per absence day of a crew member (TMA) */
+  private async rows(foreman: BrigadeForeman, month: string, fresh: boolean): Promise<SheetRow[]> {
     const from = `${month}-01`;
     const to = shiftDate(`${shiftMonth(month, 1)}-01`, -1);
-    const request = this.sheets
-      .query(ST_BR_SHEETS.workJournal, (c) => {
-        const need = { date: c['data_robot'], foreman: c['kierownik'], hours: c['ilosc_godzin'], workerName: c['pracownik'] };
-        if (!need.date || !need.foreman || !need.hours || !need.workerName) return null;
-        const optional = { workerId: c['id_pracownika'], company: c['firma'], workType: c['rodzaj_roboty'] };
-        const picked = Object.entries({ date: need.date, hours: need.hours, workerName: need.workerName, ...optional }).filter(
-          (e): e is [string, string] => !!e[1],
-        );
-        return (
-          `select ${picked.map(([, col]) => col).join(', ')} ` +
-          `where lower(${need.foreman}) = ${gvizText(fullName.toLowerCase())} ` +
-          `and ${need.date} >= date '${from}' and ${need.date} <= date '${to}' ` +
-          `label ${picked.map(([name, col]) => `${col} '${name}'`).join(', ')}`
-        );
-      })
-      .then((rows) => {
-        for (const [k, entry] of this.cache) if (Date.now() - entry.at >= CACHE_TTL_MS) this.cache.delete(k);
-        this.cache.set(key, { at: Date.now(), rows });
-        return rows;
-      })
-      .finally(() => this.inFlight.delete(key));
-    this.inFlight.set(key, request);
-    return request;
+    const [{ crew }, absences] = await Promise.all([this.crew.get(foreman, fresh), this.tma.absences(foreman.id, from, to)]);
+    const byId = new Map(crew.map((w) => [w.id, w]));
+
+    const rows: SheetRow[] = [];
+    for (const a of absences) {
+      const w = byId.get(a.workerId);
+      if (!w) continue;
+      for (let d = a.dateFrom < from ? from : a.dateFrom; d <= a.dateTo && d <= to; d = shiftDate(d, 1)) {
+        rows.push({ date: d, hours: 0, workerId: w.id, workerName: w.name, company: w.company, workType: ABSENCE_NAMES[a.type] });
+      }
+    }
+    return rows;
   }
 
   private today() {
@@ -179,7 +167,7 @@ function build(
     ...nav,
     dates,
     overtimeThreshold: OVERTIME_HOURS,
-    source: 'sheets',
+    source: 'none',
     generatedAt: new Date().toISOString(),
     filters: { companies: [...companies].sort((a, b) => a.localeCompare(b, 'pl')), company },
     totals: { workers: list.length, hours: round(list.reduce((s, w) => s + w.total, 0)) },

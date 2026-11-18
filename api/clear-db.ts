@@ -15,6 +15,8 @@ async function main() {
   await prisma.project_hours_plan.deleteMany({});
   await prisma.project_status_history.deleteMany({});
   await prisma.planned_expenses.deleteMany({});
+  await prisma.work_hour_surcharges.deleteMany({});
+  await prisma.work_hours.deleteMany({});
   await prisma.project_department_foremen.deleteMany({});
   await prisma.project_departments.deleteMany({});
   await prisma.invoice_works.deleteMany({});

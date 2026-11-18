@@ -494,6 +494,7 @@ async function main() {
 
   console.log('Cleaning up old works and reports...');
   await prisma.daily_reports.deleteMany({ where: { project_id: project.id } });
+  await prisma.work_hours.deleteMany({ where: { project_id: project.id } });
   await prisma.project_work_types.deleteMany({ where: { project_id: project.id } });
 
   console.log('Seeding project work types...');

@@ -274,6 +274,7 @@ model project_work_types {
   updated_at       DateTime?       @default(now()) @db.Timestamptz(0)
   daily_reports    daily_reports[]
   invoice_works    invoice_works[]
+  work_hours       work_hours[]
   departments      departments     @relation(fields: [department_id], references: [id])
   milestones       milestones?     @relation(fields: [milestone_id], references: [id], onDelete: Cascade)
   projects         projects        @relation(fields: [project_id], references: [id], onDelete: Cascade)
@@ -313,6 +314,7 @@ model projects {
   created_at                       DateTime?                    @default(now()) @db.Timestamptz(0)
   updated_at                       DateTime?                    @default(now()) @db.Timestamptz(0)
   daily_reports                    daily_reports[]
+  work_hours                       work_hours[]
   invoices                         invoices[]
   gathering_points                 project_gathering_points[]
   milestones                       milestones[]
@@ -375,15 +377,96 @@ model project_gathering_points {
 /// Hourly surcharges (dopłaty) paid on top of the base rate, e.g. for difficult conditions.
 /// Managed by an admin in Settings; the brigade app (ST_BR) reads the ones valid on a given day.
 model surcharges {
-  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name          String    @db.VarChar(150)
-  rate_per_hour Decimal   @db.Decimal(10, 2)
-  valid_from    DateTime  @db.Date
+  id            String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name          String                 @db.VarChar(150)
+  rate_per_hour Decimal                @db.Decimal(10, 2)
+  valid_from    DateTime               @db.Date
   /// Empty = valid with no end date
-  valid_to      DateTime? @db.Date
-  is_active     Boolean   @default(true)
-  created_at    DateTime  @default(now()) @db.Timestamptz(0)
-  updated_at    DateTime  @default(now()) @updatedAt @db.Timestamptz(0)
+  valid_to      DateTime?              @db.Date
+  is_active     Boolean                @default(true)
+  created_at    DateTime               @default(now()) @db.Timestamptz(0)
+  updated_at    DateTime               @default(now()) @updatedAt @db.Timestamptz(0)
+  work_hours    work_hour_surcharges[]
 
   @@index([is_active, valid_from])
+}
+
+/// One-time sign-in codes of the brigade app. Foremen are not ERP users: TMA confirms them by phone.
+model brigade_auth_codes {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// "+48123456789"
+  phone               String    @db.VarChar(16)
+  code                String    @db.VarChar(12)
+  /// Foreman id in TMA, as answered when the code was sent
+  foreman_external_id String    @db.VarChar(64)
+  expires_at          DateTime  @db.Timestamptz(0)
+  /// Wrong guesses; the code is burned after a few
+  attempts            Int       @default(0)
+  used_at             DateTime? @db.Timestamptz(0)
+  user_agent          String?   @db.VarChar(255)
+  created_at          DateTime  @default(now()) @db.Timestamptz(0)
+
+  @@index([phone, created_at])
+}
+
+/// Sessions of the brigade app (until 23:59 Warsaw time). The refresh token rotates, the session id stays.
+model brigade_sessions {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  foreman_external_id String    @db.VarChar(64)
+  phone               String    @db.VarChar(16)
+  first_name          String    @db.VarChar(255)
+  last_name           String    @db.VarChar(255)
+  refresh_token       String    @unique @db.VarChar(64)
+  expires_at          DateTime  @db.Timestamptz(0)
+  revoked_at          DateTime? @db.Timestamptz(0)
+  user_agent          String?   @db.VarChar(255)
+  created_at          DateTime  @default(now()) @db.Timestamptz(0)
+  updated_at          DateTime  @default(now()) @updatedAt @db.Timestamptz(0)
+
+  @@index([foreman_external_id])
+}
+
+/// Work log of the brigade app: one row = worker × work type × day (written by the foreman).
+/// Foremen and workers live in TMA, so they are kept as TMA ids with a name snapshot of that day.
+/// Empty for now: saving the day form is not built yet.
+/// Hours of the brigade app: one line of the day form (worker × project × work type). Nothing writes here yet.
+model work_hours {
+  id                  String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  created_at          DateTime               @default(now()) @db.Timestamptz(6)
+  work_date           DateTime               @db.Date
+  project_id          String                 @db.Uuid
+  work_type_id        String                 @db.Uuid
+  /// Foreman (TMA manager) who wrote the day
+  manager_id          Int?
+  manager_name        String?                @db.VarChar(255)
+  /// Worker in TMA and his data on that day
+  worker_id           BigInt
+  worker_name         String                 @db.VarChar(255)
+  worker_company_name String                 @db.VarChar(255)
+  position            String                 @default("") @db.VarChar(255)
+  /// TMA work day event (the QR check-in) the hours come from; several lines (work types) can share one
+  work_day_event_id   String                 @db.Uuid
+  hours               Int
+  note                String                 @default("") @db.VarChar(2000)
+  projects            projects               @relation(fields: [project_id], references: [id])
+  project_work_types  project_work_types     @relation(fields: [work_type_id], references: [id])
+  surcharges          work_hour_surcharges[]
+
+  @@index([work_date, manager_id])
+  @@index([worker_id, work_date])
+  @@index([project_id, work_date])
+  @@index([work_type_id])
+  @@index([work_day_event_id])
+}
+
+/// Surcharges («Warunki») of a work row: many-to-many, like user_roles. The rate is kept as it was that day.
+model work_hour_surcharges {
+  work_hour_id  String     @db.Uuid
+  surcharge_id  String     @db.Uuid
+  rate_per_hour Decimal    @db.Decimal(10, 2)
+  work_hours    work_hours @relation(fields: [work_hour_id], references: [id], onDelete: Cascade)
+  surcharges    surcharges @relation(fields: [surcharge_id], references: [id], onDelete: Restrict)
+
+  @@id([work_hour_id, surcharge_id])
+  @@index([surcharge_id])
 }

@@ -75,12 +75,12 @@ export function WorkLogPage() {
           <h1 className="text-xl font-semibold tracking-tight">Historia</h1>
           <p className="mt-0.5 text-sm text-[var(--muted-foreground)]">Twoje wpisy z ostatnich 14 dni. Tylko do odczytu.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full items-center gap-2 sm:w-auto">
           <button
             type="button"
             onClick={() => void load(true)}
             disabled={loading}
-            className="flex h-9 items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 text-sm font-medium text-[var(--muted-foreground)] transition hover:text-[var(--foreground)] disabled:opacity-60"
+            className="flex h-11 items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 text-sm font-medium text-[var(--muted-foreground)] transition sm:h-9 hover:text-[var(--foreground)] disabled:opacity-60"
             title="Odśwież"
           >
             <RefreshCw className={`size-4 ${loading ? 'animate-spin' : ''}`} />
@@ -89,7 +89,7 @@ export function WorkLogPage() {
           <Link
             to="/dziennik/nowy"
             title={todayDone ? 'Dzisiejszy dzień jest już zapisany — możesz wybrać inną datę' : 'Wpisz dzień'}
-            className="flex h-9 items-center gap-2 rounded-lg bg-[var(--primary)] px-3.5 text-sm font-semibold text-[var(--primary-foreground)] shadow-sm transition hover:bg-[color-mix(in_oklch,var(--primary)_88%,black)]"
+            className="flex h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-[var(--primary)] px-3.5 text-sm font-semibold sm:h-9 sm:flex-none text-[var(--primary-foreground)] shadow-sm transition hover:bg-[color-mix(in_oklch,var(--primary)_88%,black)]"
           >
             <Plus className="size-4" />
             Dodaj wpis
@@ -105,7 +105,9 @@ export function WorkLogPage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Szukaj pracownika"
-            className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--card)] pl-10 pr-9 text-sm outline-none transition focus:border-[var(--primary)] focus:ring-4 focus:ring-[color-mix(in_oklch,var(--primary)_15%,transparent)]"
+            type="search"
+            enterKeyHint="search"
+            className="h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--card)] pl-10 pr-9 text-base outline-none sm:h-9 sm:text-sm transition focus:border-[var(--primary)] focus:ring-4 focus:ring-[color-mix(in_oklch,var(--primary)_15%,transparent)]"
           />
           {query ? (
             <button
@@ -139,9 +141,13 @@ export function WorkLogPage() {
       ) : data && days.length === 0 ? (
         <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--card)] px-6 py-14 text-center">
           <CalendarDays className="mx-auto size-8 text-[var(--muted-foreground)]" />
-          <p className="mt-3 text-sm font-semibold">{search ? 'Nikogo nie znaleziono' : 'Brak wpisów w ostatnich 14 dniach'}</p>
+          <p className="mt-3 text-sm font-semibold">{search ? 'Nikogo nie znaleziono' : data?.source === 'none' ? 'Brak zapisanych dni' : 'Brak wpisów w ostatnich 14 dniach'}</p>
           <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-            {search ? 'Sprawdź pisownię nazwiska.' : 'Wpisy pojawią się tutaj po zapisaniu dnia.'}
+            {search
+              ? 'Sprawdź pisownię nazwiska.'
+              : data?.source === 'none'
+                ? 'Historia pojawi się tutaj, gdy zapis dnia z formularza zacznie działać.'
+                : 'Wpisy pojawią się tutaj po zapisaniu dnia.'}
           </p>
         </div>
       ) : (
